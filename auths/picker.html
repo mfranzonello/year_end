@@ -1,0 +1,123 @@
+﻿<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Pick Google Photos Albums</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Google Picker -->
+    <script src="https://apis.google.com/js/api.js"></script>
+</head>
+<body>
+    <h1>Choose Google Photos Albums</h1>
+    <button id="auth">Sign in & Authorize</button>
+    <button id="pick" disabled>Open Album Picker</button>
+    <pre id="log"></pre>
+
+
+    <script>
+        let CLIENT_ID = "";
+        let API_KEY = "";
+        let SCOPES = "";
+
+        async function loadConfig() {
+            const res = await fetch("http://127.0.0.1:8000/picker_config");
+            const cfg = await res.json();
+            CLIENT_ID = cfg.CLIENT_ID;
+            API_KEY = cfg.API_KEY;
+            SCOPES = (cfg.SCOPES || []).join(" ");
+            console.log("Loaded Picker config:", cfg);
+        }
+
+        window.addEventListener("DOMContentLoaded", async () => {
+            await loadConfig();
+            loadGapi(); // your existing init function
+        });
+
+        let token = null;
+
+        function log(msg) {
+            document.getElementById("log").textContent += msg + "\n";
+        }
+
+        // 1) Load Picker API
+        function loadPickerApi() {
+            gapi.load('picker', () => log("Picker API loaded"));
+        }
+        // 2) Load GAPI (for Picker)
+        function loadGapi() {
+            gapi.load('client', async () => {
+                gapi.client.setApiKey(API_KEY);
+                loadPickerApi();
+            });
+        }
+        window.onload = loadGapi;
+
+        // 3) OAuth with GIS
+        async function doAuth() {
+            const client = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                prompt: "consent",
+                callback: (resp) => {
+                    if (resp.error) {
+                        log("Auth error: " + JSON.stringify(resp));
+                        return;
+                    }
+                    token = resp.access_token;
+                    log("Authorized.");
+                    document.getElementById("pick").disabled = false;
+                }
+            });
+            client.requestAccessToken();
+        }
+
+        document.getElementById("auth").onclick = doAuth;
+
+        // 4) Build and show the Picker (Albums view)
+        document.getElementById("pick").onclick = function () {
+            if (!token) { log("No token yet"); return; }
+
+            const view = new google.picker.View(google.picker.ViewId.PHOTO_ALBUMS);
+
+            const picker = new google.picker.PickerBuilder()
+                .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+                .setOAuthToken(token)
+                .setDeveloperKey(API_KEY)
+                .addView(view)
+                .setTitle("Select Google Photos Albums")
+                .setCallback(pickerCallback)
+                .build();
+            picker.setVisible(true);
+
+        };
+
+        // 5) Handle selection
+        async function pickerCallback(data) {
+            if (data.action !== google.picker.Action.PICKED) return;
+
+            // Each doc is an album. We’ll extract id + name.
+            const albums = (data.docs || []).map(d => ({
+                id: d.id,                 // albumId
+                name: d.name || d.title,  // album title
+            }));
+
+            log("Picked albums:\n" + JSON.stringify(albums, null, 2));
+
+            // Send to your local server to register in YAML.
+            try {
+                const res = await fetch("http://127.0.0.1:8000/register_albums", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ albums })
+                });
+                const j = await res.json();
+                log("Server response:\n" + JSON.stringify(j, null, 2));
+            } catch (e) {
+                log("POST failed: " + e);
+            }
+        }
+    </script>
+</body>
+</html>

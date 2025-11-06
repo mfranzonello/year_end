@@ -1,0 +1,51 @@
+[
+  {
+    "service":  "google_photos",
+    "share_token": "AF1QipPrYCMyZEKnytylaMJuPqkTYag__dVaiMF_IihlbQxCAZotwnPP2Nuu8VTJUw7veA",
+    "album_id": null,
+    "joined": false,
+    "title": null,
+    "last_sync": null,
+    "year": 2024,
+    "person": "Kely"
+  },
+  {
+    "service": "google_photos",
+    "share_token": "AF1QipNyQOc48VAyqXLktpIFEuvx7Ud5fDT6OxZNjxRYMDs_wDSHqqdV25tkitETuU8YTg",
+    "album_id": null,
+    "joined": false,
+    "title": null,
+    "last_sync": null,
+    "year": 2024,
+    "person": "David"
+  },
+  {
+    "service": "google_photos",
+    "share_token": "AF1QipMkk_Qy-sF6rsouMrBeKlIDKHbC_-W4eb9h9seHabL-nzJyxHlLcwHRhxfaWz35dw",
+    "album_id": null,
+    "joined": true,
+    "title": null,
+    "last_sync": null,
+    "year": 2024,
+    "person": "Athanasius"
+  },
+  {
+    "service": "google_photos",
+    "share_token": "AF1QipN-RLOpIREMy02xlT-ytIVSicTx7zfbReRKhyUyOJIK2Z7NhacXUUQwCSku6eKT5g",
+    "album_id": null,
+    "joined": true,
+    "title": null,
+    "last_sync": null,
+    "year": 2024,
+    "person": "Veronica"
+  },
+  {
+    "service": "icloud",
+    "share_token":  null,
+    "profile": "Mom Franzonello",
+    "album_id": null,
+    "title":  null,
+    "year": 2025,
+    "person": "Mom"
+  }
+]

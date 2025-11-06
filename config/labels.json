@@ -1,0 +1,98 @@
+[
+  {
+    "id": 0,
+    "name": "Parents",
+    "members": [ "Mom", "Dad" ],
+    "color": "3E0AAE"
+  },
+  {
+    "id": 1,
+    "name": "Schmiesing J",
+    "members": [ "Justine", "Dave S" ],
+    "color": ""
+  },
+  {
+    "id": 2,
+    "name": "Snell J",
+    "members": [ "Jessica", "Kevin", "Max", "Tino" ],
+    "color": ""
+  },
+  {
+    "id": 3,
+    "name": "Franzonello T",
+    "members": [ "Tony", "Tara", "Tony IV", "Xavier" ],
+    "color": ""
+  },
+  {
+    "id": 4,
+    "name": "Sirilla L",
+    "members": [ "Laura", "Mike S", "Hope" ],
+    "color": ""
+  },
+  {
+    "id": 5,
+    "name": "Franzonello D",
+    "members": [ "David", "Kely", "Mercy" ],
+    "color": ""
+  },
+  {
+    "id": 6,
+    "name": "Paprocki A",
+    "members": [ "Anna", "Matt" ],
+    "color": ""
+  },
+  {
+    "id": 7,
+    "name": "Franzonello M",
+    "members": [ "Michael", "Mobi" ],
+    "color": ""
+  },
+  {
+    "id": 8,
+    "name": "Franzonello V",
+    "members": [ "Vincent", "Molly S" ],
+    "color": ""
+  },
+  {
+    "id": 9,
+    "name": "Franzonello C",
+    "members": [ "Christopher", "Emily" ],
+    "color": ""
+  },
+  {
+    "id": 10,
+    "name": "Siverio R",
+    "members": [ "Rita", "Andres" ],
+    "color": ""
+  },
+  {
+    "id": 11,
+    "name": "Schmiesing married kids",
+    "members": [ "Mike & Molly", "Kateri", "Benny", "Marianna", "James" ],
+    "color": ""
+  },
+  {
+    "id": 12,
+    "name": "Snell married kids",
+    "members": [ "Victoria", "Ryan", "Sebastian", "Mary Grace" ],
+    "color": ""
+  },
+  {
+    "id": 13,
+    "name": "Sirilla married kids",
+    "members": [ "Athanasius", "Augustine", "Faith" ],
+    "color": ""
+  },
+  {
+    "id": 14,
+    "name": "other",
+    "members": [ "Other", "YouTube" ],
+    "color": ""
+  },
+  {
+    "id": 15,
+    "name": "assets",
+    "members": [ "Assets" ],
+    "color": ""
+  }
+]

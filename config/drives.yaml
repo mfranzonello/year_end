@@ -1,0 +1,15 @@
+local_storage:
+  one_drive: 'C:\Users\mfran\OneDrive\Videos'
+  google_drive: 'G:\My Drive'
+  premiere: 'C:\Users\mfran\OneDrive\Reviews'
+
+add_ons:
+  clips: 'YIR Clips'
+  reviews: 'Year End'
+  project: 'YIR'
+  videos_bin: 'Videos'
+
+executables:
+  google_drive: 'C:\Program Files\Google\Drive\GoogleDrive.exe'
+  premiere: 'C:\Program Files\Adobe\Adobe Premiere Pro 2025\Adobe Premiere Pro.exe'
+
