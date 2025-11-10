@@ -8,10 +8,13 @@ from structure import read_json, write_json
 
 dotenv_file = load_dotenv(find_dotenv())
 
-def get_secret(name):
+def get_secret(name, default=None):
     secret = getenv(name)
     if secret is None:
-        print(f'Secret for {name} not found!')
+        if default is not None:
+            secret = default
+        else:
+            print(f'Secret for {name} not found!')
 
     return secret
 

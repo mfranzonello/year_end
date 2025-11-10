@@ -8,10 +8,10 @@ from datetime import datetime
 from structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_CLIPS, YIR_REVIEWS, YIR_PROJECT, PR_EXT, SHARED_ALBUMS
 from system import clear_screen, file_type, get_person_name, get_videos_in_folder, mount_g_drive
 from console import SplitConsole
-from bridge import get_rated_videos
+from adobe.bridge import get_rated_videos
 from scan_and_copy import get_person_folders, get_person_names, copy_if_needed
-from premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
-from photos import get_share_source, source_allowed, harvest_shared_album
+from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
+from scraping.photos import get_share_source, source_allowed, harvest_shared_album
 
 MIN_STARS = 3
 
@@ -169,6 +169,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-

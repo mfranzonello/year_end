@@ -11,8 +11,8 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 
 from structure import ONE_DRIVE_FOLDER, YIR_CLIPS, CHROME_DATA, CHROME_STATE, EDGE_EXE, EDGE_DATA, EDGE_STATE
 from system import close_exe, get_videos_in_folder
-from photos_google import harvest_g_shared_album
-from photos_icloud import harvest_i_shared_album
+from scraping.photos_google import harvest_g_shared_album
+from scraping.photos_icloud import harvest_i_shared_album
 
 # ---------- Models ----------
 
