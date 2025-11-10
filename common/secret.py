@@ -4,8 +4,6 @@ from os import getenv
 
 from dotenv import dotenv_values, find_dotenv, load_dotenv, set_key
 
-from common.structure import read_json, write_json
-
 dotenv_file = load_dotenv(find_dotenv())
 
 def get_secret(name, default=None):
