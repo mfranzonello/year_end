@@ -36,7 +36,6 @@ def update_folders(engine, df):
     UPDATE SET
         video_count = :video_count,
         review_count = :review_count
-    WHERE folders.folder_name = :folder_name AND folders.project_year = :project_year
     ;
     ''')
     
