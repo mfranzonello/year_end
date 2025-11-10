@@ -5,11 +5,13 @@ import argparse
 import sys
 from datetime import datetime
 
-from structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_CLIPS, YIR_REVIEWS, YIR_PROJECT, PR_EXT, SHARED_ALBUMS
-from system import clear_screen, file_type, get_person_name, get_videos_in_folder, mount_g_drive
-from console import SplitConsole
+from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_CLIPS, YIR_REVIEWS, YIR_PROJECT, PR_EXT, SHARED_ALBUMS
+from common.system import clear_screen, file_type, get_person_name, get_videos_in_folder, mount_g_drive
+from common.console import SplitConsole
+from family_tree.statistics import get_engine
 from adobe.bridge import get_rated_videos
-from scan_and_copy import get_person_folders, get_person_names, copy_if_needed
+from migrate.scan_and_copy import get_person_folders, get_person_names, copy_if_needed
+from migrate.summarize import summarize_folders
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
 from scraping.photos import get_share_source, source_allowed, harvest_shared_album
 
@@ -67,25 +69,25 @@ def scan_folders(od, gd, yir_clips, year, dry_run=True):
         for name in missing_targets:
             ui.add_update(f"  - {name}")
 
-def summarize_folders(year, min_stars):
-    ui.add_update(f"\n=== OneDrive Folder Ratings Summary ({year}) ===")
+# # def summarize_folders(year, min_stars):
+# #     ui.add_update(f"\n=== OneDrive Folder Ratings Summary ({year}) ===")
     
-    summary_paths = get_person_folders(Path(ONE_DRIVE_FOLDER) / YIR_CLIPS / str(year))
-    if not len(summary_paths):
-        ui.add_update(f"No OneDrive {year} folders found to summarize.")
+# #     summary_paths = get_person_folders(Path(ONE_DRIVE_FOLDER) / YIR_CLIPS / str(year))
+# #     if not len(summary_paths):
+# #         ui.add_update(f"No OneDrive {year} folders found to summarize.")
 
-    else:
-        for person_path in sorted(summary_paths, key=lambda x: (x.name.lower().startswith('other'), x.name.lower())):
-            _, video_ratings = get_rated_videos(person_path, 0)
-            n_videos = len(get_videos_in_folder(person_path))
+# #     else:
+# #         for person_path in sorted(summary_paths, key=lambda x: (x.name.lower().startswith('other'), x.name.lower())):
+# #             _, video_ratings = get_rated_videos(person_path, 0)
+# #             n_videos = len(get_videos_in_folder(person_path))
 
-            if n_videos:
-                n_reviewed = sum(1 for x in video_ratings if x > 0)
-                n_usable = sum(1 for x in video_ratings if x >= min_stars)
-                n_string = f'{get_person_name(person_path, year)}: {n_videos} videos, {n_reviewed/n_videos:.0%} reviewed'
-                if n_usable:
-                    n_string += f' ({n_usable} rated {min_stars}+ stars)'
-                ui.add_update(n_string)
+# #             if n_videos:
+# #                 n_reviewed = sum(1 for x in video_ratings if x > 0)
+# #                 n_usable = sum(1 for x in video_ratings if x >= min_stars)
+# #                 n_string = f'{get_person_name(person_path, year)}: {n_videos} videos, {n_reviewed/n_videos:.0%} reviewed'
+# #                 if n_usable:
+# #                     n_string += f' ({n_usable} rated {min_stars}+ stars)'
+# #                 ui.add_update(n_string)
 
 def update_project(year, min_stars, dry_run=True):
     ui.set_status('Opening Premiere project...')
@@ -160,7 +162,8 @@ def main():
     if args.gdrive:
         scan_folders(args.od, args.gd, YIR_CLIPS, args.year, dry_run)
 
-    summarize_folders(args.year, MIN_STARS)
+    engine = get_engine()
+    summarize_folders(engine, args.year, MIN_STARS)
 
     if args.premiere_update:
         update_project(args.year, dry_run=dry_run, min_stars=MIN_STARS)

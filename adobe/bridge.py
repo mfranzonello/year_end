@@ -4,7 +4,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 from typing import Optional
 
-from system import file_type
+from common.system import file_type
 
 # --- Single mmap scan ---
 
@@ -73,8 +73,8 @@ def get_xmp_rating(file_path: Path) -> Optional[int]:
 
         return rating
 
-def get_rated_videos(file_path: Path, min_stars:int) -> list[Path]:
-    '''Returns a list of video files in file_path with xmp:Rating >= min_stars.'''
+def get_rated_videos(file_path: Path, min_stars:int) -> list[Path, list]:
+    '''Returns a list of video files in file_path with xmp:Rating >= min_stars and all ratings. '''
     rated_videos = []
     video_ratings = []
 

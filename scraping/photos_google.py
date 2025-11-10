@@ -8,7 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from system import get_videos_in_folder
+from common.system import get_videos_in_folder
 
 G_SUMMARY_CLASS = 'Fbw5bb'
 G_SUMMARY_ITEM = 'items'

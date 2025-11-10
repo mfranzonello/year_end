@@ -5,8 +5,8 @@ from time import sleep
 
 import pymiere
 
-from structure import COLOR_LABELS, ADOBE_BIN
-from system import file_type, mount_premiere
+from common.structure import COLOR_LABELS, ADOBE_BIN
+from common.system import file_type, mount_premiere
 
 ITEM_TYPES = {1: 'CLIP', 2: 'BIN', 3: 'ROOT', 4: 'FILE'}
 ITEM_COLORS = ['Violet', 'Iris', 'Caribbean', 'Lavender',

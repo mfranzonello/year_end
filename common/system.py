@@ -5,7 +5,7 @@ from pathlib import Path
 from time import time, sleep
 import subprocess
 
-from structure import VIDEO_EXTS, PR_EXT, AE_EXT, GOOGLE_DRIVE_FOLDER, \
+from common.structure import VIDEO_EXTS, PR_EXT, AE_EXT, GOOGLE_DRIVE_FOLDER, \
     GOOGLE_DRIVE_EXE, PREMIERE_EXE, EDGE_EXE
 
 REQUIRED_PATH = Path(GOOGLE_DRIVE_FOLDER)
