@@ -1,19 +1,17 @@
 import streamlit as st
-import os
-for key, value in st.secrets.items():
-    if isinstance(value, dict):
-        # flatten nested secrets (like st.secrets["neon"]["user"])
-        for subkey, subval in value.items():
-            env_key = f'{key.upper()}_{subkey.upper()}'
-            os.environ[env_key] = str(subval)
-    else:
-        os.environ[key.upper()] = str(value)
+# import os
+# for key, value in st.secrets.items():
+#     if isinstance(value, dict):
+#         # flatten nested secrets (like st.secrets["neon"]["user"])
+#         for subkey, subval in value.items():
+#             env_key = f'{key.upper()}_{subkey.upper()}'
+#             os.environ[env_key] = str(subval)
+#     else:
+#         os.environ[key.upper()] = str(value)
 
 #import altair
 
 from family_tree.statistics import get_engine, fetch_folders
-
-st.secrets
 
 engine = get_engine()
 
