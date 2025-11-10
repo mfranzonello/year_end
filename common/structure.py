@@ -1,9 +1,10 @@
 ''' Project specific variables from YAML files '''
 
 import json
-import yaml
 from pathlib import Path
 import getpass
+
+import yaml
 
 def read_yaml(filepath, filename, ext='.yaml'):
     with open(Path(filepath) / f'{filename}{ext}', 'r') as file:
