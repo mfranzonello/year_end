@@ -23,12 +23,3 @@ def set_secret(name, value):
   
 def list_secrets():
     return dotenv_values(find_dotenv())
-
-def get_token(directory, user_id):
-    token_info = read_json(directory, user_id)
-    return token_info
-
-def save_token(directory, user_id, token_dict):
-    token_info = read_json(directory, user_id)
-    token_info.update(token_dict)
-    write_json(directory, user_id, token_dict)
