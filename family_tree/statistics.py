@@ -11,6 +11,12 @@ def get_engine():
     USER = get_secret('PGUSER')
     PASSWORD = get_secret('PGPASSWORD')
 
+    print(f'{HOST=}')
+    print(f'{PORT=}')
+    print(f'{DBNAME=}')
+    print(f'{USER=}')
+    print(f'{PASSWORD=}')
+
     engine = create_engine(f'postgresql+psycopg2://{USER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}')
     return engine
 
