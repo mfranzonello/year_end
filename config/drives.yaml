@@ -1,7 +1,7 @@
 local_storage:
-  one_drive: 'C:\Users\mfran\OneDrive\Videos'
+  one_drive: 'C:\Users\<user>\OneDrive\Videos'
   google_drive: 'G:\My Drive'
-  premiere: 'C:\Users\mfran\OneDrive\Reviews'
+  premiere: 'C:\Users<user>\OneDrive\Reviews'
 
 add_ons:
   clips: 'YIR Clips'
@@ -12,4 +12,8 @@ add_ons:
 executables:
   google_drive: 'C:\Program Files\Google\Drive\GoogleDrive.exe'
   premiere: 'C:\Program Files\Adobe\Adobe Premiere Pro 2025\Adobe Premiere Pro.exe'
+  edge: ['C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe', 'C:\Program Files\Microsoft\Edge\Application\msedgedriver.exe']
 
+user_data:
+  chrome: 'C:\Users\mfran\AppData\Local\Google\Chrome\User Data'
+  edge: 'C:\Users\mfran\AppData\Local\Microsoft\Edge\User Data'

@@ -1,51 +1,45 @@
 [
   {
-    "service":  "google_photos",
-    "share_token": "AF1QipPrYCMyZEKnytylaMJuPqkTYag__dVaiMF_IihlbQxCAZotwnPP2Nuu8VTJUw7veA",
-    "album_id": null,
-    "joined": false,
-    "title": null,
-    "last_sync": null,
+    "url": "https://photos.google.com/share/AF1QipNyQOc48VAyqXLktpIFEuvx7Ud5fDT6OxZNjxRYMDs_wDSHqqdV25tkitETuU8YTg",
     "year": 2024,
-    "person": "Kely"
+    "person": "David",
+    "profile": "Michael Google"
   },
   {
-    "service": "google_photos",
-    "share_token": "AF1QipNyQOc48VAyqXLktpIFEuvx7Ud5fDT6OxZNjxRYMDs_wDSHqqdV25tkitETuU8YTg",
-    "album_id": null,
-    "joined": false,
-    "title": null,
-    "last_sync": null,
+    "url": "https://photos.google.com/share/AF1QipPrYCMyZEKnytylaMJuPqkTYag__dVaiMF_IihlbQxCAZotwnPP2Nuu8VTJUw7veA",
     "year": 2024,
-    "person": "David"
+    "person": "Kely",
+    "profile": "Michael Google"
   },
   {
-    "service": "google_photos",
-    "share_token": "AF1QipMkk_Qy-sF6rsouMrBeKlIDKHbC_-W4eb9h9seHabL-nzJyxHlLcwHRhxfaWz35dw",
-    "album_id": null,
-    "joined": true,
-    "title": null,
-    "last_sync": null,
+    "url": "https://photos.google.com/share/AF1QipMkk_Qy-sF6rsouMrBeKlIDKHbC_-W4eb9h9seHabL-nzJyxHlLcwHRhxfaWz35dw",
     "year": 2024,
-    "person": "Athanasius"
+    "person": "Athanasius",
+    "profile": "Michael Google"
   },
   {
-    "service": "google_photos",
-    "share_token": "AF1QipN-RLOpIREMy02xlT-ytIVSicTx7zfbReRKhyUyOJIK2Z7NhacXUUQwCSku6eKT5g",
-    "album_id": null,
-    "joined": true,
-    "title": null,
-    "last_sync": null,
+    "url": "https://photos.google.com/share/AF1QipN-RLOpIREMy02xlT-ytIVSicTx7zfbReRKhyUyOJIK2Z7NhacXUUQwCSku6eKT5g",
     "year": 2024,
-    "person": "Veronica"
+    "person": "Veronica",
+    "profile": "Michael Google"
   },
   {
-    "service": "icloud",
-    "share_token":  null,
-    "profile": "Mom Franzonello",
-    "album_id": null,
-    "title":  null,
+    "url": "https://www.icloud.com/photos/#/a,D938ECAE-E9BC-485D-AFD7-4D51EEA9175C/",
     "year": 2025,
-    "person": "Mom"
+    "person": "Mobi",
+    "profile": "Michael iCloud"
+  },
+  {
+    "url": "https://www.icloud.com/photos/#/a,982BE4E6-C120-4B69-B1E6-CFBEFB341604/",
+    "year": 2025,
+    "person": "Mobi",
+    "profile": "Michael iCloud",
+    "notes": "empty"
+  },
+  {
+    "url": "https://www.icloud.com/photos/#/a,FA4EB89F-8BE6-4083-A8C4-AD0A7FEDA93D/",
+    "year": 2025,
+    "person": "Mom",
+    "profile": "Mom iCloud"
   }
 ]

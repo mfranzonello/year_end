@@ -1,15 +1,23 @@
 '''System-level functions for managing Google Drive and Premiere Pro.'''
 
+import os
 from pathlib import Path
 from time import time, sleep
 import subprocess
 
 from structure import VIDEO_EXTS, PR_EXT, AE_EXT, GOOGLE_DRIVE_FOLDER, \
-    GOOGLE_DRIVE_EXE, PREMIERE_EXE
+    GOOGLE_DRIVE_EXE, PREMIERE_EXE, EDGE_EXE
 
 REQUIRED_PATH = Path(GOOGLE_DRIVE_FOLDER)
 WAIT_UP = 120 # seconds to wait for drive to reappear
 POLL = 3 # seconds between checks
+
+def clear_screen():
+    '''Clears the console screen based on the operating system.'''
+    if os.name == 'nt':  # For Windows
+        os.system('cls')
+    else:  # For Unix-like systems (Linux, macOS)
+        os.system('clear')
 
 def file_type(file_path: Path) -> str:
     if file_path.is_file():
@@ -38,15 +46,28 @@ def mount_premiere(t=20):
     subprocess.Popen(PREMIERE_EXE)
     sleep(t)
 
+def close_exe(exe):
+    '''lose an executable by name or list of names.'''
+    if isinstance(exe, list):
+        # multiple executables
+        for ex in exe:
+            close_exe(ex)
+
+    if isinstance(exe, (str, Path)):
+        # valid single executable
+        try:
+            # /f = force, /im = by image name, suppress output
+            subprocess.run(['taskkill', '/F', '/IM', Path(exe).name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+
 def mount_g_drive():
     if Path(GOOGLE_DRIVE_FOLDER).exists():
         started = True
 
     else:
         # force quit Google Drive if open
-        # /T kills child processes; ignore errors if not running
-        subprocess.run(['taskkill', '/IM', GOOGLE_DRIVE_EXE.name, '/F', '/T'],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        close_exe(GOOGLE_DRIVE_EXE)
 
         if Path(GOOGLE_DRIVE_EXE).exists():
             try:
@@ -71,3 +92,4 @@ def mount_g_drive():
                 sleep(POLL)
 
             print('[gd] Timed out waiting for Google Drive to remount.')
+
