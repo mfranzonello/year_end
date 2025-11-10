@@ -69,25 +69,20 @@ def scan_folders(od, gd, yir_clips, year, dry_run=True):
         for name in missing_targets:
             ui.add_update(f"  - {name}")
 
-# # def summarize_folders(year, min_stars):
-# #     ui.add_update(f"\n=== OneDrive Folder Ratings Summary ({year}) ===")
-    
-# #     summary_paths = get_person_folders(Path(ONE_DRIVE_FOLDER) / YIR_CLIPS / str(year))
-# #     if not len(summary_paths):
-# #         ui.add_update(f"No OneDrive {year} folders found to summarize.")
+def harvest_albums(albums, year, google, icloud, headless=True):
+    for album in albums:
+        shared_album_url = album['url']
+        person_name = album['person']
+        year = album['year']
+        profile_name = album['profile']
+        share_source = get_share_source(shared_album_url)
 
-# #     else:
-# #         for person_path in sorted(summary_paths, key=lambda x: (x.name.lower().startswith('other'), x.name.lower())):
-# #             _, video_ratings = get_rated_videos(person_path, 0)
-# #             n_videos = len(get_videos_in_folder(person_path))
+        if year == year and source_allowed(share_source, google=google, icloud=icloud):
+            harvest_shared_album(shared_album_url, person_name, profile_name, year=year, headless=headless)
 
-# #             if n_videos:
-# #                 n_reviewed = sum(1 for x in video_ratings if x > 0)
-# #                 n_usable = sum(1 for x in video_ratings if x >= min_stars)
-# #                 n_string = f'{get_person_name(person_path, year)}: {n_videos} videos, {n_reviewed/n_videos:.0%} reviewed'
-# #                 if n_usable:
-# #                     n_string += f' ({n_usable} rated {min_stars}+ stars)'
-# #                 ui.add_update(n_string)
+def update_database(year, min_stars, dry_run=True):
+    engine = get_engine()
+    summarize_folders(engine, year, min_stars)
 
 def update_project(year, min_stars, dry_run=True):
     ui.set_status('Opening Premiere project...')
@@ -135,7 +130,7 @@ def main():
     ap.add_argument('--google', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Photos to OneDrive.')
     ap.add_argument('--icloud', nargs='?', type=bool, const=True, default=False, help='Copy new files from iCloud Photos to OneDrive.')
     ap.add_argument('--gdrive', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Drive to OneDrive.')
-    ap.add_argument('--premiere_update', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
+    ap.add_argument('--premiere', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
 
     group = ap.add_mutually_exclusive_group()
     group.add_argument("--apply", action="store_true", help="Actually copy files.")
@@ -149,23 +144,15 @@ def main():
 
     ui.add_update(f'Running with args: {args}')
 
-    for album in SHARED_ALBUMS[0:]:
-        shared_album_url = album['url']
-        person_name = album['person']
-        year = album['year']
-        profile_name = album['profile']
-        share_source = get_share_source(shared_album_url)
-
-        if year == args.year and source_allowed(share_source, google=args.google, icloud=args.icloud):
-            harvest_shared_album(shared_album_url, person_name, profile_name, year=year, headless=args.headless)
+    if args.google or args.icloud:
+        harvest_albums(SHARED_ALBUMS, args.year, args.google, args.icloud, args.headless)
 
     if args.gdrive:
         scan_folders(args.od, args.gd, YIR_CLIPS, args.year, dry_run)
 
-    engine = get_engine()
-    summarize_folders(engine, args.year, MIN_STARS)
+    update_database(args.year, dry_run)
 
-    if args.premiere_update:
+    if args.premiere:
         update_project(args.year, dry_run=dry_run, min_stars=MIN_STARS)
 
     ui.set_status("Done.")
