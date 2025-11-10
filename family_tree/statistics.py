@@ -29,13 +29,13 @@ def fetch_folders(engine, year):
     return values
 
 def update_folders(engine, df):
+    keys = ['folder_name', 'project_year']
+    cols = [c for c in df.columns if c not in keys]
     sql = text(f'''
-    INSERT INTO folders (folder_name, project_year, video_count, review_count)
-    VALUES (:folder_name, :project_year, :video_count, :review_count)
-    ON CONFLICT (folder_name, project_year) DO
-    UPDATE SET
-        video_count = :video_count,
-        review_count = :review_count
+    INSERT INTO folders ({", ".join(keys + cols)})
+    VALUES ({", ".join(":" + c for c in keys + cols)})
+    ON CONFLICT ({", ".join(keys)}) DO
+    UPDATE SET {", ".join(c + " = :" + c for c in cols)}
     ;
     ''')
     

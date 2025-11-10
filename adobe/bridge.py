@@ -4,7 +4,9 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 from typing import Optional
 
-from common.system import file_type
+from cv2 import VideoCapture, CAP_PROP_FRAME_COUNT, CAP_PROP_FPS
+
+from common.system import file_type, get_videos_in_folder
 
 # --- Single mmap scan ---
 
@@ -78,15 +80,21 @@ def get_rated_videos(file_path: Path, min_stars:int) -> list[Path, list]:
     rated_videos = []
     video_ratings = []
 
-    if not file_path.is_dir():
-        return rated_videos
-
-    for p in file_path.iterdir():
-        if file_type(p) == 'VIDEO':
-            rating = get_xmp_rating(p)
-            if rating is not None:
-                if rating >= min_stars:
-                    rated_videos.append(p)
-                video_ratings.append(rating)
+    videos = get_videos_in_folder(file_path)
+    for video in videos:
+        rating = get_xmp_rating(video)
+        if rating is not None:
+            if rating >= min_stars:
+                rated_videos.append(video)
+            video_ratings.append(rating)
 
     return rated_videos, video_ratings
+
+def get_video_durations(file_path: Path):
+    videos = get_videos_in_folder(file_path)
+    video_durations = []
+    for video in videos:
+        v = VideoCapture(video)
+        video_durations.append(v.get(CAP_PROP_FRAME_COUNT) / v.get(CAP_PROP_FPS))
+
+    return video_durations
