@@ -2,22 +2,8 @@
 from sqlalchemy import create_engine, text
 from pandas import read_sql_query
 
-from common.secret import get_secret
-
-def get_engine():
-    HOST = get_secret('PGHOST')
-    PORT = get_secret('PGPORT', '5432')
-    DBNAME = get_secret('PGDATABASE')
-    USER = get_secret('PGUSER')
-    PASSWORD = get_secret('PGPASSWORD')
-
-    print(f'{HOST=}')
-    print(f'{PORT=}')
-    print(f'{DBNAME=}')
-    print(f'{USER=}')
-    print(f'{PASSWORD=}')
-
-    engine = create_engine(f'postgresql+psycopg2://{USER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}')
+def get_engine(host, port, dbname, user, password):
+    engine = create_engine(f'postgresql+psycopg://{user}:{password}@{host}:{port}/{dbname}')
     return engine
 
 def fetch_folders(engine, year):

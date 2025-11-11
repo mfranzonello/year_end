@@ -6,6 +6,7 @@ import sys
 from datetime import datetime
 
 from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_CLIPS, YIR_REVIEWS, YIR_PROJECT, PR_EXT, SHARED_ALBUMS
+from common.secret import get_secret
 from common.system import clear_screen, file_type, get_person_name, get_videos_in_folder, mount_g_drive
 from common.console import SplitConsole
 from family_tree.statistics import get_engine
@@ -14,6 +15,12 @@ from migrate.scan_and_copy import get_person_folders, get_person_names, copy_if_
 from migrate.summarize import summarize_folders
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
 from scraping.photos import get_share_source, source_allowed, harvest_shared_album
+
+PGHOST = get_secret('PGHOST')
+PGPORT = get_secret('PGPORT', '5432')
+PGDBNAME = get_secret('PGDATABASE')
+PGUSER = get_secret('PGUSER')
+PGPASSWORD = get_secret('PGPASSWORD')
 
 MIN_STARS = 3
 
@@ -81,7 +88,7 @@ def harvest_albums(albums, year, google, icloud, headless=True):
             harvest_shared_album(shared_album_url, person_name, profile_name, year=year, headless=headless)
 
 def update_database(year, min_stars, dry_run=True):
-    engine = get_engine()
+    engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
     summarize_folders(engine, year, min_stars)
 
 def update_project(year, min_stars, dry_run=True):

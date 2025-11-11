@@ -1,19 +1,15 @@
 import streamlit as st
-# import os
-# for key, value in st.secrets.items():
-#     if isinstance(value, dict):
-#         # flatten nested secrets (like st.secrets["neon"]["user"])
-#         for subkey, subval in value.items():
-#             env_key = f'{key.upper()}_{subkey.upper()}'
-#             os.environ[env_key] = str(subval)
-#     else:
-#         os.environ[key.upper()] = str(value)
-
 #import altair
 
 from family_tree.statistics import get_engine, fetch_folders
 
-engine = get_engine()
+PGHOST = st.secrets['PGHOST']
+PGPORT = st.secrets.get('PGPORT', '5432')
+PGDBNAME = st.secrets['PGDATABASE']
+PGUSER = st.secrets['PGUSER']
+PGPASSWORD = st.secrets['PGPASSWORD']
+
+engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 st.title('Franzonello Family 2025 YIR WIP')
 
