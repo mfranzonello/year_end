@@ -212,3 +212,4 @@ __marimo__/
 # Debug album files
 /debug_album_ready.html
 /debug_album_ready.png
+/secrets.toml
