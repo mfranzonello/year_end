@@ -8,10 +8,9 @@ def get_engine(host, port, dbname, user, password):
 
 def fetch_folders(engine, year):
     sql = f'''
-    SELECT folder_name || ' ' || project_year AS folder, display_names.full_name,
-    video_count, video_duration
-    FROM folders
-    JOIN display_names ON person_id = display_id OR animal_id = display_id 
+    SELECT folder_name, full_name,
+    video_count, video_duration, image_url
+    FROM folders_summary
     WHERE project_year = {year};
     '''
 
