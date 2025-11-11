@@ -18,16 +18,26 @@ engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 # # folder_values = get_folder_values(engine)
 
 folder_values = fetch_folders(engine, 2025)
-folder_values.loc[:, ['test']] = 1
 
 st.title('Franzonello Family 2025 YIR WIP')
 
 # bar chart for submissions
+video_counts = folder_values.sort_values(['video_count', 'full_name'])
+video_counts.loc[:, ['test']] = 1
 threshold = 50
 max_to_show = threshold * 1
-bars = alt.Chart(folder_values).mark_bar(color="steelblue").encode(
-    y = alt.Y('full_name', title=''),
-    x = alt.X('video_count', title='', scale=alt.Scale(domain=[0, max_to_show], clamp=True)),
+
+bars = alt.Chart(video_counts).mark_bar(color="steelblue").encode(
+    y = alt.Y(
+        'full_name',
+        title='',
+        sort=alt.SortField(field='video_count', order='descending')
+        ),
+    x = alt.X(
+        'video_count',
+        title='',
+        scale=alt.Scale(domain=[0, max_to_show], clamp=True)
+        ),
     tooltip = ['full_name:N', 'video_count:Q']
     )
 highlight = bars.mark_bar(color="#e45755").encode(
@@ -38,7 +48,7 @@ rule = alt.Chart().mark_rule().encode(
     x=alt.X(datum=threshold)
 )
 images = bars.mark_image(width=24, height=24).encode(x='test', y='full_name', url='image_url')
-pad = 0.05 * (folder_values['video_count'].max() if len(folder_values) else 1)
+pad = 0.05 * (video_counts['video_count'].max() if len(video_counts) else 1)
 st.altair_chart(bars, use_container_width=True) #  + highlight + rule + images
 
 # pie chart for review amount
