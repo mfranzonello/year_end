@@ -89,7 +89,7 @@ def harvest_albums(albums, year, google, icloud, headless=True):
 
 def update_database(year, min_stars, dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
-    summarize_folders(engine, year, min_stars)
+    summarize_folders(engine, year, min_stars, dry_run=dry_run)
 
 def update_project(year, min_stars, dry_run=True):
     ui.set_status('Opening Premiere project...')

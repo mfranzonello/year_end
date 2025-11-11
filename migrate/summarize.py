@@ -27,10 +27,11 @@ def summarize_folder(person_folder, year, min_stars):
 
     return folder_name, year, video_count, video_duration, review_count, usable_count, used_count
 
-def summarize_folders(engine, year, min_stars):
+def summarize_folders(engine, year, min_stars, dry_run=False):
     columns = ['folder_name', 'project_year', 'video_count', 'video_duration', 'review_count', 'usable_count', 'used_count']
     folders_df = DataFrame(columns = columns)
     for person_folder in get_person_folders(Path(ONE_DRIVE_FOLDER) / YIR_CLIPS / str(year)):
         folders_df.loc[len(folders_df), columns] = summarize_folder(person_folder, year, min_stars)
 
-    update_folders(engine, folders_df)
+    if not dry_run:
+        update_folders(engine, folders_df)

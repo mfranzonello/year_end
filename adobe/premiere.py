@@ -16,8 +16,11 @@ ITEM_COLORS = ['Violet', 'Iris', 'Caribbean', 'Lavender',
 
 PREMIERE_LOCATION = r"C:\Program Files\Adobe\Adobe Premiere Pro 2025\Adobe Premiere Pro.exe"
 
-## project.consolidateDuplicates()
 ## TODO: move videos in the wrong bins
+## projectitem.getMediaPath()
+## projectitem.moveBin()
+## project.consolidateDuplicates()
+## figure out which items are used in final project
 
 def open_premiere():
     '''Ensure Premiere Pro is running.'''
