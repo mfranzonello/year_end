@@ -24,10 +24,10 @@ st.title('Franzonello Family 2025 YIR WIP')
 
 # bar chart for submissions
 threshold = 50
-max_to_show = threshold * 1.1
+max_to_show = threshold * 1
 bars = alt.Chart(folder_values).mark_bar(color="steelblue").encode(
     y = alt.Y('full_name', title=''),
-    x = alt.X('video_count', title=''), #, scale=alt.Scale(domain=[0, max_to_show], clamp=True)),
+    x = alt.X('video_count', title='', scale=alt.Scale(domain=[0, max_to_show], clamp=True)),
     tooltip = ['full_name:N', 'video_count:Q']
     )
 highlight = bars.mark_bar(color="#e45755").encode(
@@ -39,7 +39,7 @@ rule = alt.Chart().mark_rule().encode(
 )
 images = bars.mark_image(width=24, height=24).encode(x='test', y='full_name', url='image_url')
 pad = 0.05 * (folder_values['video_count'].max() if len(folder_values) else 1)
-st.altair_chart(bars + highlight + rule + images, use_container_width=True)
+st.altair_chart(bars, use_container_width=True) #  + highlight + rule + images
 
 # pie chart for review amount
 review_stats = folder_values[['video_count', 'review_count', 'usable_count']].sum()
