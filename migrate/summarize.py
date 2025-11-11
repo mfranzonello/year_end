@@ -20,8 +20,9 @@ def summarize_folder(person_folder, year, min_stars):
 
     # count how many are rated
     rated_videos, video_ratings = get_rated_videos(person_folder, min_stars)
-    review_count = len(rated_videos)
+  
     usable_count = len(video_ratings)
+    review_count = len(rated_videos)
     used_count = None ## need to check Adobe Premiere project file
 
     return folder_name, year, video_count, video_duration, review_count, usable_count, used_count

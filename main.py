@@ -103,7 +103,7 @@ def update_project(year, min_stars, dry_run=True):
     person_names = get_person_names(od_videos)
     create_person_bins(videos_bin, person_names)
 
-    ui.set_status(f'Importing reviewed videos ({MIN_STARS} star and above)...')
+    ui.set_status(f'Importing reviewed videos ({min_stars} star and above)...')
     for person_name in person_names:
         ui.set_status(f'\tLooking at {person_name}...')
         rated_videos, _ = get_rated_videos(Path(ONE_DRIVE_FOLDER) / YIR_CLIPS / f'{year}' / f'{person_name} {year}', min_stars)
@@ -139,6 +139,8 @@ def main():
     ap.add_argument('--gdrive', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Drive to OneDrive.')
     ap.add_argument('--premiere', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
 
+    ap.add_argument('--stars', type=int, default=MIN_STARS, help='Minimum star rating to use in project.')
+
     group = ap.add_mutually_exclusive_group()
     group.add_argument("--apply", action="store_true", help="Actually copy files.")
     group.add_argument("--dry-run", action="store_true", help="Do not copy or download; show what would happen.")
@@ -157,10 +159,10 @@ def main():
     if args.gdrive:
         scan_folders(args.od, args.gd, YIR_CLIPS, args.year, dry_run)
 
-    update_database(args.year, dry_run)
+    update_database(args.year, args.stars, dry_run=dry_run)
 
     if args.premiere:
-        update_project(args.year, dry_run=dry_run, min_stars=MIN_STARS)
+        update_project(args.year, args.stars, dry_run=dry_run)
 
     ui.set_status("Done.")
 
