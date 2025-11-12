@@ -23,6 +23,7 @@ engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 # # folder_values = fetch_folders(engine, 2025, cloud=cloud)
 
 YEAR = 2025
+SUBMISSION_THRESHOLD = 50
 
 def greyscale_zero_images(image_url, value):
     if value == 0:
@@ -46,10 +47,10 @@ order_list = (
     video_counts.sort_values('video_count', ascending=False)['display_name'].tolist()
 )
 
-threshold = 50
+video_counts['video_count_capped'] = video_counts['video_count'].clip(upper=SUBMISSION_THRESHOLD)
 
 # small nudge for placing the image past the bar tip
-x_max =  min(video_counts['video_count'].max(), threshold)
+x_max =  min(video_counts['video_count'].max(), SUBMISSION_THRESHOLD)
 pad = 0.1 * x_max
 # make sure the x-domain includes the image position
 
@@ -58,6 +59,9 @@ x_domain_max = float(x_max + pad)
 # UI sizing
 bar_height = 30                        # pixels per row (bigger = easier to read)
 img_sz = max(20, bar_height - 6)       # image size tied to row spacing
+gap = 5.0                      # choose a value in video_count units
+x_domain_max = SUBMISSION_THRESHOLD + gap * 2  # leave room for the icon inside the plot
+
 font_axis = 14
 font_title = 22
 base = alt.Chart(video_counts)
@@ -70,9 +74,11 @@ axis = alt.Axis(
     )
 
 # ---------- bars ----------
+
+
 bars = base.mark_bar(color="steelblue", size=bar_height, clip=False).encode(
     y = alt.Y('display_name:N', title='', sort=order_list, axis=axis),
-    x = alt.X('video_count:Q', title='', scale=alt.Scale(domain=[0, x_domain_max], clamp=True)),
+    x = alt.X('video_count_capped:Q', title='', scale=alt.Scale(domain=[0, SUBMISSION_THRESHOLD + gap], clamp=True)),
     tooltip = [alt.Tooltip('display_name:N', title='Name'),
               alt.Tooltip('video_count:Q', title='Videos')]
     )
@@ -81,7 +87,7 @@ bars = base.mark_bar(color="steelblue", size=bar_height, clip=False).encode(
 images = base.transform_filter(
     alt.datum.image_url != None
 ).transform_calculate(
-    value_pad=f'datum.video_count + {pad}'
+    value_pad = f"datum.video_count >= {SUBMISSION_THRESHOLD} ? {SUBMISSION_THRESHOLD} + {gap} : datum.video_count + {gap}"
 ).mark_image(width=bar_height, height=bar_height).encode(
     x = alt.X('value_pad:Q'),
     y = alt.Y('display_name:N', sort=order_list),
@@ -92,10 +98,6 @@ chart = (bars + images).properties(
     height=max(300, bar_height * 1.2 * len(video_counts)))
 st.altair_chart(chart, use_container_width=True)
 
-# # print(f'{video_counts=}')
-# # for item in video_counts['image_url'].values:
-# #     st.write(item)
-# #     st.image(item)
 
 # pie chart for review amount
 review_stats = folder_values[['video_count', 'review_count', 'usable_count']].sum()
