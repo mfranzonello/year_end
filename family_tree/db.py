@@ -1,12 +1,11 @@
-﻿# family_tree.py
-from sqlalchemy import create_engine, text
+﻿from sqlalchemy import create_engine, text
 from pandas import read_sql_query
 
 def get_engine(host, port, dbname, user, password):
     engine = create_engine(f'postgresql+psycopg://{user}:{password}@{host}:{port}/{dbname}')
     return engine
 
-def fetch_folders(engine, year):
+def fetch_folders(engine, year, cloud=None):
     sql = f'''
     SELECT project_year, folder_name, full_name,
     video_count, video_duration, review_count, usable_count, image_url
@@ -30,6 +29,27 @@ def update_folders(engine, df):
     ;
     ''')
     
+    with engine.begin() as conn:
+        for _, row in df.iterrows():
+            conn.execute(sql, row.to_dict())
+
+def get_member_ids(engine, member_type):
+    sql = text(f'''
+    SELECT {member_type}_id FROM {member_type}s
+    ''')
+
+    with engine.begin() as conn:
+        return read_sql_query(sql, conn)
+
+def update_images(engine, df, member_type):
+    sql = text(f'''
+    INSERT INTO pictures ({member_type}_id, image_url)
+    VALUES (:{member_type}_id, :image_url)
+    ON CONFLICT ({member_type}_id) DO
+    UPDATE SET image_url = :image_url
+    ;
+    ''')
+
     with engine.begin() as conn:
         for _, row in df.iterrows():
             conn.execute(sql, row.to_dict())

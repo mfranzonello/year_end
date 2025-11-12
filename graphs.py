@@ -2,7 +2,7 @@ import streamlit as st
 import altair as alt
 from pandas import DataFrame
 
-from family_tree.statistics import get_engine, fetch_folders
+from family_tree.db import get_engine, fetch_folders
 
 PGHOST = st.secrets['PGHOST']
 PGPORT = st.secrets.get('PGPORT', '5432')
@@ -17,39 +17,83 @@ engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 # #     return fetch_folders(engine, 2025)
 # # folder_values = get_folder_values(engine)
 
-folder_values = fetch_folders(engine, 2025)
+# # cloud = {'name': st.secrets['CLOUDINARY_CLOUD'],
+# #          'key': st.secrets['CLOUDINARY_API_KEY'],
+# #          'secret': st.secrets['CLOUDINARY_API_SECRET']}
+# # folder_values = fetch_folders(engine, 2025, cloud=cloud)
 
-st.title('Franzonello Family 2025 YIR WIP')
+YEAR = 2025
+
+def greyscale_zero_images(image_url, value):
+    if value == 0:
+        return image_url.replace('/upload/', '/upload/e_grayscale/')
+    else:
+        return image_url
+
+folder_values = fetch_folders(engine, YEAR)
+
+st.title(f'Franzonello YIR {YEAR}')
 
 # bar chart for submissions
-video_counts = folder_values.sort_values(['video_count', 'full_name'])
-video_counts.loc[:, ['test']] = 1
-threshold = 50
-max_to_show = threshold * 1
+video_counts = folder_values.copy()
+video_counts['display_name'] = video_counts['full_name'].where(
+    video_counts['full_name'].notna(),
+    video_counts['folder_name']
+)#.str.replace(' ', '\n')
+video_counts['image_url'] = video_counts.apply(lambda x: greyscale_zero_images(x['image_url'], x['video_count']), axis=1)
 
-bars = alt.Chart(video_counts).mark_bar(color="steelblue").encode(
-    y = alt.Y(
-        'full_name',
-        title='',
-        sort=alt.SortField(field='video_count', order='descending')
-        ),
-    x = alt.X(
-        'video_count',
-        title='',
-        scale=alt.Scale(domain=[0, max_to_show], clamp=True)
-        ),
-    tooltip = ['full_name:N', 'video_count:Q']
-    )
-highlight = bars.mark_bar(color="#e45755").encode(
-    x2=alt.X2(datum=threshold)
-    ).transform_filter(alt.datum.video_count > threshold)
-
-rule = alt.Chart().mark_rule().encode(
-    x=alt.X(datum=threshold)
+order_list = (
+    video_counts.sort_values('video_count', ascending=False)['display_name'].tolist()
 )
-images = bars.mark_image(width=24, height=24).encode(x='test', y='full_name', url='image_url')
-pad = 0.05 * (video_counts['video_count'].max() if len(video_counts) else 1)
-st.altair_chart(bars, use_container_width=True) #  + highlight + rule + images
+
+threshold = 50
+
+# small nudge for placing the image past the bar tip
+pad = 0.1 * (video_counts['video_count'].max() if len(video_counts) else 1)
+# make sure the x-domain includes the image position
+x_domain_max = float((video_counts['video_count'].max() or 0) + pad)
+
+# UI sizing
+bar_height = 60                        # pixels per row (bigger = easier to read)
+img_sz = max(20, bar_height - 6)       # image size tied to row spacing
+font_axis = 14
+font_title = 22
+base = alt.Chart(video_counts)
+
+axis = alt.Axis(
+    labelExpr="replace(datum.label, /\\s{2,}|\\s/g, '\\n')",
+    labelLimit=0,
+    labelPadding=20,
+    labelFontSize=20
+    )
+
+# ---------- bars ----------
+bars = base.mark_bar(color="steelblue", size=60, clip=False).encode(
+    y = alt.Y('display_name:N', title='', sort=order_list, axis=axis),
+    x = alt.X('video_count:Q', title='', scale=alt.Scale(domain=[0, x_domain_max], clamp=True)),
+    tooltip = [alt.Tooltip('display_name:N', title='Name'),
+              alt.Tooltip('video_count:Q', title='Videos')]
+    )
+
+# ---------- images at end of bars ----------
+images = base.transform_filter(
+    alt.datum.image_url != None
+).transform_calculate(
+    value_pad=f'datum.video_count + {pad}'
+).mark_image(width=bar_height, height=bar_height).encode(
+    x = alt.X('value_pad:Q'),
+    y = alt.Y('display_name:N', sort=order_list),
+    url = 'image_url:N'
+)
+
+chart = (bars + images).properties(
+    height=max(300, bar_height * 1.2 * len(video_counts)))
+st.altair_chart(chart, use_container_width=True)
+
+# # print(f'{video_counts=}')
+# # for item in video_counts['image_url'].values:
+# #     st.write(item)
+# #     st.image(item)
 
 # pie chart for review amount
 review_stats = folder_values[['video_count', 'review_count', 'usable_count']].sum()

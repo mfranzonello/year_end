@@ -13,7 +13,7 @@ from common.system import get_videos_in_folder
 G_SUMMARY_CLASS = 'Fbw5bb'
 G_SUMMARY_ITEM = 'items'
 G_GALLERY_CLASS = 'yKzHyd'
-G_ITEM_CLASS = 'rtIMgb' # fCPuz undefined nV0gYe e70rb'
+G_ITEM_CLASS = 'rtIMgb'
 G_VIDEO_ARIA_LABEL = 'Video'
 G_ANCHOR_CLASS = 'p137Zd'
 

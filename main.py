@@ -9,10 +9,10 @@ from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER
 from common.secret import get_secret
 from common.system import clear_screen, file_type, get_person_name, get_videos_in_folder, mount_g_drive
 from common.console import SplitConsole
-from family_tree.statistics import get_engine
+from family_tree.db import get_engine
 from adobe.bridge import get_rated_videos
 from migrate.scan_and_copy import get_person_folders, get_person_names, copy_if_needed
-from migrate.summarize import summarize_folders
+from migrate.summarize import summarize_folders, update_cloud_images
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
 from scraping.photos import get_share_source, source_allowed, harvest_shared_album
 
@@ -21,6 +21,10 @@ PGPORT = get_secret('PGPORT', '5432')
 PGDBNAME = get_secret('PGDATABASE')
 PGUSER = get_secret('PGUSER')
 PGPASSWORD = get_secret('PGPASSWORD')
+
+CLOUDINARY_CLOUD = get_secret('CLOUDINARY_CLOUD')
+CLOUDINARY_API_KEY = get_secret('CLOUDINARY_API_KEY')
+CLOUDINARY_API_SECRET = get_secret('CLOUDINARY_API_SECRET')
 
 MIN_STARS = 3
 
@@ -87,9 +91,12 @@ def harvest_albums(albums, year, google, icloud, headless=True):
         if year == year and source_allowed(share_source, google=google, icloud=icloud):
             harvest_shared_album(shared_album_url, person_name, profile_name, year=year, headless=headless)
 
-def update_database(year, min_stars, dry_run=True):
+def update_database(year, min_stars, images=False, dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
     summarize_folders(engine, year, min_stars, dry_run=dry_run)
+    if images:
+        update_cloud_images(engine, CLOUDINARY_CLOUD, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)
+
 
 def update_project(year, min_stars, dry_run=True):
     ui.set_status('Opening Premiere project...')
@@ -134,6 +141,7 @@ def main():
                        help="Run Selenium with UI visible")
     ap.set_defaults(headless=True)
 
+    ap.add_argument('--profiles', nargs='?', type=bool, const=True, default=False, help='Check Cloudinary for new profile photos.')
     ap.add_argument('--google', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Photos to OneDrive.')
     ap.add_argument('--icloud', nargs='?', type=bool, const=True, default=False, help='Copy new files from iCloud Photos to OneDrive.')
     ap.add_argument('--gdrive', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Drive to OneDrive.')
@@ -159,7 +167,7 @@ def main():
     if args.gdrive:
         scan_folders(args.od, args.gd, YIR_CLIPS, args.year, dry_run)
 
-    update_database(args.year, args.stars, dry_run=dry_run)
+    update_database(args.year, args.stars, args.profiles, dry_run=dry_run)
 
     if args.premiere:
         update_project(args.year, args.stars, dry_run=dry_run)

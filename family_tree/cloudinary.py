@@ -1,11 +1,27 @@
-import requests
+import cloudinary
+import cloudinary.api
+from cloudinary.exceptions import NotFound
 
-CLOUD = "dua0zy8wu"
-PRESET = "your_unsigned_preset"
+CLOUDINARY_DOMAIN = 'https://res.cloudinary.com'
 
-def upload_image(path_or_remote_url: str):
-    url = f"https://api.cloudinary.com/v1_1/{CLOUD}/image/upload"
-    data = {"upload_preset": PRESET, "file": path_or_remote_url}
-    r = requests.post(url, data=data, timeout=15)
-    r.raise_for_status()
-    return r.json()["secure_url"]  # store this in Neon
+def configure_cloud(cloud_name, api_key, api_secret):
+    _ = cloudinary.config(cloud_name=cloud_name,
+                          api_key=api_key,
+                          api_secret=api_secret,
+                          secure=True)
+
+def change_to_greyscale(image_url):
+    return image_url.replace('/upload/', '/upload/e_greyscale/')
+
+def fetch_image_url(profile_id, default_url=None):
+    try:
+        result = cloudinary.api.resource(str(profile_id))
+        return result['secure_url']
+
+    except NotFound:
+        print('resource not found')
+        return default_url
+
+def is_cloundinary_image(image_url: str):
+    # sample url: dua0zy8wu/image/upload/v1762830428/agent_5_wbcywo.png
+    return image_url.startswith(CLOUDINARY_DOMAIN)

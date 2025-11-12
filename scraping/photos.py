@@ -1,10 +1,9 @@
 ﻿from __future__ import annotations
-import json, time, os, re
+import time, os, re
 from typing import Optional
 from datetime import datetime
 from pathlib import Path
 
-import requests
 from selenium import webdriver
 from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.chrome.options import Options as ChromeOptions
