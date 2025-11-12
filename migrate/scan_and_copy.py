@@ -5,6 +5,8 @@
 from pathlib import Path
 import shutil
 
+from common.system import get_person_name, get_actual_year
+
 def get_person_folders(root: Path) -> list[Path]:
     """Immediate child directories (e.g., 'Michael 2025')."""
     if not root.exists():
@@ -14,7 +16,7 @@ def get_person_folders(root: Path) -> list[Path]:
 def get_person_names(root: Path):
     '''Get person names from OneDrive YIR clips for a given year.'''
     year = root.name
-    person_names = [p.name.replace(f' {year}', '') for p in root.iterdir() if p.is_dir() and p.name.endswith(year)]
+    person_names = [get_person_name(p) for p in root.iterdir() if p.is_dir() and get_actual_year(p)]
     return person_names
 
 def gather_names_casefold(folder: Path) -> set[str]:
@@ -39,3 +41,4 @@ def copy_if_needed(src_file: Path, dst_folder: Path, dry_run: bool) -> bool:
     dst_folder.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src_file, dst_folder / src_file.name)
     return True
+

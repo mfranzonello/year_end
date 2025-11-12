@@ -21,7 +21,7 @@ def fetch_years(engine):
 def fetch_folders(engine, year, cloud=None):
     sql = f'''
     SELECT project_year, year_adjust, folder_name, full_name,
-    video_count, video_duration, file_size, review_count, usable_count, member_id
+    video_count, video_duration, review_count, usable_count, image_url
     FROM folders_summary
     WHERE project_year = {year};
     '''

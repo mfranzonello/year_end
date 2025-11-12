@@ -91,12 +91,9 @@ def harvest_albums(albums, year, google, icloud, headless=True):
         if year == year and source_allowed(share_source, google=google, icloud=icloud):
             harvest_shared_album(shared_album_url, person_name, profile_name, year=year, headless=headless)
 
-def update_database(year, min_stars, images=False, dry_run=True):
+def update_database(year, min_stars, dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
     summarize_folders(engine, year, min_stars, dry_run=dry_run)
-    if images:
-        update_cloud_images(engine, CLOUDINARY_CLOUD, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)
-
 
 def update_project(year, min_stars, dry_run=True):
     ui.set_status('Opening Premiere project...')
@@ -113,7 +110,8 @@ def update_project(year, min_stars, dry_run=True):
     ui.set_status(f'Importing reviewed videos ({min_stars} star and above)...')
     for person_name in person_names:
         ui.set_status(f'\tLooking at {person_name}...')
-        rated_videos, _ = get_rated_videos(Path(ONE_DRIVE_FOLDER) / YIR_CLIPS / f'{year}' / f'{person_name} {year}', min_stars)
+        videos = get_videos_in_folder(Path(ONE_DRIVE_FOLDER) / YIR_CLIPS / f'{year}' / f'{person_name} {year}') ## FIX FOR TALENT SHOW
+        rated_videos, _ = get_rated_videos(videos, min_stars)
 
         if rated_videos:
             num_videos = len(rated_videos)
@@ -131,7 +129,7 @@ def main():
     ap.add_argument("--gd", type=Path, default=Path(GOOGLE_DRIVE_FOLDER), help=f"Google Drive Videos root (default: {ONE_DRIVE_FOLDER})")
     
     YEAR = datetime.now().year
-    ap.add_argument("--year", type=int, default=YEAR, help=f"Year subfolder to process (default: {YEAR})")
+    ap.add_argument("--year", type=int, nargs='+', default=[YEAR], help=f"Year(s) subfolder to process (default: {YEAR})")
 
     # run Selenium w/ or w/o head
     group = ap.add_mutually_exclusive_group()
@@ -141,7 +139,8 @@ def main():
                        help="Run Selenium with UI visible")
     ap.set_defaults(headless=True)
 
-    ap.add_argument('--profiles', nargs='?', type=bool, const=True, default=False, help='Check Cloudinary for new profile photos.')
+    ap.add_argument('--nodbupdate', nargs='?', type=bool, const=True, default=False, help="Don't update the database.")
+
     ap.add_argument('--google', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Photos to OneDrive.')
     ap.add_argument('--icloud', nargs='?', type=bool, const=True, default=False, help='Copy new files from iCloud Photos to OneDrive.')
     ap.add_argument('--gdrive', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Drive to OneDrive.')
@@ -161,16 +160,18 @@ def main():
 
     ui.add_update(f'Running with args: {args}')
 
-    if args.google or args.icloud:
-        harvest_albums(SHARED_ALBUMS, args.year, args.google, args.icloud, args.headless)
+    for year in args.year:
+        if args.google or args.icloud:
+            harvest_albums(SHARED_ALBUMS, year, args.google, args.icloud, args.headless)
 
-    if args.gdrive:
-        scan_folders(args.od, args.gd, YIR_CLIPS, args.year, dry_run)
+        if args.gdrive:
+            scan_folders(args.od, args.gd, YIR_CLIPS, year, dry_run)
 
-    update_database(args.year, args.stars, args.profiles, dry_run=dry_run)
+        if not args.nodbupdate:
+            update_database(year, args.stars, dry_run=dry_run)
 
-    if args.premiere:
-        update_project(args.year, args.stars, dry_run=dry_run)
+        if args.premiere:
+            update_project(year, args.stars, dry_run=dry_run)
 
     ui.set_status("Done.")
 

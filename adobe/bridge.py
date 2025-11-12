@@ -6,7 +6,7 @@ from typing import Optional
 
 from cv2 import VideoCapture, CAP_PROP_FRAME_COUNT, CAP_PROP_FPS
 
-from common.system import file_type, get_videos_in_folder
+from common.system import file_type, get_videos_in_folder, is_file_available
 
 # --- Single mmap scan ---
 
@@ -75,28 +75,31 @@ def get_xmp_rating(file_path: Path) -> Optional[int]:
 
         return rating
 
-def get_rated_videos(file_path: Path, min_stars:int) -> list[Path, list]:
+def get_rated_videos(videos: list[Path], min_stars:int, local_only:bool=True) -> list[Path, list]:
     '''Returns a list of video files in file_path with xmp:Rating >= min_stars and all ratings. '''
     rated_videos = []
     video_ratings = []
 
-    videos = get_videos_in_folder(file_path)
     for video in videos:
-        rating = get_xmp_rating(video)
-        if rating is not None:
-            if rating >= min_stars:
-                rated_videos.append(video)
-            video_ratings.append(rating)
+        if local_only and is_file_available(video): ## avoids downloading from interweb
+            rating = get_xmp_rating(video)
+            if rating is not None:
+                if rating >= min_stars:
+                    rated_videos.append(video)
+                video_ratings.append(rating)
 
     return rated_videos, video_ratings
 
-def get_video_durations(file_path: Path):
-    videos = get_videos_in_folder(file_path)
+def get_video_durations(videos: list[Path], local_only:bool=True) -> list[float]:
     video_durations = []
     for video in videos:
-        v = VideoCapture(video)
-        frame_count = v.get(CAP_PROP_FRAME_COUNT)
-        fps = v.get(CAP_PROP_FPS)
-        duration = frame_count / fps if fps else 0
+        if local_only and is_file_available(video): ## avoids downloading from interweb
+            v = VideoCapture(video)
+            frame_count = v.get(CAP_PROP_FRAME_COUNT)
+            fps = v.get(CAP_PROP_FPS)
+            duration = frame_count / fps if fps else 0
+        else:
+            duration = 0
+        video_durations.append(duration)
 
     return video_durations

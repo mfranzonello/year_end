@@ -140,7 +140,7 @@ def harvest_shared_album(shared_album_url: str,
 
     # set up downloads folder
     YEAR = year or datetime.now().year
-    download_directory = Path(ONE_DRIVE_FOLDER) / YIR_CLIPS / f'{YEAR}' / f'{person_name} {YEAR}'
+    download_directory = Path(ONE_DRIVE_FOLDER) / YIR_CLIPS / f'{YEAR}' / f'{person_name} {YEAR}' ## might need to adjust for actual year
 
     # create Edge driver
     driver = make_driver(headless=headless, profile_name=profile_name, download_directory=download_directory)
