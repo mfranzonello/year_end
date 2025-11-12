@@ -5,6 +5,18 @@ def get_engine(host, port, dbname, user, password):
     engine = create_engine(f'postgresql+psycopg://{user}:{password}@{host}:{port}/{dbname}')
     return engine
 
+def fetch_years(engine):
+    sql = f'''
+    SELECT DISTINCT project_year
+    FROM folders_summary
+    ;
+    '''
+
+    with engine.begin() as conn:
+        years = read_sql_query(sql, conn)
+
+    return years
+
 def fetch_folders(engine, year, cloud=None):
     sql = f'''
     SELECT project_year, folder_name, full_name,

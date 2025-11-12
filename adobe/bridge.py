@@ -95,6 +95,8 @@ def get_video_durations(file_path: Path):
     video_durations = []
     for video in videos:
         v = VideoCapture(video)
-        video_durations.append(v.get(CAP_PROP_FRAME_COUNT) / v.get(CAP_PROP_FPS))
+        frame_count = v.get(CAP_PROP_FRAME_COUNT)
+        fps = v.get(CAP_PROP_FPS)
+        duration = frame_count / fps if fps else 0
 
     return video_durations

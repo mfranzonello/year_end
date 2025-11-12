@@ -2,7 +2,7 @@ import streamlit as st
 import altair as alt
 from pandas import DataFrame
 
-from family_tree.db import get_engine, fetch_folders
+from family_tree.db import get_engine, fetch_years, fetch_folders
 
 PGHOST = st.secrets['PGHOST']
 PGPORT = st.secrets.get('PGPORT', '5432')
@@ -22,11 +22,13 @@ engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 # #          'secret': st.secrets['CLOUDINARY_API_SECRET']}
 # # folder_values = fetch_folders(engine, 2025, cloud=cloud)
 
-YEAR = 2025
 SUBMISSION_THRESHOLD = 50
 
+years = fetch_years(engine)
+YEAR = st.selectbox('Year to Review', years, len(years) - 1)
+
 def greyscale_zero_images(image_url, value):
-    if value == 0:
+    if image_url and value == 0:
         return image_url.replace('/upload/', '/upload/e_grayscale/')
     else:
         return image_url
