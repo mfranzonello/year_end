@@ -91,7 +91,9 @@ images = base.transform_filter(
 ).mark_image(width=bar_height, height=bar_height).encode(
     x = alt.X('value_pad:Q'),
     y = alt.Y('display_name:N', sort=order_list),
-    url = 'image_url:N'
+    url = 'image_url:N',
+    tooltip = [alt.Tooltip('display_name:N', title='Name'),
+              alt.Tooltip('video_count:Q', title='Videos')]
 )
 
 chart = (bars + images).properties(
