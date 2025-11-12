@@ -25,11 +25,11 @@ engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 # # folder_values = fetch_folders(engine, 2025, cloud=cloud)
 
 years = fetch_years(engine) ##.sort_values('project_year')
-YEAR = st.selectbox('Year to Review', years, len(years) - 1)
+year = st.selectbox('Year to Review', years, len(years) - 1)
 
-folder_values = fetch_folders(engine, YEAR)
+folder_values = fetch_folders(engine, year)
 
-st.title(f'Franzonello YIR {YEAR}')
+st.title(f'Franzonello YIR {year}')
 
 # bar chart for submissions
 options =['video_count', 'video_duration', 'file_size']

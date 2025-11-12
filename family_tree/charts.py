@@ -3,6 +3,9 @@ from pandas import DataFrame
 
 from family_tree.cloudinary_lite import greyscale_zero_images, get_image_url
 
+BLUE_UNDER = '#0D5176'
+BLUE_OVER = '#0D98BA'
+
 def get_duration_time(seconds:int) -> str:
     string = []
     if seconds >= 60 * 60:
@@ -53,12 +56,9 @@ def submission_chart(folder_values, quantity, cloud_name=None, cap=False):
 
     # UI sizing
     bar_height = 30                        # pixels per row (bigger = easier to read)
-    img_sz = max(20, bar_height - 6)       # image size tied to row spacing
     gap = 5.0                      # choose a value in video_count units
-    x_domain_max = threshold + gap * 2  # leave room for the icon inside the plot
 
-    font_axis = 14
-    font_title = 22
+
     base = alt.Chart(video_counts)
 
     axis = alt.Axis(
@@ -73,9 +73,10 @@ def submission_chart(folder_values, quantity, cloud_name=None, cap=False):
 
     bars = base.mark_bar(color="steelblue", size=bar_height, clip=False).encode(
         y = alt.Y('display_name:N', title='', sort=order_list, axis=axis),
-        x = alt.X(f'{quantity}:Q', title='', scale=alt.Scale(domain=[0, threshold + gap], clamp=True)),
+        x = alt.X(f'{quantity}_capped:Q', title='', scale=alt.Scale(domain=[0, threshold + gap], clamp=True)),
+        color = alt.condition(f'datum.{quantity} >= {threshold}', alt.value(BLUE_OVER), alt.value(BLUE_UNDER)),
         tooltip = [alt.Tooltip('display_name:N', title='Name'),
-                  alt.Tooltip(f'{quantity}:Q', title=display_label)]
+                   alt.Tooltip(f'{quantity}:Q', title=display_label)]
         )
 
     # ---------- images at end of bars ----------
@@ -88,7 +89,7 @@ def submission_chart(folder_values, quantity, cloud_name=None, cap=False):
         y = alt.Y('display_name:N', sort=order_list),
         url = 'image_url:N',
         tooltip = [alt.Tooltip('display_name:N', title='Name'),
-                  alt.Tooltip(f'{quantity}:Q', title=display_label)]
+                   alt.Tooltip(f'{quantity}:Q', title=display_label)]
     )
 
     chart = (bars + images).properties(
