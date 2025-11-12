@@ -49,9 +49,11 @@ order_list = (
 threshold = 50
 
 # small nudge for placing the image past the bar tip
-pad = 0.1 * (video_counts['video_count'].max() if len(video_counts) else 1)
+x_max =  min(video_counts['video_count'].max(), threshold)
+pad = 0.1 * x_max
 # make sure the x-domain includes the image position
-x_domain_max = float((video_counts['video_count'].max() or 0) + pad)
+
+x_domain_max = float(x_max + pad)
 
 # UI sizing
 bar_height = 30                        # pixels per row (bigger = easier to read)
