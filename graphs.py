@@ -39,7 +39,7 @@ video_counts = folder_values.copy()
 video_counts['display_name'] = video_counts['full_name'].where(
     video_counts['full_name'].notna(),
     video_counts['folder_name']
-).str.replace(' ', '\n')
+)#.str.replace(' ', '\n')
 video_counts['image_url'] = video_counts.apply(lambda x: greyscale_zero_images(x['image_url'], x['video_count']), axis=1)
 
 order_list = (
@@ -49,7 +49,7 @@ order_list = (
 threshold = 50
 
 # small nudge for placing the image past the bar tip
-pad = 0.05 * (video_counts['video_count'].max() if len(video_counts) else 1)
+pad = 0.1 * (video_counts['video_count'].max() if len(video_counts) else 1)
 # make sure the x-domain includes the image position
 x_domain_max = float((video_counts['video_count'].max() or 0) + pad)
 
