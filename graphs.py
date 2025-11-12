@@ -39,7 +39,7 @@ video_counts = folder_values.copy()
 video_counts['display_name'] = video_counts['full_name'].where(
     video_counts['full_name'].notna(),
     video_counts['folder_name']
-)#.str.replace(' ', '\n')
+).str.replace(' ', '\n')
 video_counts['image_url'] = video_counts.apply(lambda x: greyscale_zero_images(x['image_url'], x['video_count']), axis=1)
 
 order_list = (
@@ -49,12 +49,12 @@ order_list = (
 threshold = 50
 
 # small nudge for placing the image past the bar tip
-pad = 0.1 * (video_counts['video_count'].max() if len(video_counts) else 1)
+pad = 0.05 * (video_counts['video_count'].max() if len(video_counts) else 1)
 # make sure the x-domain includes the image position
 x_domain_max = float((video_counts['video_count'].max() or 0) + pad)
 
 # UI sizing
-bar_height = 60                        # pixels per row (bigger = easier to read)
+bar_height = 30                        # pixels per row (bigger = easier to read)
 img_sz = max(20, bar_height - 6)       # image size tied to row spacing
 font_axis = 14
 font_title = 22
@@ -64,11 +64,11 @@ axis = alt.Axis(
     labelExpr="replace(datum.label, /\\s{2,}|\\s/g, '\\n')",
     labelLimit=0,
     labelPadding=20,
-    labelFontSize=20
+    #labelFontSize=20
     )
 
 # ---------- bars ----------
-bars = base.mark_bar(color="steelblue", size=60, clip=False).encode(
+bars = base.mark_bar(color="steelblue", size=bar_height, clip=False).encode(
     y = alt.Y('display_name:N', title='', sort=order_list, axis=axis),
     x = alt.X('video_count:Q', title='', scale=alt.Scale(domain=[0, x_domain_max], clamp=True)),
     tooltip = [alt.Tooltip('display_name:N', title='Name'),
