@@ -3,7 +3,7 @@ import altair as alt
 
 from family_tree.db import get_engine, fetch_years, fetch_folders
 from family_tree.charts import submission_chart, review_pie
-from main import CLOUDINARY_CLOUD
+from family_tree.cloudinary_lite import CLOUDINARY_CLOUD
 
 PGHOST = st.secrets['PGHOST']
 PGPORT = st.secrets.get('PGPORT', '5432')
