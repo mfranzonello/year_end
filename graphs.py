@@ -61,7 +61,7 @@ font_title = 22
 base = alt.Chart(video_counts)
 
 axis = alt.Axis(
-    labelExpr="replace(datum.label, /\\s{2,}|\\s/g, '\\n')",
+    #labelExpr="replace(datum.label, /\\s{2,}|\\s/g, '\\n')",
     labelLimit=0,
     labelPadding=20,
     #labelFontSize=20
