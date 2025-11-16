@@ -12,18 +12,18 @@ bin = "Videos"
 
 [executables.windows.google_drive]
 vendor = "Google"
-name = "Drive"
-exe = "GoogleDrive"
+name = "Drive File Stream"
+exe = "GoogleDriveFS"
 
 [executables.windows.premiere]
 vendor = "Adobe"
 name = "Adobe Premiere Pro"
-exe = ["Adobe Premiere Pro"]
+exe = "Adobe Premiere Pro"
 
 [executables.windows.chrome]
 vendor = "Google"
 name = "Chrome"
-exe = ["chrome"]
+exe = "chrome"
 
 [executables.windows.edge]
 vendor = "Microsoft"

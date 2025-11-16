@@ -8,8 +8,8 @@ import subprocess
 import ctypes
 from ctypes import wintypes
 
-from common.structure import system, VIDEO_EXTS, PR_EXT, AE_EXT, GOOGLE_DRIVE_FOLDER, \
-    GOOGLE_DRIVE_EXE, PREMIERE_EXE
+from common.locations import system
+from common.structure import VIDEO_EXTS, PR_EXT, AE_EXT, GOOGLE_DRIVE_FOLDER, GOOGLE_DRIVE_EXE, PREMIERE_EXE
 
 REQUIRED_PATH = Path(GOOGLE_DRIVE_FOLDER)
 WAIT_UP = 120 # seconds to wait for drive to reappear
@@ -154,6 +154,7 @@ def check_file_availability(file_path: Path):
             # No special cloud flags -> file is fully local right now
             return 'local'
         case 'macos':
+            pass
             
 
 def is_file_available(file_path: Path):

@@ -1,7 +1,9 @@
 import json
 import os
 import sys
+from glob import glob
 from pathlib import Path
+import getpass
 from typing import Optional
 
 # ---------- Helpers
@@ -27,6 +29,8 @@ def detect_system() -> Optional[str]:
         case 'linux' | 'linux2':
             return 'linux'
 
+system = detect_system()
+
 def detect_onedrive_base() -> Path | None:
     """
     Returns the OneDrive *root* (the folder you see in Explorer/Finder), e.g.:
@@ -37,7 +41,7 @@ def detect_onedrive_base() -> Path | None:
     """
     home = Path.home()
 
-    match detect_system():
+    match system:
         case 'windows':
             # 1) Environment variable (most reliable for consumer; also appears for business)
             candidates = []
@@ -87,7 +91,7 @@ def detect_gdrive_base() -> Path | None:
     """
     home = Path.home()
 
-    match detect_system():
+    match system:
         case 'windows':
             candidates = []
 
@@ -103,12 +107,12 @@ def detect_gdrive_base() -> Path | None:
                             # Either a drive letter (e.g., "G") or a full path mount point
                             letter = data.get("drive_letter")
                             if letter:
-                                candidates.append(f"{letter}:\\")
                                 candidates.append(f"{letter}:\\My Drive")
+                                ##candidates.append(f"{letter}:\\") ## consider dropping
                             mount_point = data.get("mount_point_path") or data.get("mount_point")
                             if mount_point:
-                                candidates.append(mount_point)
                                 candidates.append(str(Path(mount_point) / "My Drive"))
+                                ##candidates.append(mount_point) ## consider dropping
                         except Exception:
                             pass
 
@@ -120,8 +124,8 @@ def detect_gdrive_base() -> Path | None:
                         try:
                             val, _ = winreg.QueryValueEx(k, name)
                             if val:
-                                candidates.append(val)
                                 candidates.append(str(Path(val) / "My Drive"))
+                                ##candidates.append(val) ## consider dropping
                         except FileNotFoundError:
                             pass
                     # Sometimes a drive letter is stored
@@ -129,8 +133,8 @@ def detect_gdrive_base() -> Path | None:
                         try:
                             val, _ = winreg.QueryValueEx(k, name)
                             if val:
-                                candidates.append(f"{val}:\\")
                                 candidates.append(f"{val}:\\My Drive")
+                                ##candidates.append(f"{val}:\\") ## consider dropping
                         except FileNotFoundError:
                             pass
             except Exception:
@@ -138,8 +142,8 @@ def detect_gdrive_base() -> Path | None:
 
             # 3) Common fallbacks
             for letter in ("G", "H", "I"):
-                candidates.append(f"{letter}:\\")
                 candidates.append(f"{letter}:\\My Drive")
+                ##candidates.append(f"{letter}:\\") ## consider dropping
 
             return _first_existing(candidates)
 
@@ -189,3 +193,43 @@ def list_versioned_dirs(base: Path, prefix: str):
 
     # Return only the paths
     return [p for _, p in results]
+
+def detect_app_path(apps_details, app_name):
+    app_path = None
+    app_details = apps_details[system][app_name]
+    match system:
+        case 'windows':
+            drive, _ = os.path.splitdrive(os.getcwd())
+            program_files = ['program files', 'program files (x86)']
+            for p_f in program_files:
+                applications = Path(f'{drive}/{p_f}')
+                vendor_path = applications / app_details['vendor']
+                if vendor_path.exists():
+                    # check if versions, like Adobe Premiere 2025
+                    app_versions = list_versioned_dirs(vendor_path, app_details['name'])
+                    if len(app_versions):
+                        exes = app_details['exe']
+                        if isinstance(exes, str):
+                            exes = [exes]
+                        for exe in exes:
+                            app_paths = glob(os.path.join(app_versions[0], '**', f'{exe}.exe'), recursive=True)
+                            if len(app_paths):
+                                return app_paths[0]
+                
+        case 'macos':
+            applications = Path('/Applications')
+            app_verions = list_versioned_dirs(applications, app_details['name'])
+            if len(app_verions):
+                for name in app_details['name']:
+                    app_path = applications / f'{name}.app' / 'Contents' / 'MacOS' / name
+                    if app_path.exists():
+                        return app_path
+
+def get_browser_data(browser_details):
+    match system:
+        case 'windows':
+            drive, _ = os.path.splitdrive(os.getcwd())
+            return Path(drive) / 'Users' / getpass.getuser() / browser_details / 'User Data'
+        case 'macos':
+            user_path = Path.home()
+            return user_path / 'Library' / 'Application Support' / browser_details
