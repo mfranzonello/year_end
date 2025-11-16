@@ -5,6 +5,7 @@ __pycache__/
 
 .devcontainer
 .streamlit
+*.TMP
 
 # vscode
 .vs/
@@ -217,3 +218,4 @@ __marimo__/
 /debug_album_ready.png
 /secrets.toml
 /test.py
+/secrets (2).toml
