@@ -5,16 +5,16 @@ import argparse
 import sys
 from datetime import datetime
 
-from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_CLIPS, YIR_REVIEWS, YIR_PROJECT, PR_EXT, SHARED_ALBUMS
+from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, YIR_PROJECT, PR_EXT, SHARED_ALBUMS
 from common.secret import secrets
-from common.system import clear_screen, file_type, get_person_name, get_videos_in_folder, mount_g_drive
+from common.system import clear_screen, file_type, get_videos_in_folder, mount_g_drive
 from common.console import SplitConsole
-from family_tree.db import get_engine
-from adobe.bridge import get_rated_videos
 from migrate.scan_and_copy import get_person_folders, get_person_names, copy_if_needed
-from migrate.summarize import summarize_folders, update_cloud_images
+from migrate.summarize import summarize_folders
+from adobe.bridge import get_rated_videos
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
 from scraping.photos import get_share_source, source_allowed, harvest_shared_album
+from family_tree.db import get_engine
 
 PGSECRETS = secrets['postgresql']['host']
 PGHOST = secrets['postgresql']['host']
@@ -31,9 +31,9 @@ MIN_STARS = 3
 
 ui = SplitConsole()
 
-def scan_folders(od, gd, yir_clips, year, dry_run=True):
-    od_year = od / yir_clips / str(year)
-    gd_year = gd / yir_clips / str(year)
+def scan_folders(od, gd, year, dry_run=True):
+    od_year = od / str(year)
+    gd_year = gd / str(year)
     
     mount_g_drive()
     if not gd_year.exists():
@@ -94,7 +94,7 @@ def harvest_albums(albums, year, google, icloud, headless=True):
 
 def update_database(year, min_stars, dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
-    summarize_folders(engine, year, min_stars, dry_run=dry_run)
+    summarize_folders(engine, ONE_DRIVE_FOLDER, year, min_stars, dry_run=dry_run)
 
 def update_project(year, min_stars, dry_run=True):
     ui.set_status('Opening Premiere project...')
@@ -104,14 +104,14 @@ def update_project(year, min_stars, dry_run=True):
     videos_bin = find_videos_bin(project_id)
 
     ui.set_status('Creating person bins...')
-    od_videos = Path(ONE_DRIVE_FOLDER) / YIR_CLIPS / f'{year}'
+    od_videos = Path(ONE_DRIVE_FOLDER) / f'{year}'
     person_names = get_person_names(od_videos)
     create_person_bins(videos_bin, person_names)
 
     ui.set_status(f'Importing reviewed videos ({min_stars} star and above)...')
     for person_name in person_names:
         ui.set_status(f'\tLooking at {person_name}...')
-        videos = get_videos_in_folder(Path(ONE_DRIVE_FOLDER) / YIR_CLIPS / f'{year}' / f'{person_name} {year}') ## FIX FOR TALENT SHOW
+        videos = get_videos_in_folder(Path(ONE_DRIVE_FOLDER) / f'{year}' / f'{person_name} {year}') ## FIX FOR TALENT SHOW
         rated_videos, _ = get_rated_videos(videos, min_stars)
 
         if rated_videos:
@@ -166,12 +166,14 @@ def main():
             harvest_albums(SHARED_ALBUMS, year, args.google, args.icloud, args.headless)
 
         if args.gdrive:
-            scan_folders(args.od, args.gd, YIR_CLIPS, year, dry_run)
+            scan_folders(args.od, args.gd, year, dry_run)
 
         if not args.nodbupdate:
             update_database(year, args.stars, dry_run=dry_run)
 
         if args.premiere:
+            if sys.version_info >= (3, 12):
+                print('WARNING! Pymiere was built for older versions of Python and may not work properly.')
             update_project(year, args.stars, dry_run=dry_run)
 
     ui.set_status("Done.")

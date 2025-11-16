@@ -8,8 +8,8 @@ from selenium import webdriver
 from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 
-from common.structure import ONE_DRIVE_FOLDER, YIR_CLIPS, CHROME_DATA, CHROME_STATE, EDGE_EXE, EDGE_DATA, EDGE_STATE
-from common.system import close_exe, get_videos_in_folder
+from common.structure import CHROME_DATA, CHROME_STATE, EDGE_EXE, EDGE_DATA, EDGE_STATE
+from common.system import close_exe
 from scraping.photos_google import harvest_g_shared_album
 from scraping.photos_icloud import harvest_i_shared_album
 
@@ -41,7 +41,7 @@ def get_browser_profile(browser: str, name: str) -> str:
 
 # ---------- Selenium / browser setup ----------
 
-def make_driver(headless: bool = True, download_directory: Optional[str] = None, profile_name='',
+def make_driver(headless: bool = True, download_directory: Optional[Path] = None, profile_name='',
                 browser='Edge') -> webdriver.Edge:
     browser_profile = get_browser_profile(browser, profile_name)
 
@@ -135,12 +135,15 @@ def source_allowed(source_name, google=False, icloud=False):
             return
 
 def harvest_shared_album(shared_album_url: str, 
-                         person_name: str, profile_name: Optional[str] = None,
-                         year: Optional[int] = None, headless=True, dry_run=False):
+                         ond_drive_folder:Path,
+                         person_name: str,
+                         profile_name: Optional[str] = None,
+                         year: Optional[int] = None,
+                         headless=True, dry_run=False):
 
     # set up downloads folder
     YEAR = year or datetime.now().year
-    download_directory = Path(ONE_DRIVE_FOLDER) / YIR_CLIPS / f'{YEAR}' / f'{person_name} {YEAR}' ## might need to adjust for actual year
+    download_directory = ond_drive_folder / f'{YEAR}' / f'{person_name} {YEAR}' ## might need to adjust for actual year
 
     # create Edge driver
     driver = make_driver(headless=headless, profile_name=profile_name, download_directory=download_directory)

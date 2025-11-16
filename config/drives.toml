@@ -1,0 +1,47 @@
+[local_storage.onedrive]
+videos = "Videos/YIR Clips"
+
+[local_storage.google_drive]
+videos = "YIR Clips"
+
+[local_storage.adobe]
+projects = "Reviews"
+reviews = "Year End"
+project = "YIR"
+bin = "Videos"
+
+[executables.windows.google_drive]
+vendor = "Google"
+name = "Drive"
+exe = "GoogleDrive"
+
+[executables.windows.premiere]
+vendor = "Adobe"
+name = "Adobe Premiere Pro"
+exe = ["Adobe Premiere Pro"]
+
+[executables.windows.chrome]
+vendor = "Google"
+name = "Chrome"
+exe = ["chrome"]
+
+[executables.windows.edge]
+vendor = "Microsoft"
+name = "Edge"
+exe = ["msedge", "msedgedriver"]
+
+[executables.macos.google_drive]
+name = "GoogleDrive"
+
+[executables.macos.premiere]
+name = "Adobe Premiere Pro"
+
+[executables.macos.chrome]
+name = "Google Chrome"
+
+[executables.macos.edge]
+name = "Microsoft Edge"
+
+[user_data]
+chrome = "Google/Chrome"
+edge = "Microsoft Edge"

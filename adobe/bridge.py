@@ -6,7 +6,7 @@ from typing import Optional
 
 from cv2 import VideoCapture, CAP_PROP_FRAME_COUNT, CAP_PROP_FPS, CAP_PROP_FRAME_WIDTH, CAP_PROP_FRAME_HEIGHT
 
-from common.system import file_type, get_videos_in_folder, is_file_available
+from common.system import file_type, is_file_available
 
 # --- Single mmap scan ---
 

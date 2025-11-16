@@ -21,11 +21,11 @@ def _glob_first(base: Path, pattern: str):
 def detect_system() -> Optional[str]:
     match sys.platform:
         case 'win32':
-            return 'Windows'
+            return 'windows'
         case 'darwin':
-            return 'MacOs'
+            return 'macos'
         case 'linux' | 'linux2':
-            return 'Linux'
+            return 'linux'
 
 def detect_onedrive_base() -> Path | None:
     """
@@ -38,7 +38,7 @@ def detect_onedrive_base() -> Path | None:
     home = Path.home()
 
     match detect_system():
-        case 'Windows':
+        case 'windows':
             # 1) Environment variable (most reliable for consumer; also appears for business)
             candidates = []
             for env_key in ("OneDrive", "OneDriveCommercial", "OneDriveConsumer"):
@@ -65,7 +65,7 @@ def detect_onedrive_base() -> Path | None:
 
             return _first_existing(candidates)
 
-        case 'MacOs':
+        case 'macos':
             # macOS (Apple File Provider)
             cloud_root = home / "Library" / "CloudStorage"
             # Prefer personal, else any OneDrive-*
@@ -88,7 +88,7 @@ def detect_gdrive_base() -> Path | None:
     home = Path.home()
 
     match detect_system():
-        case 'Windows':
+        case 'windows':
             candidates = []
 
             # 1) DriveFS config file (most reliable)
@@ -143,7 +143,7 @@ def detect_gdrive_base() -> Path | None:
 
             return _first_existing(candidates)
 
-        case 'MacOS':
+        case 'macoS':
             # macOS (Apple File Provider)
             cloud_root = home / "Library" / "CloudStorage"
             # Typical names: GoogleDrive-<account>, GoogleDrive, GoogleDriveSharedDrives (the base).
@@ -157,3 +157,35 @@ def _safe_children(p: Path):
         return [c for c in p.iterdir() if c.is_dir()]
     except Exception:
         return []
+    
+
+from pathlib import Path
+
+def list_versioned_dirs(base: Path, prefix: str):
+    results = []
+
+    for p in base.iterdir():
+        if not p.is_dir():
+            continue
+        name = p.name
+
+        if not name.startswith(prefix):
+            continue
+
+        # Extract everything after the prefix
+        suffix = name[len(prefix):].strip()  # remove leading/trailing spaces
+
+        # Try to parse version number; folders without versions get 0
+        try:
+            version = int(suffix) if suffix else 0
+        except ValueError:
+            # Contains something like "Adobe Premiere Pro Beta"
+            version = 0
+
+        results.append((version, p))
+
+    # Sort descending by version
+    results.sort(key=lambda x: x[0], reverse=True)
+
+    # Return only the paths
+    return [p for _, p in results]

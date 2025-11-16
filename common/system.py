@@ -8,31 +8,36 @@ import subprocess
 import ctypes
 from ctypes import wintypes
 
-from common.structure import VIDEO_EXTS, PR_EXT, AE_EXT, GOOGLE_DRIVE_FOLDER, \
-    GOOGLE_DRIVE_EXE, PREMIERE_EXE, EDGE_EXE
+from common.structure import system, VIDEO_EXTS, PR_EXT, AE_EXT, GOOGLE_DRIVE_FOLDER, \
+    GOOGLE_DRIVE_EXE, PREMIERE_EXE
 
 REQUIRED_PATH = Path(GOOGLE_DRIVE_FOLDER)
 WAIT_UP = 120 # seconds to wait for drive to reappear
 POLL = 3 # seconds between checks
 
 # Define constants for file attributes
-FILE_ATTRIBUTE_REPARSE_POINT = 0x0400
-FILE_ATTRIBUTE_OFFLINE = 0x1000
-FILE_ATTRIBUTE_PINNED = 0x80000       # Always keep on this device
-FILE_ATTRIBUTE_UNPINNED = 0x100000      # Not kept locally
-FILE_ATTRIBUTE_RECALL_ON_OPEN = 0x00040000
-FILE_ATTRIBUTE_RECALL_ON_DATA = 0x00400000
-    
-GetFileAttributesW = ctypes.windll.kernel32.GetFileAttributesW
-GetFileAttributesW.argtypes = [wintypes.LPCWSTR]
-GetFileAttributesW.restype  = wintypes.DWORD
+match system:
+    case 'windows':
+        FILE_ATTRIBUTE_REPARSE_POINT = 0x0400
+        FILE_ATTRIBUTE_OFFLINE = 0x1000
+        FILE_ATTRIBUTE_PINNED = 0x80000       # Always keep on this device
+        FILE_ATTRIBUTE_UNPINNED = 0x100000      # Not kept locally
+        FILE_ATTRIBUTE_RECALL_ON_OPEN = 0x00040000
+        FILE_ATTRIBUTE_RECALL_ON_DATA = 0x00400000
+            
+        GetFileAttributesW = ctypes.windll.kernel32.GetFileAttributesW
+        GetFileAttributesW.argtypes = [wintypes.LPCWSTR]
+        GetFileAttributesW.restype  = wintypes.DWORD
+    case _:
+        pass
 
 def clear_screen():
     '''Clears the console screen based on the operating system.'''
-    if os.name == 'nt':  # For Windows
-        os.system('cls')
-    else:  # For Unix-like systems (Linux, macOS)
-        os.system('clear')
+    match system:
+        case 'windows':
+            os.system('cls')
+        case _:
+            os.system('clear')
 
 def file_type(file_path: Path) -> str:
     if file_path.is_file():
@@ -125,27 +130,31 @@ def mount_g_drive():
 
 def check_file_availability(file_path: Path):
     '''Return one of: 'pinned_local', 'local', 'cloud_placeholder', 'dehydrated_placeholder', 'unknown'.'''
-    attrs = GetFileAttributesW(str(file_path))
-    if attrs == 0xFFFFFFFF:  # INVALID_FILE_ATTRIBUTES
-        return 'unknown'
+    match system:
+        case 'windows':
+            attrs = GetFileAttributesW(str(file_path))
+            if attrs == 0xFFFFFFFF:  # INVALID_FILE_ATTRIBUTES
+                return 'unknown'
 
-    pinned = bool(attrs & FILE_ATTRIBUTE_PINNED)
-    unpinned = bool(attrs & FILE_ATTRIBUTE_UNPINNED)
-    reparse = bool(attrs & FILE_ATTRIBUTE_REPARSE_POINT)
-    recall_any = bool(attrs & (FILE_ATTRIBUTE_RECALL_ON_OPEN | FILE_ATTRIBUTE_RECALL_ON_DATA))
-    offline = bool(attrs & FILE_ATTRIBUTE_OFFLINE)
+            pinned = bool(attrs & FILE_ATTRIBUTE_PINNED)
+            unpinned = bool(attrs & FILE_ATTRIBUTE_UNPINNED)
+            reparse = bool(attrs & FILE_ATTRIBUTE_REPARSE_POINT)
+            recall_any = bool(attrs & (FILE_ATTRIBUTE_RECALL_ON_OPEN | FILE_ATTRIBUTE_RECALL_ON_DATA))
+            offline = bool(attrs & FILE_ATTRIBUTE_OFFLINE)
 
-    # Heuristics consistent with OneDrive Files On-Demand flags
-    if pinned:
-        return 'pinned_local'
-    if reparse and unpinned:
-        # Cloud-only placeholder (won't be present on disk until opened)
-        return 'cloud_placeholder'
-    if recall_any or offline:
-        # Item can recall data on access (dehydrated or partially recalled)
-        return 'dehydrated_placeholder'
-    # No special cloud flags -> file is fully local right now
-    return 'local'
+            # Heuristics consistent with OneDrive Files On-Demand flags
+            if pinned:
+                return 'pinned_local'
+            if reparse and unpinned:
+                # Cloud-only placeholder (won't be present on disk until opened)
+                return 'cloud_placeholder'
+            if recall_any or offline:
+                # Item can recall data on access (dehydrated or partially recalled)
+                return 'dehydrated_placeholder'
+            # No special cloud flags -> file is fully local right now
+            return 'local'
+        case 'macos':
+            
 
 def is_file_available(file_path: Path):
     return check_file_availability(file_path) in ['pinned_local', 'local']
