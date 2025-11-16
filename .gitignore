@@ -1,7 +1,8 @@
 # my custom hides
 .devcontainer
-.streamlit
-.secrets
+.streamlit/
+.secrets/
+
 *.TMP
 /debug_*
 /test.py
