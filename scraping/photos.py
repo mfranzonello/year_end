@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 import time, os, re
 from typing import Optional
 from datetime import datetime

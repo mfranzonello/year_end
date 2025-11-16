@@ -1,4 +1,4 @@
-﻿from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text
 from pandas import read_sql_query, DataFrame
 
 def get_engine(host, port, dbname, user, password):
