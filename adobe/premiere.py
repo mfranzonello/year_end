@@ -20,7 +20,12 @@ PREMIERE_LOCATION = r"C:\Program Files\Adobe\Adobe Premiere Pro 2025\Adobe Premi
 ## projectitem.getMediaPath()
 ## projectitem.moveBin()
 ## project.consolidateDuplicates()
+
+
 ## figure out which items are used in final project
+# # app.project.rootItem.children[index].getProjectColumnsMetadata() -> 'Video Usage'
+
+## how to ignore items that are cloud only? probably just 
 
 def open_premiere():
     '''Ensure Premiere Pro is running.'''
@@ -58,7 +63,11 @@ def open_project(path):
         # open project if not already open
         if not project_id:
             print(f'Trying to open {str(path)}')
-            pymiere.objects.app.openDocument(str(path))
+            pymiere.objects.app.openDocument(str(path),
+                                             suppressConversionDialog=True,
+                                             bypassLocateFileDialog=True,
+                                             bypassWarningDialog=True,
+                                             doNotAddToMRUList=True)
             # assign last position as current project
             project_id = pymiere.objects.app.projects.numProjects - 1
 

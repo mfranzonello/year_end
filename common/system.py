@@ -66,6 +66,12 @@ def get_person_name(folder_path: Path) -> str:
     year = get_actual_year(folder_path)
     return folder_path.name.replace(f' {year}', '').strip()
 
+def get_person_names(root: Path):
+    '''Get person names from OneDrive YIR clips for a given year.'''
+    year = root.name
+    person_names = [get_person_name(p) for p in root.iterdir() if p.is_dir() and get_actual_year(p)]
+    return person_names
+
 def mount_premiere(t=20):
     subprocess.Popen(PREMIERE_EXE)
     sleep(t)

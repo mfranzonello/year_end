@@ -6,7 +6,7 @@ from common.structure import ONE_DRIVE_FOLDER, YIR_CLIPS
 from common.system import get_person_name, get_actual_year, get_videos_in_folder, get_file_sizes
 from migrate.scan_and_copy import get_person_folders
 from adobe.bridge import get_rated_videos, get_video_durations
-from family_tree.db import update_folders, get_member_ids, update_images, update_folder_member_ids
+from family_tree.db import update_folders, fetch_member_ids, update_images, update_folder_member_ids
 from family_tree.cloudinary import configure_cloud, fetch_image_url
 
 def summarize_folder(person_folder, year, min_stars):
@@ -48,7 +48,7 @@ def update_cloud_images(engine, cloud_name, cloud_key, cloud_secret):
     configure_cloud(cloud_name, cloud_key, cloud_secret)
 
     for member_type in ['person', 'animal']: # object
-        member_ids = get_member_ids(engine, member_type)
+        member_ids = fetch_member_ids(engine, member_type)
         member_ids['image_url'] = member_ids.apply(lambda x: fetch_image_url(str(x[f'{member_type}_id'])), axis=1)
         new_images = member_ids.dropna(subset=['image_url'])
         update_images(engine, new_images, member_type)

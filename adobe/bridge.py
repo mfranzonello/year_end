@@ -4,7 +4,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 from typing import Optional
 
-from cv2 import VideoCapture, CAP_PROP_FRAME_COUNT, CAP_PROP_FPS
+from cv2 import VideoCapture, CAP_PROP_FRAME_COUNT, CAP_PROP_FPS, CAP_PROP_FRAME_WIDTH, CAP_PROP_FRAME_HEIGHT
 
 from common.system import file_type, get_videos_in_folder, is_file_available
 
@@ -103,3 +103,25 @@ def get_video_durations(videos: list[Path], local_only:bool=True) -> list[float]
         video_durations.append(duration)
 
     return video_durations
+
+def get_video_resolutions(videos: list[Path], local_only:bool=True) -> list[float]:
+    video_resolutions = []
+    resolution_ranges = [(480, 'lo'), (720, 'SD'), (1080, 'HD'), (1920, '4K')]
+    for video in videos:
+        if local_only and is_file_available(video): ## avoids downloading from interweb
+            v = VideoCapture(video)
+            w = v.get(CAP_PROP_FRAME_WIDTH)
+            h = v.get(CAP_PROP_FRAME_HEIGHT)
+            res_short = (min(w, h))
+            for res, res_name in resolution_ranges[::-1]:
+                if res_short >= res:
+                    resolution = res_name
+                    break
+                resolution = res_name
+
+        else:
+            resolution = None
+
+        video_resolutions.append(resolution)
+
+    return video_resolutions

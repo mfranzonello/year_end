@@ -5,19 +5,13 @@
 from pathlib import Path
 import shutil
 
-from common.system import get_person_name, get_actual_year
+from common.system import get_person_names
 
 def get_person_folders(root: Path) -> list[Path]:
     """Immediate child directories (e.g., 'Michael 2025')."""
     if not root.exists():
         return []
     return [p for p in root.iterdir() if p.is_dir()]
-
-def get_person_names(root: Path):
-    '''Get person names from OneDrive YIR clips for a given year.'''
-    year = root.name
-    person_names = [get_person_name(p) for p in root.iterdir() if p.is_dir() and get_actual_year(p)]
-    return person_names
 
 def gather_names_casefold(folder: Path) -> set[str]:
     """Set of existing filenames (casefolded) in a folder (non-recursive)."""

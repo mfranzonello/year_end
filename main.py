@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 
 from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_CLIPS, YIR_REVIEWS, YIR_PROJECT, PR_EXT, SHARED_ALBUMS
-from common.secret import get_secret
+from common.secret import secrets
 from common.system import clear_screen, file_type, get_person_name, get_videos_in_folder, mount_g_drive
 from common.console import SplitConsole
 from family_tree.db import get_engine
@@ -16,15 +16,16 @@ from migrate.summarize import summarize_folders, update_cloud_images
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
 from scraping.photos import get_share_source, source_allowed, harvest_shared_album
 
-PGHOST = get_secret('PGHOST')
-PGPORT = get_secret('PGPORT', '5432')
-PGDBNAME = get_secret('PGDATABASE')
-PGUSER = get_secret('PGUSER')
-PGPASSWORD = get_secret('PGPASSWORD')
+PGSECRETS = secrets['postgresql']['host']
+PGHOST = secrets['postgresql']['host']
+PGPORT = secrets['postgresql']['port']
+PGDBNAME = secrets['postgresql']['database']
+PGUSER = secrets['postgresql']['user']
+PGPASSWORD = secrets['postgresql']['password']
 
-CLOUDINARY_CLOUD = get_secret('CLOUDINARY_CLOUD')
-CLOUDINARY_API_KEY = get_secret('CLOUDINARY_API_KEY')
-CLOUDINARY_API_SECRET = get_secret('CLOUDINARY_API_SECRET')
+CLOUDINARY_CLOUD = secrets['cloudinary']['cloud_name']
+CLOUDINARY_API_KEY = secrets['cloudinary']['api_key']
+CLOUDINARY_API_SECRET = secrets['cloudinary']['api_secret']
 
 MIN_STARS = 3
 

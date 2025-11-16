@@ -5,6 +5,50 @@ def get_engine(host, port, dbname, user, password):
     engine = create_engine(f'postgresql+psycopg://{user}:{password}@{host}:{port}/{dbname}')
     return engine
 
+def read_sql(engine, sql):
+    with engine.begin() as conn:
+        df = read_sql_query(text(sql), conn)
+
+    return df
+
+
+# Family Tree
+def fetch_persons(engine):
+    sql = f'''SELECT person_id,
+    first_name, last_name, nick_name, suffix,
+    birth_date, birth_date_precision
+    FROM persons
+    '''
+    return read_sql(engine, sql)
+
+def fetch_animals(engine):
+    sql = f'''SELECT animal_id,
+    first_name, nick_name, species
+    FROM animals
+    '''
+    return read_sql(engine, sql)
+
+def fetch_parents(engine):
+    sql = f'''SELECT child_id, parent_id
+    FROM parents
+    '''
+    return read_sql(engine, sql)
+
+def fetch_pets(engine):
+    sql = f'''SELECT pet_id, owner_id, relation_type,
+    gotcha_date, gotcha_date_precision
+    FROM pets
+    '''
+    return read_sql(engine, sql)
+
+def fetch_marriages(engine):
+    sql = f'''SELECT husband_id, wife_id, marriage_id
+    FROM marriages
+    '''
+    return read_sql(engine, sql)
+
+
+# Adobe project
 def fetch_years(engine):
     sql = f'''
     SELECT DISTINCT project_year
@@ -12,24 +56,26 @@ def fetch_years(engine):
     ORDER BY project_year ASC
     ;
     '''
-
-    with engine.begin() as conn:
-        years = read_sql_query(sql, conn)
-
-    return years
+    return read_sql(engine, sql)
 
 def fetch_folders(engine, year, cloud=None):
-    sql = f'''
+    sql = text(f'''
     SELECT project_year, year_adjust, folder_name, full_name,
     video_count, video_duration, file_size, review_count, usable_count, member_id
     FROM folders_summary
     WHERE project_year = {year};
-    '''
+    ''')
 
     with engine.begin() as conn:
         values = read_sql_query(sql, conn)
 
     return values
+
+def fetch_member_ids(engine, member_type):
+    sql = f'''
+    SELECT {member_type}_id FROM {member_type}s
+    '''
+    return read_sql(engine, sql)
 
 def update_folders(engine, df):
     keys = ['folder_name', 'project_year']
@@ -45,14 +91,6 @@ def update_folders(engine, df):
     with engine.begin() as conn:
         for _, row in df.iterrows():
             conn.execute(sql, row.to_dict())
-
-def get_member_ids(engine, member_type):
-    sql = text(f'''
-    SELECT {member_type}_id FROM {member_type}s
-    ''')
-
-    with engine.begin() as conn:
-        return read_sql_query(sql, conn)
 
 def update_images(engine, df, member_type):
     sql = text(f'''
