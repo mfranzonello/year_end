@@ -1,4 +1,4 @@
-﻿'''Functions to interact with Adobe Premiere Pro via pymiere.'''
+'''Functions to interact with Adobe Premiere Pro via pymiere.'''
 
 import subprocess
 from time import sleep

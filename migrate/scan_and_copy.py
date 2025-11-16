@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 '''Scan and copy new videos from Google Drive to OneDrive.'''
 
