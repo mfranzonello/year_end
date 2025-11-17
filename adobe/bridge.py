@@ -78,43 +78,17 @@ def get_video_rating(file_path:Path, local_only:bool=True) -> Optional[int]:
 
         return rating
 
-# # def get_rated_videos(videos: list[Path], min_stars:int, local_only:bool=True) -> list[Path, list]:
-# #     '''Returns a list of video files in file_path with xmp:Rating >= min_stars and all ratings. '''
-# #     rated_videos = []
-# #     video_ratings = []
+def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, str]:
+    resolution_ranges = [(480, 'lo'), (720, 'SD'), (1080, 'HD'), (1920, '4K')]
 
-# #     for video in videos:
-# #         if local_only and is_file_available(video): ## avoids downloading from interweb
-# #             rating = get_xmp_rating(video)
-# #             if rating is not None:
-# #                 if rating >= min_stars:
-# #                     rated_videos.append(video)
-# #                 video_ratings.append(rating)
-
-    # # return rated_videos, video_ratings
-
-def get_video_duration(file_path:Path, local_only:bool=True) -> float:
     if is_examinable(file_path, local_only): ## avoids downloading from interweb
+        # get duration
         v = VideoCapture(file_path)
         frame_count = v.get(CAP_PROP_FRAME_COUNT)
         fps = v.get(CAP_PROP_FPS)
         duration = round(frame_count / fps) if fps else 0 # return in seconds
-    else:
-        duration = 0
-    
-    return duration
 
-# # def get_video_durations(videos: list[Path], local_only:bool=True) -> list[float]:
-# #     video_durations = []
-# #     for video in videos:
-# #         video_durations.append(get_video_duration(video, local_only))
-
-# #     return video_durations
-
-def get_video_resolution(file_path:Path, local_only:bool=True) -> str:
-    resolution_ranges = [(480, 'lo'), (720, 'SD'), (1080, 'HD'), (1920, '4K')]
-    if is_examinable(file_path, local_only): ## avoids downloading from interweb
-        v = VideoCapture(file_path)
+        # get resolution
         w = v.get(CAP_PROP_FRAME_WIDTH)
         h = v.get(CAP_PROP_FRAME_HEIGHT)
         dimension = (min(w, h))
@@ -124,7 +98,9 @@ def get_video_resolution(file_path:Path, local_only:bool=True) -> str:
                 break
             resolution = res
 
+        v.release()
     else:
+        duration = 0
         resolution = None
 
-    return resolution
+    return duration, resolution

@@ -63,15 +63,19 @@ def get_videos_in_folder(folder: Path) -> list[Path]:
         videos = [p for p in folder.iterdir() if file_type(p) == 'VIDEO']
     return videos
 
-def get_actual_year(folder_path: Path) -> int:
+def is_year_folder(path:Path) -> bool:
+    name = path.name  # just the final component
+    return len(name) == 4 and name.isdigit()
+
+def get_actual_year(folder_path:Path) -> int:
     match = re.search(r"\s(\d{4})$", folder_path.name)
     return int(match.group(1)) if match else None
 
-def get_person_name(folder_path: Path) -> str:
+def get_person_name(folder_path:Path) -> str:
     year = get_actual_year(folder_path)
     return folder_path.name.replace(f' {year}', '').strip()
 
-def get_person_names(root: Path):
+def get_person_names(root:Path):
     '''Get person names from OneDrive YIR clips for a given year.'''
     year = root.name
     person_names = [get_person_name(p) for p in root.iterdir() if p.is_dir() and get_actual_year(p)]

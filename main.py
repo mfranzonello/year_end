@@ -91,9 +91,9 @@ def harvest_albums(albums, year, google, icloud, headless=True):
         if year == year and source_allowed(share_source, google=google, icloud=icloud):
             harvest_shared_album(shared_album_url, person_name, profile_name, year=year, headless=headless)
 
-def update_database(year, dry_run=True):
+def update_database(dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
-    summarize_folders(engine, ONE_DRIVE_FOLDER, year, dry_run=dry_run)
+    summarize_folders(engine, ONE_DRIVE_FOLDER, dry_run=dry_run)
 
 def update_images(dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
@@ -176,12 +176,14 @@ def main():
         if args.gdrive:
             scan_folders(args.od, args.gd, year, dry_run)
 
-        if not args.nodbupdate:
-            update_database(year, dry_run=dry_run)
+    ## can look at whole group at once
+    if not args.nodbupdate:
+        update_database(dry_run=dry_run)
 
-            if not args.pictures:
-                update_images(dry_run=dry_run)
+        if args.pictures:
+            update_images(dry_run=dry_run)
 
+    for year in args.year:
         if args.premiere:
             if sys.version_info >= (3, 12):
                 print('WARNING! Pymiere was built for older versions of Python and may not work properly.')
