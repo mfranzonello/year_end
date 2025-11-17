@@ -28,6 +28,7 @@ def submission_chart(folder_values, quantity, cloud_name=None, cap=False):
                          }
 
     video_counts = folder_values.copy()
+    video_counts.loc[:, quantity] = video_counts[quantity].fillna(0)
     threshold = video_counts[quantity].max()
     adjust_threshold = adjust_thresholds[quantity]
     if cap and adjust_threshold < threshold:
