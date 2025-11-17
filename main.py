@@ -10,8 +10,7 @@ from common.secret import secrets
 from common.system import clear_screen, file_type, get_videos_in_folder, mount_g_drive
 from common.console import SplitConsole
 from migrate.scan_and_copy import get_person_folders, get_person_names, copy_if_needed
-from migrate.summarize import summarize_folders
-from adobe.bridge import get_rated_videos
+from migrate.summarize import summarize_folders, update_database_images
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
 from scraping.photos import get_share_source, source_allowed, harvest_shared_album
 from family_tree.db import get_engine
@@ -92,9 +91,13 @@ def harvest_albums(albums, year, google, icloud, headless=True):
         if year == year and source_allowed(share_source, google=google, icloud=icloud):
             harvest_shared_album(shared_album_url, person_name, profile_name, year=year, headless=headless)
 
-def update_database(year, min_stars, dry_run=True):
+def update_database(year, dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
-    summarize_folders(engine, ONE_DRIVE_FOLDER, year, min_stars, dry_run=dry_run)
+    summarize_folders(engine, ONE_DRIVE_FOLDER, year, dry_run=dry_run)
+
+def update_images(dry_run=True):
+    engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
+    update_database_images(engine, dry_run, CLOUDINARY_CLOUD, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)
 
 def update_project(year, min_stars, dry_run=True):
     ui.set_status('Opening Premiere project...')
@@ -111,8 +114,12 @@ def update_project(year, min_stars, dry_run=True):
     ui.set_status(f'Importing reviewed videos ({min_stars} star and above)...')
     for person_name in person_names:
         ui.set_status(f'\tLooking at {person_name}...')
-        videos = get_videos_in_folder(Path(ONE_DRIVE_FOLDER) / f'{year}' / f'{person_name} {year}') ## FIX FOR TALENT SHOW
-        rated_videos, _ = get_rated_videos(videos, min_stars)
+
+        ## instead of scanning the drive, pull from DB
+        files_df = None
+        rated_videos = files_df.query('video_rating >= @min_stars')
+        ##videos = get_videos_in_folder(Path(ONE_DRIVE_FOLDER) / f'{year}' / f'{person_name} {year}')
+        ##rated_videos, _ = get_rated_videos(videos, min_stars)
 
         if rated_videos:
             num_videos = len(rated_videos)
@@ -146,6 +153,7 @@ def main():
     ap.add_argument('--icloud', nargs='?', type=bool, const=True, default=False, help='Copy new files from iCloud Photos to OneDrive.')
     ap.add_argument('--gdrive', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Drive to OneDrive.')
     ap.add_argument('--premiere', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
+    ap.add_argument('--pictures', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
 
     ap.add_argument('--stars', type=int, default=MIN_STARS, help='Minimum star rating to use in project.')
 
@@ -169,7 +177,10 @@ def main():
             scan_folders(args.od, args.gd, year, dry_run)
 
         if not args.nodbupdate:
-            update_database(year, args.stars, dry_run=dry_run)
+            update_database(year, dry_run=dry_run)
+
+            if not args.pictures:
+                update_images(dry_run=dry_run)
 
         if args.premiere:
             if sys.version_info >= (3, 12):

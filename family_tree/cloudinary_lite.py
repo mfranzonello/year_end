@@ -1,6 +1,8 @@
 from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
 
+from pandas import isnull
+
 def url_is_404(url:str) -> bool:
     try:
         with urlopen(url) as response:
@@ -12,9 +14,13 @@ def url_is_404(url:str) -> bool:
 
 cloudinary_domain = 'https://res.cloudinary.com'
 
-def greyscale_zero_images(image_url:str, value:int) -> str:
-    if image_url and value == 0:
+def grayscale_image(image_url:str) -> str:
+    if image_url:
         return image_url.replace('/upload/', '/upload/e_grayscale/')
+    
+def grayscale_zero_images(image_url:str, value:int) -> str:
+    if value == 0 or isnull(value):
+        return grayscale_image(image_url)
     else:
         return image_url
 

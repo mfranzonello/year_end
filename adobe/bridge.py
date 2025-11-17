@@ -13,6 +13,9 @@ from common.system import file_type, is_file_available
 _XMP_STARTS = (b"<x:xmpmeta", b"<xmp:xmpmeta>")
 _XMP_END = b"</x:xmpmeta>"
 
+def is_examinable(file_path:Path, local_only:bool=False) -> bool:
+    return (file_type(file_path) == 'VIDEO') and (not local_only or is_file_available(file_path))
+
 def _find_xmp_bytes_fallback(path: Path, tail_bytes: int = 5000) -> Optional[bytes]:
     """Search the last N bytes of the file for XMP metadata."""
     file_size = path.stat().st_size
@@ -67,61 +70,61 @@ def _rating_from_xmp(xmp_bytes: bytes) -> Optional[int]:
 
 # --- Public API ---
 
-def get_xmp_rating(file_path: Path) -> Optional[int]:
+def get_video_rating(file_path:Path, local_only:bool=True) -> Optional[int]:
     '''Scans for xmp and returns rating'''
-    if file_type(file_path) == 'VIDEO':
+    if is_examinable(file_path, local_only): ## avoids downloading from interweb       
         xmp = _find_xmp_bytes_fallback(file_path)
         rating = _rating_from_xmp(xmp) if xmp else None
 
         return rating
 
-def get_rated_videos(videos: list[Path], min_stars:int, local_only:bool=True) -> list[Path, list]:
-    '''Returns a list of video files in file_path with xmp:Rating >= min_stars and all ratings. '''
-    rated_videos = []
-    video_ratings = []
+# # def get_rated_videos(videos: list[Path], min_stars:int, local_only:bool=True) -> list[Path, list]:
+# #     '''Returns a list of video files in file_path with xmp:Rating >= min_stars and all ratings. '''
+# #     rated_videos = []
+# #     video_ratings = []
 
-    for video in videos:
-        if local_only and is_file_available(video): ## avoids downloading from interweb
-            rating = get_xmp_rating(video)
-            if rating is not None:
-                if rating >= min_stars:
-                    rated_videos.append(video)
-                video_ratings.append(rating)
+# #     for video in videos:
+# #         if local_only and is_file_available(video): ## avoids downloading from interweb
+# #             rating = get_xmp_rating(video)
+# #             if rating is not None:
+# #                 if rating >= min_stars:
+# #                     rated_videos.append(video)
+# #                 video_ratings.append(rating)
 
-    return rated_videos, video_ratings
+    # # return rated_videos, video_ratings
 
-def get_video_durations(videos: list[Path], local_only:bool=True) -> list[float]:
-    video_durations = []
-    for video in videos:
-        if local_only and is_file_available(video): ## avoids downloading from interweb
-            v = VideoCapture(video)
-            frame_count = v.get(CAP_PROP_FRAME_COUNT)
-            fps = v.get(CAP_PROP_FPS)
-            duration = frame_count / fps if fps else 0
-        else:
-            duration = 0
-        video_durations.append(duration)
+def get_video_duration(file_path:Path, local_only:bool=True) -> float:
+    if is_examinable(file_path, local_only): ## avoids downloading from interweb
+        v = VideoCapture(file_path)
+        frame_count = v.get(CAP_PROP_FRAME_COUNT)
+        fps = v.get(CAP_PROP_FPS)
+        duration = round(frame_count / fps) if fps else 0 # return in seconds
+    else:
+        duration = 0
+    
+    return duration
 
-    return video_durations
+# # def get_video_durations(videos: list[Path], local_only:bool=True) -> list[float]:
+# #     video_durations = []
+# #     for video in videos:
+# #         video_durations.append(get_video_duration(video, local_only))
 
-def get_video_resolutions(videos: list[Path], local_only:bool=True) -> list[float]:
-    video_resolutions = []
+# #     return video_durations
+
+def get_video_resolution(file_path:Path, local_only:bool=True) -> str:
     resolution_ranges = [(480, 'lo'), (720, 'SD'), (1080, 'HD'), (1920, '4K')]
-    for video in videos:
-        if local_only and is_file_available(video): ## avoids downloading from interweb
-            v = VideoCapture(video)
-            w = v.get(CAP_PROP_FRAME_WIDTH)
-            h = v.get(CAP_PROP_FRAME_HEIGHT)
-            res_short = (min(w, h))
-            for res, res_name in resolution_ranges[::-1]:
-                if res_short >= res:
-                    resolution = res_name
-                    break
-                resolution = res_name
+    if is_examinable(file_path, local_only): ## avoids downloading from interweb
+        v = VideoCapture(file_path)
+        w = v.get(CAP_PROP_FRAME_WIDTH)
+        h = v.get(CAP_PROP_FRAME_HEIGHT)
+        dimension = (min(w, h))
+        for dim, res in resolution_ranges[::-1]:
+            if dimension >= dim:
+                resolution = res
+                break
+            resolution = res
 
-        else:
-            resolution = None
+    else:
+        resolution = None
 
-        video_resolutions.append(resolution)
-
-    return video_resolutions
+    return resolution

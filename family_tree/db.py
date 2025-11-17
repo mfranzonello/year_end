@@ -11,6 +11,21 @@ def read_sql(engine, sql):
 
     return df
 
+def execute_sql(engine, sql:str, df:DataFrame=None, returning=False):
+    if isinstance(df, DataFrame):
+        if not df.empty:
+            rows = df.to_dict(orient="records")
+            with engine.begin() as conn:
+                result = conn.execute(text(sql), rows)
+        else:
+            result = None
+
+    else:
+        with engine.begin() as conn:
+            result = conn.execute(text(sql))
+
+    if returning and result:
+        return result.fetchall()
 
 # Family Tree
 def fetch_persons(engine):
@@ -18,33 +33,33 @@ def fetch_persons(engine):
     first_name, last_name, nick_name, suffix,
     birth_date, birth_date_precision
     FROM persons
-    '''
+    ;'''
     return read_sql(engine, sql)
 
 def fetch_animals(engine):
     sql = f'''SELECT animal_id,
     first_name, nick_name, species
     FROM animals
-    '''
+    ;'''
     return read_sql(engine, sql)
 
 def fetch_parents(engine):
     sql = f'''SELECT child_id, parent_id
     FROM parents
-    '''
+    ;'''
     return read_sql(engine, sql)
 
 def fetch_pets(engine):
     sql = f'''SELECT pet_id, owner_id, relation_type,
     gotcha_date, gotcha_date_precision
     FROM pets
-    '''
+    ;'''
     return read_sql(engine, sql)
 
 def fetch_marriages(engine):
     sql = f'''SELECT husband_id, wife_id, marriage_id
     FROM marriages
-    '''
+    ;'''
     return read_sql(engine, sql)
 
 
@@ -54,57 +69,122 @@ def fetch_years(engine):
     SELECT DISTINCT project_year
     FROM folders_summary
     ORDER BY project_year ASC
-    ;
-    '''
+    ;'''
     return read_sql(engine, sql)
 
-def fetch_folders(engine, year, cloud=None):
-    sql = text(f'''
+def fetch_folder_summaries(engine, year, cloud=None):
+    sql = f'''
     SELECT project_year, year_adjust, folder_name, full_name,
     video_count, video_duration, file_size, review_count, usable_count, member_id
     FROM folders_summary
-    WHERE project_year = {year};
-    ''')
-
-    with engine.begin() as conn:
-        values = read_sql_query(sql, conn)
-
-    return values
+    WHERE project_year = {year}
+    ;'''
+    return read_sql(engine, sql)
 
 def fetch_member_ids(engine, member_type):
     sql = f'''
     SELECT {member_type}_id FROM {member_type}s
-    '''
+    ;'''
     return read_sql(engine, sql)
 
+def fetch_all_member_ids(engine):
+    sql = f'''
+    SELECT person_id AS member_id FROM persons
+    UNION
+    SELECT animal_id AS member_id FROM animals
+    UNION
+    SELECT source_id AS source_id FROM sources
+    ;'''
+    return read_sql(engine, sql)
+
+
 def update_folders(engine, df):
-    keys = ['folder_name', 'project_year']
-    cols = [c for c in df.columns if c not in keys]
-    sql = text(f'''
-    INSERT INTO folders ({", ".join(keys + cols)})
-    VALUES ({", ".join(":" + c for c in keys + cols)})
-    ON CONFLICT ({", ".join(keys)}) DO
-    UPDATE SET {", ".join(c + " = :" + c for c in cols)}
-    ;
-    ''')
+    # add new folder information
+    sql = f'''
+    INSERT INTO folders (folder_name, project_year, year_adjust)
+    VALUES (:folder_name, :project_year, :year_adjust)
+    ON CONFLICT (folder_name, project_year) DO
+    UPDATE SET year_adjust = :year_adjust
+    ;'''
+    execute_sql(engine, sql, df)
+
+    # # # remove stale folder_ids
+    # # sql = f'''
+    # # ;'''
+    # # execute_sql(engine, sql, df)
+
+def update_files(engine, df):
+    # locally stored
+    sql = f'''
+    INSERT INTO files (
+    folder_id,
+    file_name,
+    file_size,
+    video_duration,
+    video_resolution,
+    video_rating
+    )
+    SELECT
+        f.folder_id,
+        :file_name,
+        :file_size,
+        :video_duration,
+        :video_resolution,
+        :video_rating
+    FROM folders f
+    WHERE f.folder_name  = :folder_name
+      AND f.project_year = :project_year
+    ON CONFLICT (folder_id, file_name) DO UPDATE
+
+    SET file_size        = EXCLUDED.file_size,
+        video_duration   = EXCLUDED.video_duration,
+        video_resolution = EXCLUDED.video_resolution,
+        video_rating     = EXCLUDED.video_rating
+    ;'''
+    execute_sql(engine, sql, df[df['stored']=='local'])
+
+    # cloud stored
+    sql = f'''
+    INSERT INTO files (
+    folder_id,
+    file_name
+    )
+    SELECT
+        f.folder_id,
+        :file_name
+    FROM folders f
+    WHERE f.folder_name  = :folder_name
+      AND f.project_year = :project_year
+    ON CONFLICT (folder_id, file_name) DO NOTHING
+    ;'''
+
+    execute_sql(engine, sql, df[df['stored']=='cloud'])
+
+    # # # remove stale file_ids
+    # # sql = '''
+    # # WITH data AS (
+    # #     SELECT *
+    # #     FROM json_to_recordset(:rows_json) AS d (
+    # #         folder_name   text,
+    # #         project_year  int,
+    # #         file_name     text
+    # #     )
+    # # )
+    # # DELETE FROM files fi
+    # # USING folders fo
+    # # LEFT JOIN data d
+    # #     ON d.folder_name  = fo.folder_name
+    # #     AND d.project_year = fo.project_year
+    # #     AND d.file_name    = fi.file_name
+    # # WHERE fi.folder_id = fo.folder_id
+    # #     -- limit to the folder/year you’re processing:
+    # #     AND fo.folder_name  = :folder_name
+    # #     AND fo.project_year = :project_year
+    # #     -- keep only those that are *not* in the dataset
+    # #     AND d.file_name IS NULL
+    # # ;'''
+    # # execute_sql(engine, sql, df)
     
-    with engine.begin() as conn:
-        for _, row in df.iterrows():
-            conn.execute(sql, row.to_dict())
-
-def update_images(engine, df, member_type):
-    sql = text(f'''
-    INSERT INTO pictures ({member_type}_id, image_url)
-    VALUES (:{member_type}_id, :image_url)
-    ON CONFLICT ({member_type}_id) DO
-    UPDATE SET image_url = :image_url
-    ;
-    ''')
-
-    with engine.begin() as conn:
-        for _, row in df.iterrows():
-            conn.execute(sql, row.to_dict())
-
 def update_folder_member_ids(engine):
     ''' Guess what the best member_ids are based on other years already identified '''
     member_types = ['person', 'animal', 'source']
@@ -114,7 +194,7 @@ def update_folder_member_ids(engine):
     ref_sub_ids = ', '.join(f'ref.{j}_id' for j in member_types)
     f_sub_ids = ', '.join(f'f.{j}_id' for j in member_types)
 
-    sql = text(f'''
+    sql = f'''
     WITH to_fill AS (
       SELECT f_old.folder_id,
              f_old.folder_name,
@@ -138,10 +218,8 @@ def update_folder_member_ids(engine):
     FROM to_fill
     WHERE f.folder_id = to_fill.folder_id
     RETURNING f.folder_id, f.folder_name, f.project_year, {f_sub_ids}
-    ;''')
-
-    with engine.begin() as conn:
-        rows = conn.execute(sql).fetchall()
+    ;'''
+    rows = execute_sql(engine, sql, returning=True)
 
     changes_df = DataFrame(rows, columns=['folder_id', 'folder_name', 'project_year'] + [f'{j}_id' for j in member_types])
 
