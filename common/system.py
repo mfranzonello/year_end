@@ -153,8 +153,13 @@ def check_file_availability(file_path: Path):
                 return 'dehydrated_placeholder'
             # No special cloud flags -> file is fully local right now
             return 'local'
+        
         case 'macos':
-            pass
+            # check file size
+            if file_path.stat().st_blocks == 0:
+                return 'cloud_placeholder'
+            else:
+                return 'pinned_local'
             
 
 def is_file_available(file_path: Path):
