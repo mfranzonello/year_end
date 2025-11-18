@@ -113,7 +113,7 @@ def get_relatives(member_id:UUID, persons:DataFrame, animals:DataFrame, parents:
 def get_bloodline(member_id:UUID, relatives_found:list[UUID]):
     return
 
-def get_node(member_id:UUID, parents:DataFrame, pets:DataFrame, spouses:DataFrame) -> UUID:
+def get_node(member_id:UUID, parents:DataFrame, pets:DataFrame, spouses:DataFrame) -> UUID|None:
 
     if member_id in parents['child_id'].values:
         potential_id = parents.query('child_id == @member_id')['parent_id'].iloc[0]
@@ -121,7 +121,7 @@ def get_node(member_id:UUID, parents:DataFrame, pets:DataFrame, spouses:DataFram
         potential_id = pets.query('pet_id == @member_id')['owner_id'].iloc[0]
     else:
         # no parent or owner
-        return None
+        return
     
     # has at least one parent or owner, check if married
     if potential_id in spouses['person_id'].values:
@@ -144,26 +144,33 @@ def get_nodes(persons:DataFrame, animals:DataFrame, parents:DataFrame, pets:Data
 def get_generations():
     return
 
-def convert_date(d:date, precision:str):
-    match precision:
-        case 'past':
-            return date.min # earliest date
-        case 'future':
-            return date.max - relativedelta(days=1) # latest date - 1
-        case 'day':
-            return date(d.year, d.month, d.day) # actual day
-        case 'month':
-            return date(d.year, d.month, monthrange(d.year, d.month)[1]) # last day of month
-        case 'year':
-            return date(d.year + 1, 1, 1) - relativedelta(days=1) # last day of year
-        case _:
-            return date.max # latest date
+def convert_date(d:date|None, precision:str|None) -> date:
+    if d is None:
+        match precision:
+            case 'past':
+                return date.min
+            case 'future'|None:
+                return date.max
+            
+    else:
+        match precision:
+            case 'day':
+                return date(d.year, d.month, d.day) # actual day
+            case 'month':
+                return date(d.year, d.month, monthrange(d.year, d.month)[1]) # last day of month
+            case 'year':
+                return date(d.year + 1, 1, 1) - relativedelta(days=1) # last day of year
+
+    return date.max
 
 def get_entry_date(member_id:UUID, persons:DataFrame, pets:DataFrame) -> date:
     if member_id in persons['person_id'].values:
         potential_date, precision = persons.query('person_id == @member_id')[['birth_date', 'birth_date_precision']].iloc[0]
     elif member_id in pets['pet_id'].values:
         potential_date, precision = pets.query('pet_id == @member_id')[['gotcha_date', 'gotcha_date_precision']].iloc[0]
+    else:
+        potential_date = None
+        precision = None
 
     entry_date = convert_date(potential_date, precision)
     return entry_date
@@ -239,7 +246,7 @@ def get_suffix(num:int):
     else:
         return ''
 
-def get_person_name(person_s:Series) -> str:
+def get_person_name(person_s:DataFrame) -> str:
     if person_s['birth_date_precision'].iloc[0] == 'future' or person_s['birth_date'].iloc[0].date() > date.today():
         first_name = '<new baby>'
     else:
@@ -247,7 +254,7 @@ def get_person_name(person_s:Series) -> str:
     last_name = person_s['last_name'].iloc[0] + get_suffix(person_s['suffix'].iloc[0])
     return f'{first_name}\n{last_name}'
 
-def get_animal_name(animal_s:Series) -> str:
+def get_animal_name(animal_s:DataFrame) -> str:
     first_name = animal_s['nick_name'].iloc[0] or animal_s['first_name'].iloc[0]
     species_name = animal_s['species'].iloc[0]
     return f'{first_name}'
