@@ -51,6 +51,8 @@ def file_type(file_path: Path) -> str:
             return 'PREMIERE_PROJECT'
         elif suffix == AE_EXT:
             return 'AFTER_EFFECTS_PROJECT'
+        elif suffix == 'lnk':
+            return 'SHORTCUT'
 
     return 'UNKNOWN'
 
