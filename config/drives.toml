@@ -1,3 +1,6 @@
+[local_storage]
+quarantine = "Quarantine"
+
 [local_storage.onedrive]
 videos = "Videos/YIR Clips"
 

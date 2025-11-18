@@ -5,12 +5,12 @@ import argparse
 import sys
 from datetime import datetime
 
-from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, YIR_PROJECT, PR_EXT, SHARED_ALBUMS
+from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, QUARANTINE, YIR_REVIEWS, YIR_PROJECT, PR_EXT, SHARED_ALBUMS
 from common.secret import secrets
 from common.system import clear_screen, file_type, get_videos_in_folder, mount_g_drive
 from common.console import SplitConsole
-from migrate.scan_and_copy import get_person_folders, get_person_names, copy_if_needed
-from migrate.summarize import summarize_folders, update_database_images
+from repositories.migrate import copy_from_gdrive, get_person_folders, get_person_names, copy_if_needed
+from repositories.summarize import summarize_folders, update_database_images
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
 from scraping.photos import get_share_source, source_allowed, harvest_shared_album
 from family_tree.db import get_engine
@@ -30,50 +30,8 @@ MIN_STARS = 3
 
 ui = SplitConsole()
 
-def scan_folders(od, gd, year, dry_run=True):
-    od_year = od / str(year)
-    gd_year = gd / str(year)
-    
-    mount_g_drive()
-    if not gd_year.exists():
-        ui.add_update(f"WARNING: Google Drive year folder missing: {gd_year}", file=sys.stderr)
-    if not od_year.exists():
-        ui.add_update(f"WARNING: OneDrive year folder missing (will be created on demand): {od_year}", file=sys.stderr)
-
-    # --- Copy new videos from GDrive to OneDrive, per person folder ---
-    copy_report: list[tuple[str, int]] = []
-    gd_people = get_person_folders(gd_year)
-
-    ui.set_status('Checking for new videos to copy...')
-    for gd_person in sorted(gd_people, key=lambda p: p.name.lower()):
-        person_name = gd_person.name  # e.g., "Michael 2025"
-        od_person = od_year / person_name
-
-        # List candidate videos in the Google Drive person folder (non-recursive).
-        candidates = [p for p in gd_person.iterdir() if file_type(p) == 'VIDEO']
-        copied_count = 0
-        for src in candidates:
-            if copy_if_needed(src, od_person, dry_run=dry_run):
-                copied_count += 1
-
-        copy_report.append((person_name, copied_count))
-
-    # Also include note for any GDrive person folders that do not exist in OneDrive yet (only relevant when dry-run)
-    missing_targets = []
-    for gd_person in gd_people:
-        if not (od_year / gd_person.name).exists():
-            missing_targets.append(gd_person.name)
-
-    # --- Output ---
-    ui.add_update("\n=== Copy Summary (Google Drive -> OneDrive) ===")
-    if all(c == 0 for _, c in copy_report):
-        ui.add_update("No new videos detected.")
-    else:
-        for name, count in copy_report:
-            if count > 0:
-                v_s = 's' if count != 1 else ''
-                ui.add_update(f"{count} video{v_s} copied from {name}")
-        # For zero-copy entries, we keep it quiet to reduce noise.
+def scan_folders(one_drive_folder, google_drive_folder, dry_run=True):
+    missing_targets = copy_from_gdrive(one_drive_folder, google_drive_folder, QUARANTINE, ui, dry_run)
 
     if dry_run and missing_targets:
         ui.add_update("\n(Note) These OneDrive destination folders do not exist yet (will be created on --apply if needed):")
@@ -93,7 +51,7 @@ def harvest_albums(albums, year, google, icloud, headless=True):
 
 def update_database(dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
-    summarize_folders(engine, ONE_DRIVE_FOLDER, dry_run=dry_run)
+    summarize_folders(engine, ONE_DRIVE_FOLDER, QUARANTINE, dry_run=dry_run)
 
 def update_images(dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
@@ -134,7 +92,7 @@ def main():
     ap = argparse.ArgumentParser(description=f"Scan for new files and import into current year's Premiere review project.")
     
     ap.add_argument("--od", type=Path, default=Path(ONE_DRIVE_FOLDER), help=f"OneDrive Videos root (default: {ONE_DRIVE_FOLDER})")
-    ap.add_argument("--gd", type=Path, default=Path(GOOGLE_DRIVE_FOLDER), help=f"Google Drive Videos root (default: {ONE_DRIVE_FOLDER})")
+    ap.add_argument("--gd", type=Path, default=Path(GOOGLE_DRIVE_FOLDER), help=f"Google Drive Videos root (default: {GOOGLE_DRIVE_FOLDER})")
     
     YEAR = datetime.now().year
     ap.add_argument("--year", type=int, nargs='+', default=[YEAR], help=f"Year(s) subfolder to process (default: {YEAR})")
@@ -174,7 +132,7 @@ def main():
             harvest_albums(SHARED_ALBUMS, year, args.google, args.icloud, args.headless)
 
         if args.gdrive:
-            scan_folders(args.od, args.gd, year, dry_run)
+            scan_folders(args.od, args.gd, dry_run)
 
     ## can look at whole group at once
     if not args.nodbupdate:

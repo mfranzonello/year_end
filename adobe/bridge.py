@@ -99,6 +99,7 @@ def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, s
             resolution = res
 
         v.release()
+        
     else:
         duration = 0
         resolution = None
