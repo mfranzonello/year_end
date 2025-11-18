@@ -35,7 +35,7 @@ st.altair_chart(chart, use_container_width=True) # width='stretch')
 
 # pie chart for review amount
 chart = review_pie(folder_values)
-st.altair_chart(chart)
+st.altair_chart(chart, use_container_width=True)
 
 # # # family tree
 # # chart = family_tree()

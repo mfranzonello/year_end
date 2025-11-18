@@ -74,8 +74,8 @@ def fetch_years(engine:Engine) -> DataFrame:
 
 def fetch_folder_summaries(engine:Engine, year:int) -> DataFrame:
     sql = f'''
-    SELECT project_year, year_adjust, folder_name, full_name,
-    video_count, video_duration, file_size, review_count, usable_count, member_id
+    SELECT project_year, year_adjust, folder_name, full_name, member_id,
+    video_count, video_duration, file_size, review_count, usable_count, used_count
     FROM folders_summary
     WHERE project_year = {year}
     ;'''
