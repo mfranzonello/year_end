@@ -47,18 +47,21 @@ def copy_if_needed(src_file: Path, dst_folder: Path, dry_run: bool) -> bool:
 def are_dupes(file_1:Path, file_2:Path, byte_threshold=50000) -> Path|None:
     # check that extensions are the same
     if file_1.suffix.lower() == file_2.suffix.lower():
-        # check that they are roughly the same size
-        stat_1 = file_1.stat()
-        stat_2 = file_2.stat()
-        if abs(stat_1.st_size - stat_2.st_size) <= byte_threshold:
-            # check that one stem is contained in the other
-            stem_1 = file_1.stem
-            stem_2 = file_2.stem
 
-            contains_1 = stem_1 in stem_2
-            contains_2 = stem_2 in stem_1
+        # check that one stem is contained in the other
+        stem_1 = file_1.stem
+        stem_2 = file_2.stem
 
-            if contains_1 or contains_2:
+        contains_1 = stem_1 in stem_2
+        contains_2 = stem_2 in stem_1
+        if contains_1 or contains_2:
+
+            # check that they are roughly the same size
+            stat_1 = file_1.stat()
+            stat_2 = file_2.stat()
+            if abs(stat_1.st_size - stat_2.st_size) <= byte_threshold:
+
+                # check which has the longer name
                 len_1 = len(file_1.name)
                 len_2 = len(file_2.name)
 
@@ -66,14 +69,18 @@ def are_dupes(file_1:Path, file_2:Path, byte_threshold=50000) -> Path|None:
                     return file_1
                 elif len_2 > len_1:
                     return file_2
+
                 else:
+                    # check which is in a deeper subfolder
                     depth_1 = len(file_1.parts)
                     depth_2 = len(file_2.parts)
                     if depth_1 > depth_2:
                         return file_1
                     elif depth_2 > depth_1:
                         return file_2
+
                     else:
+                        # check which ws modified later
                         return file_1 if stat_1.st_mtime > stat_2.st_mtime else file_2
 
 def quarantine_file(file:Path, quarantine_root:Path) -> Path:
