@@ -47,12 +47,7 @@ def submission_chart(folder_values, quantity, cloud_name=None, cap=False):
         video_counts['folder_name']
     )#.str.replace(' ', '\n')
     video_counts['image_url'] = video_counts.apply(lambda x: get_image_url(cloud_name, x['member_id']), axis=1)
-    print(video_counts)
-
-
     video_counts['image_url'] = video_counts.apply(lambda x: grayscale_zero_images(x['image_url'], x[quantity]), axis=1)
-
-    print(video_counts)
 
     order_list = (
         video_counts.sort_values(quantity, ascending=False)['display_name'].tolist()

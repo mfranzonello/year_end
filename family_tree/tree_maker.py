@@ -19,9 +19,6 @@ def get_tree_data(engine):
     marriages = fetch_marriages(engine)
     return persons, animals, parents, pets, marriages
 
-def get_nca(member_1_id:UUID, member_2_id:UUID, persons, pets, weddings):
-    pass
-
 def get_spouses(marriages:DataFrame) -> DataFrame:
     spouses = concat([marriages[['husband_id', 'wife_id', 'marriage_id']].rename(columns={'husband_id': 'person_id', 'wife_id': 'spouse_id'}),
                       marriages[['wife_id', 'husband_id', 'marriage_id']].rename(columns={'wife_id': 'person_id', 'husband_id': 'spouse_id'})])
