@@ -1,6 +1,4 @@
-from __future__ import annotations
 import time, os, re
-from typing import Optional
 from datetime import datetime
 from pathlib import Path
 
@@ -41,15 +39,19 @@ def get_browser_profile(browser: str, name: str) -> str:
 
 # ---------- Selenium / browser setup ----------
 
-def make_driver(headless: bool = True, download_directory: Optional[Path] = None, profile_name='',
-                browser='Edge') -> webdriver.Edge:
+def make_driver(headless: bool = True, download_directory: Path|None = None, profile_name='',
+                browser='Edge') -> webdriver.Chrome|webdriver.Edge|None:
+    if browser not in ['Chrome', 'Edge']:
+        return
+
     browser_profile = get_browser_profile(browser, profile_name)
 
-    if browser == 'Chrome':
-        opts = ChromeOptions()
-    elif browser == 'Edge':
-        opts = EdgeOptions() 
-
+    match browser:
+        case 'Chrome':
+            opts = ChromeOptions()
+        case 'Edge':
+            opts = EdgeOptions()
+ 
     BROWSER_DATA = {'Chrome': CHROME_DATA, 'Edge': EDGE_DATA}[browser]
     opts.add_argument(f'--user-data-dir={BROWSER_DATA}')
     opts.add_argument(f'--profile-directory={browser_profile}')
@@ -137,8 +139,8 @@ def source_allowed(source_name, google=False, icloud=False):
 def harvest_shared_album(shared_album_url: str, 
                          ond_drive_folder:Path,
                          person_name: str,
-                         profile_name: Optional[str] = None,
-                         year: Optional[int] = None,
+                         profile_name: str|None = None,
+                         year: int|None = None,
                          headless=True, dry_run=False):
 
     # set up downloads folder

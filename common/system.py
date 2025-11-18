@@ -8,12 +8,14 @@ import subprocess
 import ctypes
 from ctypes import wintypes
 
-from common.locations import system
+from common.locations import detect_system
 from common.structure import VIDEO_EXTS, PR_EXT, AE_EXT, GOOGLE_DRIVE_FOLDER, GOOGLE_DRIVE_EXE, PREMIERE_EXE
 
 REQUIRED_PATH = Path(GOOGLE_DRIVE_FOLDER)
 WAIT_UP = 120 # seconds to wait for drive to reappear
 POLL = 3 # seconds between checks
+
+system = detect_system()
 
 # Define constants for file attributes
 match system:

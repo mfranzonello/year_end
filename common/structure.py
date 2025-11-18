@@ -1,7 +1,5 @@
 ''' Project specific variables from TOML and JASON files '''
 
-import os
-from glob import glob
 from pathlib import Path
 import json
 import tomllib

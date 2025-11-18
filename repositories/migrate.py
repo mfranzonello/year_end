@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 '''Scan and copy new videos from Google Drive to OneDrive.'''
 
 import sys
@@ -7,7 +5,7 @@ from pathlib import Path
 import shutil
 from itertools import combinations
 
-from common.system import get_person_names, is_year_folder, get_videos_in_folder, mount_g_drive
+from common.system import is_year_folder, get_videos_in_folder, mount_g_drive
 
 def get_year_folders(root:Path) -> list[Path]:
     ''' All folder names that are a year (e.g., '2020') '''
@@ -46,7 +44,7 @@ def copy_if_needed(src_file: Path, dst_folder: Path, dry_run: bool) -> bool:
     shutil.copy2(src_file, dst_folder / src_file.name)
     return True
 
-def are_dupes(file_1:Path, file_2:Path, byte_threshold=50000) -> Path:
+def are_dupes(file_1:Path, file_2:Path, byte_threshold=50000) -> Path|None:
     # check that extensions are the same
     if file_1.suffix.lower() == file_2.suffix.lower():
         # check that they are roughly the same size
@@ -78,7 +76,7 @@ def are_dupes(file_1:Path, file_2:Path, byte_threshold=50000) -> Path:
                     else:
                         return file_1 if stat_1.st_mtime > stat_2.st_mtime else file_2
 
-def quarantine_file(file:Path, quarantine_root:Path):
+def quarantine_file(file:Path, quarantine_root:Path) -> Path:
     # recreate the folder structure under quarantine
     rel_path = file.relative_to(file.parents[2])   # adjust depending on structure
     target = quarantine_root / rel_path
@@ -90,7 +88,7 @@ def quarantine_file(file:Path, quarantine_root:Path):
     file.rename(target)
     return target
 
-def dedupe_folder(files_in_folder:list[Path], quarantine_root, dry_run:bool):
+def dedupe_folder(files_in_folder:list[Path], quarantine_root, dry_run:bool) -> list[Path]|None:
     # identify candidates for removal
 
     file_pairings = combinations(files_in_folder, 2)
@@ -107,7 +105,7 @@ def dedupe_folder(files_in_folder:list[Path], quarantine_root, dry_run:bool):
             return potential_dupes
 
 
-def copy_from_gdrive(one_drive_folder, google_drive_folder, quarantine, ui, dry_run):
+def copy_from_gdrive(one_drive_folder:Path, google_drive_folder:Path, quarantine:str, ui, dry_run:bool):
     google_drive_years = get_year_folders(google_drive_folder)
 
     mount_g_drive()

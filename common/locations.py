@@ -4,7 +4,6 @@ import sys
 from glob import glob
 from pathlib import Path
 import getpass
-from typing import Optional
 
 # ---------- Helpers
 
@@ -20,7 +19,7 @@ def _glob_first(base: Path, pattern: str):
 
 # ---------- OneDrive
 
-def detect_system() -> Optional[str]:
+def detect_system() -> str|None:
     match sys.platform:
         case 'win32':
             return 'windows'
