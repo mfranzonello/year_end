@@ -2,6 +2,8 @@ import sys
 import shutil
 import time
 
+from common.system import clear_screen
+
 CSI = "\x1b["  # Control Sequence Introducer
 
 def clear_line():
@@ -29,6 +31,8 @@ class SplitConsole:
     def __init__(self, barrier_char="=", barrier_len=None):
         # Enable ANSI on Windows 10+ terminals (PowerShell/VSCode support it)
         # No special setup needed; colorama is optional for older setups.
+
+        clear_screen()
 
         self.status = ""
         width = shutil.get_terminal_size(fallback=(80, 20)).columns

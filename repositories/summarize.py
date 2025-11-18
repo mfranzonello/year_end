@@ -9,12 +9,12 @@ from adobe.bridge import get_video_rating, get_video_cv2_details, is_file_availa
 from family_tree.db import update_folders, update_files, update_folder_member_ids, fetch_all_member_ids
 from family_tree.cloudinary_heavy import configure_cloud, fill_in_temp_pictures
 
-def summarize_files(person_folder, video_files, year):
+def summarize_files(folder_name:str, video_files:list[Path], year:int) -> DataFrame:
     files_df = DataFrame()
 
-    files_df['full_path'] = get_videos_in_folder(person_folder)
+    files_df['full_path'] = video_files
     files_df['file_name'] = files_df['full_path'].apply(lambda x: x.name)
-    files_df['folder_name'] = get_person_name(person_folder)
+    files_df['folder_name'] = folder_name
     files_df['project_year'] = year
     files_df['file_size'] = files_df['full_path'].apply(lambda x: round(x.stat().st_size / 1e6, 1)) # store in MB
     files_df[['video_duration', 'video_resolution']] = files_df.apply(lambda x: get_video_cv2_details(x['full_path']), axis=1, result_type='expand').values ## get in one cv2 take   
@@ -25,7 +25,7 @@ def summarize_files(person_folder, video_files, year):
 
     return files_df
 
-def summarize_folders(engine:Engine, one_drive_folder:Path, quarantine_root, dry_run=False):
+def summarize_folders(engine:Engine, one_drive_folder:Path, quarantine_root:str, dry_run:bool=False):
     year_folders = get_year_folders(one_drive_folder)
 
     files = []
@@ -51,7 +51,7 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, quarantine_root, dry
                 dedupe_folder(video_files, one_drive_folder / quarantine_root, dry_run)
 
                 # look at videos
-                fi_df = summarize_files(person_folder, video_files, year)
+                fi_df = summarize_files(folder_name, video_files, year)
                 folders.append(fo_df)
                 if not fi_df.empty:
                     files.append(fi_df)

@@ -1,17 +1,17 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, Engine
 from pandas import read_sql_query, DataFrame
 
-def get_engine(host, port, dbname, user, password):
+def get_engine(host:str, port:str, dbname:str, user:str, password:str):
     engine = create_engine(f'postgresql+psycopg://{user}:{password}@{host}:{port}/{dbname}')
     return engine
 
-def read_sql(engine, sql):
+def read_sql(engine:Engine, sql:str) -> DataFrame:
     with engine.begin() as conn:
         df = read_sql_query(text(sql), conn)
 
     return df
 
-def execute_sql(engine, sql:str, df:DataFrame=None, returning=False):
+def execute_sql(engine:Engine, sql:str, df:DataFrame|None=None, returning:bool=False):
     if isinstance(df, DataFrame):
         if not df.empty:
             rows = df.to_dict(orient="records")
@@ -28,7 +28,7 @@ def execute_sql(engine, sql:str, df:DataFrame=None, returning=False):
         return result.fetchall()
 
 # Family Tree
-def fetch_persons(engine):
+def fetch_persons(engine:Engine) -> DataFrame:
     sql = f'''SELECT person_id,
     first_name, last_name, nick_name, suffix,
     birth_date, birth_date_precision
@@ -36,27 +36,27 @@ def fetch_persons(engine):
     ;'''
     return read_sql(engine, sql)
 
-def fetch_animals(engine):
+def fetch_animals(engine:Engine) -> DataFrame:
     sql = f'''SELECT animal_id,
     first_name, nick_name, species
     FROM animals
     ;'''
     return read_sql(engine, sql)
 
-def fetch_parents(engine):
+def fetch_parents(engine:Engine) -> DataFrame:
     sql = f'''SELECT child_id, parent_id
     FROM parents
     ;'''
     return read_sql(engine, sql)
 
-def fetch_pets(engine):
+def fetch_pets(engine:Engine) -> DataFrame:
     sql = f'''SELECT pet_id, owner_id, relation_type,
     gotcha_date, gotcha_date_precision
     FROM pets
     ;'''
     return read_sql(engine, sql)
 
-def fetch_marriages(engine):
+def fetch_marriages(engine:Engine) -> DataFrame:
     sql = f'''SELECT husband_id, wife_id, marriage_id
     FROM marriages
     ;'''
@@ -64,7 +64,7 @@ def fetch_marriages(engine):
 
 
 # Adobe project
-def fetch_years(engine):
+def fetch_years(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT DISTINCT project_year
     FROM folders_summary
@@ -72,7 +72,7 @@ def fetch_years(engine):
     ;'''
     return read_sql(engine, sql)
 
-def fetch_folder_summaries(engine, year, cloud=None):
+def fetch_folder_summaries(engine:Engine, year:int) -> DataFrame:
     sql = f'''
     SELECT project_year, year_adjust, folder_name, full_name,
     video_count, video_duration, file_size, review_count, usable_count, member_id
@@ -81,13 +81,13 @@ def fetch_folder_summaries(engine, year, cloud=None):
     ;'''
     return read_sql(engine, sql)
 
-def fetch_member_ids(engine, member_type):
+def fetch_member_ids(engine:Engine, member_type:str) -> DataFrame:
     sql = f'''
     SELECT {member_type}_id FROM {member_type}s
     ;'''
     return read_sql(engine, sql)
 
-def fetch_all_member_ids(engine):
+def fetch_all_member_ids(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT person_id AS member_id FROM persons
     UNION
@@ -98,7 +98,7 @@ def fetch_all_member_ids(engine):
     return read_sql(engine, sql)
 
 
-def update_folders(engine, df):
+def update_folders(engine:Engine, df:DataFrame):
     # add new folder information
     sql = f'''
     INSERT INTO folders (folder_name, project_year, year_adjust)
@@ -113,7 +113,7 @@ def update_folders(engine, df):
     # # ;'''
     # # execute_sql(engine, sql, df)
 
-def update_files(engine, df):
+def update_files(engine:Engine, df:DataFrame):
     # locally stored
     sql = f'''
     INSERT INTO files (
@@ -177,7 +177,7 @@ def update_files(engine, df):
     # #     AND d.project_year = fo.project_year
     # #     AND d.file_name    = fi.file_name
     # # WHERE fi.folder_id = fo.folder_id
-    # #     -- limit to the folder/year you’re processing:
+    # #     -- limit to the folder/year youï¿½re processing:
     # #     AND fo.folder_name  = :folder_name
     # #     AND fo.project_year = :project_year
     # #     -- keep only those that are *not* in the dataset
@@ -185,7 +185,7 @@ def update_files(engine, df):
     # # ;'''
     # # execute_sql(engine, sql, df)
     
-def update_folder_member_ids(engine):
+def update_folder_member_ids(engine:Engine) -> DataFrame:
     ''' Guess what the best member_ids are based on other years already identified '''
     member_types = ['person', 'animal', 'source']
     set_sub_ids = ', '.join(f'{k} = to_fill.{k}' for j in member_types if (k := f'{j}_id'))

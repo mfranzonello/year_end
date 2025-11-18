@@ -17,12 +17,12 @@ def convert_duration_time(seconds:int) -> str:
         
     return ' '.join(string)
 
-def convert_file_size(kbytes:float) -> str:
-    factors = {'GB': 1e6, 'MB': 1e3, 'KB': 1}
+def convert_file_size(mbytes:float) -> str:
+    factors = {'TB': 1e3, 'GB': 1, 'MB': 1}
     for label in factors:
-        if kbytes >= factors[label]:
+        if mbytes >= factors[label]:
             break
-    return f'{round(kbytes/factors[label], 1)} {label}'
+    return f'{round(mbytes/factors[label], 1)} {label}'
 
 
 def submission_chart(folder_values, quantity, cloud_name=None, cap=False):

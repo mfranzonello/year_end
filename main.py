@@ -7,9 +7,8 @@ from datetime import datetime
 
 from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, QUARANTINE, YIR_REVIEWS, YIR_PROJECT, PR_EXT, SHARED_ALBUMS
 from common.secret import secrets
-from common.system import clear_screen, file_type, get_videos_in_folder, mount_g_drive
 from common.console import SplitConsole
-from repositories.migrate import copy_from_gdrive, get_person_folders, get_person_names, copy_if_needed
+from repositories.migrate import copy_from_gdrive, get_person_names
 from repositories.summarize import summarize_folders, update_database_images
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
 from scraping.photos import get_share_source, source_allowed, harvest_shared_album
@@ -121,9 +120,6 @@ def main():
     
     args = ap.parse_args()
     dry_run = not args.apply  # default to dry-run unless --apply
-
-    # clean the slate
-    clear_screen()
 
     ui.add_update(f'Running with args: {args}')
 
