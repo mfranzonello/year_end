@@ -1,10 +1,11 @@
 from pathlib import Path
 
 from pandas import DataFrame, concat
+from sqlalchemy import Engine
 
-from common.system import get_person_name, get_actual_year, get_videos_in_folder, get_file_sizes
+from common.system import get_person_name, get_actual_year, get_videos_in_folder, resolve_relative_path
 from repositories.migrate import dedupe_folder, get_year_folders, get_person_folders
-from adobe.bridge import get_video_rating, get_video_cv2_details, is_file_available
+from adobe.bridge import get_video_rating, get_video_cv2_details, is_file_available, convert_to_xml, extract_media_paths
 from family_tree.db import update_folders, update_files, update_folder_member_ids, fetch_all_member_ids
 from family_tree.cloudinary_heavy import configure_cloud, fill_in_temp_pictures
 
@@ -24,7 +25,7 @@ def summarize_files(person_folder, video_files, year):
 
     return files_df
 
-def summarize_folders(engine, one_drive_folder, quarantine_root, dry_run=False):
+def summarize_folders(engine:Engine, one_drive_folder:Path, quarantine_root, dry_run=False):
     year_folders = get_year_folders(one_drive_folder)
 
     files = []
@@ -66,7 +67,17 @@ def summarize_folders(engine, one_drive_folder, quarantine_root, dry_run=False):
             
             update_folder_member_ids(engine)
 
-def update_database_images(engine, cloud_name, api_key, api_secret, dry_run=False):
+def check_used(engine:Engine, folder_path:Path, project_name:str):
+    root = convert_to_xml(folder_path, project_name)
+    relative_paths = extract_media_paths(root)
+    full_paths = [resolve_relative_path(folder_path, r) for r in relative_paths]
+    ##video_paths = [v for v in full_paths if file_type(full_paths) == 'VIDEO']
+    video_paths = full_paths
+
+    files_df = fetch_files(engine)
+
+
+def update_database_images(engine:Engine, cloud_name:str, api_key:str, api_secret:str, dry_run=False):
     configure_cloud(cloud_name, api_key, api_secret)
     member_ids = fetch_all_member_ids(engine)['member_id']
     if not dry_run:

@@ -168,3 +168,7 @@ def check_file_availability(file_path: Path):
 
 def is_file_available(file_path: Path):
     return check_file_availability(file_path) in ['pinned_local', 'local']
+
+def resolve_relative_path(parent_path:Path, rel_path:str) -> Path:
+# Combine with the project folder and resolve the .. segments
+    return (parent_path / rel_path.replace("\\", "/")).resolve()
