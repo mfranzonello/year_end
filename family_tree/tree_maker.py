@@ -4,12 +4,66 @@ from uuid import UUID
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from calendar import monthrange
+from collections import deque, defaultdict
 
 from graphviz import Graph
 from pandas import notnull, concat, DataFrame, Series
 
 from family_tree.db import fetch_persons, fetch_animals, fetch_parents, fetch_pets, fetch_marriages
 from family_tree.cloudinary_lite import get_image_url
+
+def create_maps(parents, pets, spouses):
+    relation_df = concat([parents.rename(columns={'child_id': 'lower_id', 'parent_id': 'above_id'}),
+                          parents.rename(columns={'child_id': 'lower_id', 'parent_id': 'above_id'})])
+    ancestors_map = relation_df.groupby('lower_id').agg(list).to_dict()
+    descendants_map = relation_df.groupby('lower_id').agg(list).to_dict()
+    spouses_map = spouses.set_index('person_id').to_dict()
+    return ancestors_map, descendants_map, spouses_map
+
+def get_lineage(start_id, relation_map, spouses_map):
+    lineage = {start_id: (0, False)}   # distance, via_spouse
+    queue = deque([start_id])
+
+    while queue:
+        curr = queue.popleft()
+        dist, via_spouse = lineage[curr]
+
+        # parents / owners grow upward
+        for p in relation_map.get(curr, []):
+            if p not in lineage:
+                lineage[p] = (dist + 1, via_spouse)  # same spouse flag
+                queue.append(p)
+
+        # spouses stay same level but mark branch as “via spouse”
+        for s in spouses_map.get(curr, []):
+            if s not in lineage:
+                lineage[s] = (dist, True)
+                queue.append(s)
+
+    return lineage
+
+def get_ancestors_and_descendants(member_id, parents, pets, spouses):
+    ancestors_map, descendants_map, spouses_map = create_maps(parents, pets, spouses)
+    ancestors = get_lineage(member_id, ancestors_map, spouses_map)
+    descendants = get_lineage(member_id, descendants_map, spouses_map)
+    return ancestors, descendants
+
+def nearest_common_lineage(member_id_1, member_id_2, relation_map, spouses_map):
+    lin_1 = get_lineage(member_id_1, relation_map, spouses_map)
+    lin_2 = get_lineage(member_id_2, relation_map, spouses_map)
+
+    common = set(lin_1.keys()) & set(lin_2.keys())
+    if not common:
+        return None  # unrelated
+
+    # Pick the NCL by minimizing total distance
+    best = min(common, key=lambda a: (lin_1[a] + lin_2[a], max(lin_1[a], lin_2[a])))
+
+    return {'lineage_id': best,
+            'dist_id_1': lin_1[best][0],
+            'dist_id_2': lin_2[best][0],
+            'in-law': not(lin_1[best][1] and lin_2[best][1]) # related by spouse
+            }
 
 def get_tree_data(engine):
     persons = fetch_persons(engine)
