@@ -58,12 +58,24 @@ def get_file_sizes(videos:list[Path]) -> list[int]:
     file_sizes = [int(v.stat().st_size // 1e6) for v in videos]
     return file_sizes
 
-def get_videos_in_folder(folder: Path) -> list[Path]:
-    '''Get list of video files in a folder (non-recursive).'''
-    videos = []
+def get_file_types_in_folder(folder:Path, f_type:str) -> list[Path]:
+    '''Get list of specific file types in a folder'''
+    files = []
     if folder.exists():
-        videos = [p for p in folder.iterdir() if file_type(p) == 'VIDEO']
-    return videos
+        files = [p for p in folder.iterdir() if file_type(p) == f_type]
+    return files
+
+def get_videos_in_folder(folder:Path) -> list[Path]:
+    '''Get list of video files in a folder'''
+    return get_file_types_in_folder(folder, 'VIDEO')
+
+def get_premiere_projects_in_folder(folder:Path) -> list[Path]:
+    '''Get list of prproj files in a folder'''
+    return get_file_types_in_folder(folder, 'PREMIERE_PROJECT')
+
+def get_after_effecst_projects_in_folder(folder:Path) -> list[Path]:
+    '''Get list of prproj files in a folder'''
+    return get_file_types_in_folder(folder, 'AFTER_EFFECTS_PROJECT')
 
 def is_year_folder(path:Path) -> bool:
     name = path.name  # just the final component
@@ -167,7 +179,6 @@ def check_file_availability(file_path: Path):
             else:
                 return 'pinned_local'
             
-
 def is_file_available(file_path: Path):
     return check_file_availability(file_path) in ['pinned_local', 'local']
 

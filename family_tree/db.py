@@ -81,6 +81,15 @@ def fetch_folder_summaries(engine:Engine, year:int) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
+def fetch_files(engine:Engine, year:int) -> DataFrame:
+    sql = f'''
+    SELECT file_id, folder_name, project_year, file_name, file_size,
+    video_duration, video_resolution, video_rating, used_status
+    FROM files JOIN folders USING (folder_id)
+    WHERE project_year = {year}
+    ;'''
+    return read_sql(engine, sql)
+
 def fetch_member_ids(engine:Engine, member_type:str) -> DataFrame:
     sql = f'''
     SELECT {member_type}_id FROM {member_type}s
@@ -185,6 +194,18 @@ def update_files(engine:Engine, df:DataFrame):
     # # ;'''
     # # execute_sql(engine, sql, df)
     
+def update_files_used(engine:Engine, df:DataFrame):
+    sql = f'''
+    UPDATE files fi
+    SET used_status = :used_status
+    FROM folders fo
+    WHERE fi.folder_id   = fo.folder_id
+      AND fo.folder_name = :folder_name
+      AND fo.project_year = :project_year
+      AND fi.file_name    = :file_name;
+    '''
+    execute_sql(engine, sql, df)
+
 def update_folder_member_ids(engine:Engine) -> DataFrame:
     ''' Guess what the best member_ids are based on other years already identified '''
     member_types = ['person', 'animal', 'source']

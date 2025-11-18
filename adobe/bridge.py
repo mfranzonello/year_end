@@ -107,11 +107,12 @@ def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, s
 
     return duration, resolution
 
-def convert_to_xml(folder_path:Path, project_name:str) -> ET.Element:
-    with gzip.open(folder_path / f'{project_name}.prproj', 'rb') as f:
-        xml_content = f.read()
+def convert_to_xml(project_path:Path) -> ET.Element|None:
+    if file_type(project_path) == 'PREMIERE_PROJECT':
+        with gzip.open(project_path, 'rb') as f:
+            xml_content = f.read()
 
-    return ET.fromstring(xml_content)
+        return ET.fromstring(xml_content)
 
 def extract_media_paths(root:ET.Element) -> list[str]:
     clip_refs = [c.find('Clip').get('ObjectRef') for c in root.findall('SubClip')]

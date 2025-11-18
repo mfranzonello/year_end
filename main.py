@@ -5,11 +5,13 @@ import argparse
 import sys
 from datetime import datetime
 
-from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, QUARANTINE, YIR_REVIEWS, YIR_PROJECT, PR_EXT, SHARED_ALBUMS
+from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, QUARANTINE, SHARED_ALBUMS
+from common.structure import YIR_REVIEWS, YIR_PROJECT, PR_EXT ## needed for pymiere control
 from common.secret import secrets
 from common.console import SplitConsole
-from repositories.migrate import copy_from_gdrive, get_person_names
-from repositories.summarize import summarize_folders, update_database_images
+from common.system import get_person_names
+from repositories.migrate import copy_from_gdrive
+from repositories.summarize import get_usable_videos, summarize_folders, update_database_images
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
 from scraping.photos import get_share_source, source_allowed, harvest_shared_album
 from family_tree.db import get_engine
@@ -50,13 +52,18 @@ def harvest_albums(albums, year, google, icloud, headless=True):
 
 def update_database(dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
-    summarize_folders(engine, ONE_DRIVE_FOLDER, QUARANTINE, dry_run=dry_run)
+    summarize_folders(engine, ONE_DRIVE_FOLDER, QUARANTINE, ADOBE_FOLDER,
+                      ui, dry_run=dry_run)
+    engine.dispose()
 
 def update_images(dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
     update_database_images(engine, dry_run, CLOUDINARY_CLOUD, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)
+    engine.dispose()
 
-def update_project(year, min_stars, dry_run=True):
+def update_project(year:int, min_stars:int, dry_run=True):
+    engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
+
     ui.set_status('Opening Premiere project...')
     project_id = open_project(Path(ADOBE_FOLDER) / f'{YIR_REVIEWS} {year}' / f'{YIR_PROJECT} {year}{PR_EXT}')
 
@@ -72,20 +79,19 @@ def update_project(year, min_stars, dry_run=True):
     for person_name in person_names:
         ui.set_status(f'\tLooking at {person_name}...')
 
-        ## instead of scanning the drive, pull from DB
-        files_df = None
-        rated_videos = files_df.query('video_rating >= @min_stars')
-        ##videos = get_videos_in_folder(Path(ONE_DRIVE_FOLDER) / f'{year}' / f'{person_name} {year}')
-        ##rated_videos, _ = get_rated_videos(videos, min_stars)
+        # pull from DB
+        usable_videos = get_usable_videos(engine, year, min_stars)
 
-        if rated_videos:
-            num_videos = len(rated_videos)
+        if not usable_videos.empty:
+            num_videos = len(usable_videos)
             v_s = 's' if num_videos != 1 else ''
-            ui.set_status(f'\t\tChecking {len(rated_videos)} video{v_s} for {person_name}...')
-            import_videos(project_id, videos_bin, person_name, rated_videos)
+            ui.set_status(f'\t\tChecking {len(usable_videos)} video{v_s} for {person_name}...')
+            import_videos(project_id, videos_bin, person_name, usable_videos) ## need to convert to paths
 
     ui.set_status('Setting labels...')
     set_family_color_labels(videos_bin)
+
+    engine.dispose()
 
 def main():
     ap = argparse.ArgumentParser(description=f"Scan for new files and import into current year's Premiere review project.")
