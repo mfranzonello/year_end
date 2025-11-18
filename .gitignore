@@ -1,6 +1,6 @@
 # my custom hides
 .devcontainer
-.streamlit/
+.streamlit/secrets.toml
 .secrets/
 
 *.TMP

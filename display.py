@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import streamlit as st
 import altair as alt
 
@@ -14,24 +16,25 @@ CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
 
 engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
-years = fetch_years(engine) ##.sort_values('project_year')
-year = st.selectbox('Year to Review', years, len(years) - 1)
+pages = [('yir_count', 'YIR Status'),
+         ('family_tree', 'Family Tree')]
 
-folder_values = fetch_folder_summaries(engine, year)
+# set up page
+def set_sidebar():
+    st.set_page_config(page_title='Franzonello Family')
+    with st.sidebar:
+        st.page_link('display.py', label='Home')
+        for page_py, page_name in pages:
+            page_module = f'pages/{page_py}.py'
+            if Path(page_module).exists():
+                st.page_link(page_module, label=page_name)
 
-st.title(f'Franzonello YIR {year}')
+set_sidebar()
+st.title(f'Franzonello Family Fun Times')
+st.write(f'Choose your adventure!')
 
-# bar chart for submissions
-options =['video_count', 'video_duration', 'file_size']
-display = ['count', 'duration', 'filesize']
-quantity = st.radio(label='Display Quantity', options=options, format_func=lambda x: display[options.index(x)], horizontal=True)
-chart = submission_chart(folder_values, quantity, cloud_name=CLOUDINARY_CLOUD, cap=True)
-st.altair_chart(chart, use_container_width=True) # width='stretch')
-
-# pie chart for review amount
-chart = review_pie(folder_values)
-st.altair_chart(chart)
-
-# # # family tree
-# # chart = family_tree()
-# # st.graphviz_chart(chart)
+for page_py, page_name in pages:
+    page_module = f'pages/{page_py}.py'
+    if Path(page_module).exists():
+        if st.button(page_name):
+            st.switch_page(page_module)

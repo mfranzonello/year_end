@@ -68,8 +68,8 @@ def submission_chart(folder_values, quantity, cloud_name=None, cap=False):
     x_domain_max = float(x_max + pad)
 
     # UI sizing
-    bar_height = 30                        # pixels per row (bigger = easier to read)
-    gap = 5.0                      # choose a value in video_count units
+    bar_height = 30                   # pixels per row (bigger = easier to read)
+    gap = 0# 5.0                      # choose a value in video_count units
 
 
     base = alt.Chart(video_counts)
