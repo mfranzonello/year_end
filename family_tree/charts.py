@@ -6,7 +6,7 @@ from family_tree.cloudinary_lite import grayscale_zero_images, get_image_url
 BLUE_UNDER = '#0D5176'
 BLUE_OVER = '#0D98BA'
 
-def get_duration_time(seconds:int) -> str:
+def convert_duration_time(seconds:int) -> str:
     string = []
     if seconds >= 60 * 60:
         string.append(f'{seconds/60//60}H')
@@ -16,6 +16,13 @@ def get_duration_time(seconds:int) -> str:
         string.append(f'{seconds}S')
         
     return ' '.join(string)
+
+def convert_file_size(kbytes:float) -> str:
+    factors = {'GB': 1e6, 'MB': 1e3, 'KB': 1}
+    for label in factors:
+        if kbytes >= factors[label]:
+            break
+    return f'{round(kbytes/factors[label], 1)} {label}'
 
 
 def submission_chart(folder_values, quantity, cloud_name=None, cap=False):
