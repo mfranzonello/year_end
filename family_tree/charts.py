@@ -107,10 +107,11 @@ def submission_chart(folder_values, quantity, cloud_name=None, cap=False):
 
 
 def review_pie(review_stats):
-    review_df = DataFrame([['n/a', review_stats['no']],
-                           ['low', review_stats['lo']],
-                           ['high', review_stats['hi']],
-                           ['used', review_stats['go']],
+    no, lo, hi, go = review_stats[['no', 'lo', 'hi', 'go']].iloc[0]
+    review_df = DataFrame([['n/a', no],
+                           ['low', lo],
+                           ['high', hi],
+                           ['used', go],
                            ],
                           columns = ['category', 'count'])
 
