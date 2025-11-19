@@ -3,7 +3,6 @@ import os
 import sys
 from glob import glob
 from pathlib import Path
-import getpass
 
 # ---------- Helpers
 
@@ -227,8 +226,6 @@ def detect_app_path(apps_details, app_name):
 def get_browser_data(browser_details):
     match system:
         case 'windows':
-            drive, _ = os.path.splitdrive(os.getcwd())
-            return Path(drive) / 'Users' / getpass.getuser() / browser_details / 'User Data'
+            return Path.home() / 'AppData' / 'Local'/ browser_details / 'User Data'
         case 'macos':
-            user_path = Path.home()
-            return user_path / 'Library' / 'Application Support' / browser_details
+            return Path.home() / 'Library' / 'Application Support' / browser_details

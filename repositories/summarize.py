@@ -54,7 +54,7 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, quarantine_root:str,
     folders = []
 
     for year_folder in year_folders:
-        ui.set_status(f'Checking {year_folder}')
+        ui.add_update(f'Checking {year_folder}')
         project_year = int(year_folder.name)
         
         # prepare Premiere Project

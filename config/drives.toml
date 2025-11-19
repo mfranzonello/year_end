@@ -68,4 +68,4 @@ name = "Microsoft Edge"
 # browser user data
 [user_data]
 chrome = "Google/Chrome"
-edge = "Microsoft Edge"
+edge = "Microsoft/Edge"

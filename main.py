@@ -43,12 +43,13 @@ def harvest_albums(albums, year, google, icloud, headless=True):
     for album in albums:
         shared_album_url = album['url']
         person_name = album['person']
-        year = album['year']
+        project_year = album['year']
         profile_name = album['profile']
         share_source = get_share_source(shared_album_url)
 
-        if year == year and source_allowed(share_source, google=google, icloud=icloud):
-            harvest_shared_album(shared_album_url, person_name, profile_name, year=year, headless=headless)
+        if project_year == year and source_allowed(share_source, google=google, icloud=icloud):
+             harvest_shared_album(shared_album_url, ONE_DRIVE_FOLDER, person_name, profile_name, year=project_year,
+                                 headless=headless)
 
 def update_database(dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
@@ -112,8 +113,8 @@ def main():
 
     ap.add_argument('--nodbupdate', nargs='?', type=bool, const=True, default=False, help="Don't update the database.")
 
-    ap.add_argument('--google', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Photos to OneDrive.')
-    ap.add_argument('--icloud', nargs='?', type=bool, const=True, default=False, help='Copy new files from iCloud Photos to OneDrive.')
+    ap.add_argument('--gphotos', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Photos to OneDrive.')
+    ap.add_argument('--iphotos', nargs='?', type=bool, const=True, default=False, help='Copy new files from iCloud Photos to OneDrive.')
     ap.add_argument('--gdrive', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Drive to OneDrive.')
     ap.add_argument('--premiere', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
     ap.add_argument('--pictures', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
@@ -130,8 +131,8 @@ def main():
     ui.add_update(f'Running with args: {args}')
 
     for year in args.year:
-        if args.google or args.icloud:
-            harvest_albums(SHARED_ALBUMS, year, args.google, args.icloud, args.headless)
+        if args.gphotos or args.iphotos:
+            harvest_albums(SHARED_ALBUMS, year, args.gphotos, args.iphotos, args.headless)
 
         if args.gdrive:
             scan_folders(args.od, args.gd, dry_run)

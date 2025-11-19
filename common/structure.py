@@ -55,6 +55,7 @@ EDGE_EXE = detect_app_path(_drives['executables'], 'edge')
 CHROME_DATA = get_browser_data(_drives['user_data']['chrome'])
 EDGE_DATA = get_browser_data(_drives['user_data']['edge'])
 CHROME_STATE = read_json(CHROME_DATA, 'Local State', '')
+
 EDGE_STATE = read_json(EDGE_DATA, 'Local State', '')
 
 # LOCATIONS

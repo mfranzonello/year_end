@@ -152,6 +152,8 @@ def harvest_shared_album(shared_album_url: str,
 
     downloaded_files = None
 
+    shared_album_url = shared_album_url.strip().rstrip('/') # remove ending /
+
     match get_share_source(shared_album_url):
         case 'google':
             # get videos from Google Photos

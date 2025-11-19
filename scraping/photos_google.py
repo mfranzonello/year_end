@@ -94,7 +94,7 @@ def inspect_and_download(driver: WebDriver, share_url: str, known_files: list=[]
     # hit 'I' to see info panel
     ActionChains(driver).send_keys('i').perform() # send 'i' key
     css_match = f'div.{G_FILENAME_CLASS}[aria-label^="{G_FILENAME_ARIA_LABEL}"]' # load info panel
-    W(driver, timeout).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_match))) # wait for filename element
+    WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_match))) # wait for filename element
     element = driver.find_element(By.CSS_SELECTOR, css_match) # get filename element
     filename = element.get_attribute('aria-label').replace(f'{G_FILENAME_ARIA_LABEL}: ', '').strip() # extract filename
 
