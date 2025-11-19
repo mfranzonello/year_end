@@ -7,9 +7,9 @@ from time import time, sleep
 import subprocess
 import ctypes
 from ctypes import wintypes
-import pythoncom
 
-from win32com.shell import shell, shellcon
+import pythoncom
+from win32com.shell import shell
 
 from common.locations import detect_system
 from common.structure import VIDEO_EXTS, PR_EXT, AE_EXT, GOOGLE_DRIVE_FOLDER, GOOGLE_DRIVE_EXE, PREMIERE_EXE
@@ -45,6 +45,9 @@ def clear_screen():
             os.system('clear')
 
 def file_type(file_path: Path) -> str:
+    if file_path.is_dir():
+        return 'DIRECTORY'
+    
     if file_path.is_file():
         suffix = file_path.suffix.lower()
 
@@ -54,7 +57,7 @@ def file_type(file_path: Path) -> str:
             return 'PREMIERE_PROJECT'
         elif suffix == AE_EXT:
             return 'AFTER_EFFECTS_PROJECT'
-        elif suffix == 'lnk':
+        elif suffix == '.lnk':
             return 'SHORTCUT'
 
     return 'UNKNOWN'
@@ -63,37 +66,40 @@ def get_file_sizes(videos:list[Path]) -> list[int]:
     file_sizes = [int(v.stat().st_size // 1e6) for v in videos]
     return file_sizes
 
-def get_file_types_in_folder(folder:Path, f_type:str) -> list[Path]:
+def get_file_types_in_folder(folder:Path, f_type:str, recursive) -> list[Path]:
     '''Get list of specific file types in a folder'''
     files = []
     if folder.exists():
-        files = [p for p in folder.iterdir() if file_type(p) == f_type]
+        if recursive:
+            files = [p for p in folder.rglob('*') if file_type(p) == f_type]
+        else:
+            files = [p for p in folder.glob('*') if file_type(p) == f_type]
     return files
 
-def get_videos_in_folder(folder:Path) -> list[Path]:
+def get_videos_in_folder(folder:Path, recursive=False) -> list[Path]:
     '''Get list of video files in a folder'''
-    return get_file_types_in_folder(folder, 'VIDEO')
+    return get_file_types_in_folder(folder, 'VIDEO', recursive)
 
-def get_premiere_projects_in_folder(folder:Path) -> list[Path]:
+def get_premiere_projects_in_folder(folder:Path, recursive=False) -> list[Path]:
     '''Get list of prproj files in a folder'''
-    return get_file_types_in_folder(folder, 'PREMIERE_PROJECT')
+    return get_file_types_in_folder(folder, 'PREMIERE_PROJECT', recursive)
 
-def get_after_effecst_projects_in_folder(folder:Path) -> list[Path]:
+def get_after_effecst_projects_in_folder(folder:Path, recursive=False) -> list[Path]:
     '''Get list of prproj files in a folder'''
-    return get_file_types_in_folder(folder, 'AFTER_EFFECTS_PROJECT')
+    return get_file_types_in_folder(folder, 'AFTER_EFFECTS_PROJECT', recursive)
 
-def get_shortcuts_in_folder(folder:Path) -> list[Path]:
+def get_shortcuts_in_folder(folder:Path, recursive=False) -> list[Path]:
     '''Get list of video files in a folder'''
     if system_name != 'windows':
         return []
     else:
-        return get_file_types_in_folder(folder, 'SHORTCUT')
+        return get_file_types_in_folder(folder, 'SHORTCUT', recursive)
 
 def is_year_folder(path:Path) -> bool:
     name = path.name  # just the final component
     return len(name) == 4 and name.isdigit()
 
-def get_actual_year(folder_path:Path) -> int:
+def get_actual_year(folder_path:Path) -> int|None:
     match = re.search(r"\s(\d{4})$", folder_path.name)
     return int(match.group(1)) if match else None
 

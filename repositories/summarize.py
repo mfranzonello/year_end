@@ -46,7 +46,7 @@ def compare_used(folder_name:str, year:int, video_files:list[Path], full_paths:l
     return files_df
     
 def summarize_folders(engine:Engine, one_drive_folder:Path, quarantine_root:str, project_folder:Path,
-                      ui:SplitConsole, dry_run:bool=False):
+                      ui:SplitConsole, dedupe:bool=False, dry_run:bool=False):
     year_folders = get_year_folders(one_drive_folder)
 
     files = []
@@ -77,12 +77,13 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, quarantine_root:str,
             video_files = get_videos_in_folder(person_folder)
             if len(video_files):
             
-                # get rid of dupes
-                ui.set_status(f'Deduping {person_folder}')
-                deduped = dedupe_folder(video_files, one_drive_folder / quarantine_root, dry_run)
-                if deduped:
-                    # don't check files that were quarantined
-                    video_files = [vf for vf in video_files if vf not in deduped]
+                # get rid of dupes if requested
+                if dedupe:
+                    ui.set_status(f'Deduping {person_folder}')
+                    deduped = dedupe_folder(video_files, one_drive_folder / quarantine_root, dry_run)
+                    if deduped:
+                        # don't check files that were quarantined
+                        video_files = [vf for vf in video_files if vf not in deduped]
 
                 # look at videos
                 fi_df = summarize_files(folder_name, project_year, video_files)

@@ -143,7 +143,7 @@ def copy_from_gdrive(one_drive_folder:Path, google_drive_folder:Path, quarantine
             o_person = o_year / person_name
 
             # see what's in the folder before quarantine
-            video_files = get_videos_in_folder(g_person)
+            video_files = get_videos_in_folder(g_person, recursive=True)
         
             # dedupe the source folder
             dupes = dedupe_folder(video_files, google_drive_folder / quarantine, dry_run)
