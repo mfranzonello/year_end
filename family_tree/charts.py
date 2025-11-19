@@ -110,6 +110,13 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
 def review_pie(review_stats):
     no, lo, hi, go = review_stats[['no_count', 'lo_count',
                                    'hi_count', 'go_count']].iloc[0]
+
+    custom_colors = ['#D5C7C5',
+                     '#FAC638',
+                     '#7EA44B',
+                     '#2F6B9A',
+                     ]
+
     review_df = DataFrame([['n/a', no],
                            ['low', lo],
                            ['high', hi],
@@ -118,8 +125,10 @@ def review_pie(review_stats):
                           columns = ['category', 'count'])
 
     base = alt.Chart(review_df).encode(
-        alt.Theta('count:Q').stack(True),
-        alt.Color('category:N').legend(None)
+        theta=alt.Theta('count:Q').stack(True),
+        color=alt.Color('category:N',
+                        scale=alt.Scale(domain=review_df['category'].tolist(),
+                                        range=custom_colors)).legend(None)
         )
     pie = base.mark_arc(outerRadius=120)
     text = base.mark_text(radius=140, size=20).encode(text = 'category:N')
