@@ -81,6 +81,25 @@ def fetch_folder_summaries(engine:Engine, year:int) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
+def fetch_usable_summary(engine:Engine, year:int, min_stars:int) -> DataFrame:
+    sql = f'''
+    SELECT project_year,
+    COUNT(file_id) - GREATEST (
+        COALESCE(SUM(CASE WHEN video_rating > 0 THEN 1 END), 0),
+        COALESCE(SUM(CASE WHEN video_rating >= {min_stars} THEN 1 END), 0),
+        COALESCE(SUM(CASE WHEN used_status THEN 1 END), 0)) AS no_count,
+    SUM(CASE WHEN video_rating > 0 THEN 1 END) - GREATEST (
+        COALESCE(SUM(CASE WHEN video_rating >= {min_stars} THEN 1 END), 0),
+        COALESCE(SUM(CASE WHEN used_status THEN 1 END), 0)) AS lo_count,
+    SUM(CASE WHEN video_rating >= {min_stars} THEN 1 END) - GREATEST (
+        COALESCE(SUM(CASE WHEN used_status THEN 1 END), 0)) as hi_count,
+    SUM(CASE WHEN used_status THEN 1 END) as go_count
+    FROM files JOIN folders USING(folder_id)
+        WHERE project_year = {year}
+    GROUP BY project_year;
+    '''
+    return read_sql(engine, sql)
+
 def fetch_files(engine:Engine, year:int) -> DataFrame:
     sql = f'''
     SELECT file_id, folder_name, project_year, file_name, file_size,

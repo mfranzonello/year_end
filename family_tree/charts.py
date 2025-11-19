@@ -106,17 +106,11 @@ def submission_chart(folder_values, quantity, cloud_name=None, cap=False):
 
 
 
-def review_pie(folder_values):
-    stats = folder_values[['video_count', 'review_count', 'usable_count', 'used_count']].sum()
-    stats = stats.rename({'video_count': 'no',
-                          'review_count': 'lo',
-                          'usable_count': 'hi',
-                          'used_count': 'go'})
-
-    review_df = DataFrame([['n/a', stats['no'] - stats[['lo', 'hi', 'go']].max()],
-                           ['low', stats['lo'] - stats[['hi', 'go']].max()],
-                           ['high', stats['hi'] - stats['go']],
-                           ['used', stats['go']],
+def review_pie(review_stats):
+    review_df = DataFrame([['n/a', review_stats['no']],
+                           ['low', review_stats['lo']],
+                           ['high', review_stats['hi']],
+                           ['used', review_stats['go']],
                            ],
                           columns = ['category', 'count'])
 
