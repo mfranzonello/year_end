@@ -74,7 +74,7 @@ def fetch_years(engine:Engine) -> DataFrame:
 
 def fetch_folder_summaries(engine:Engine, year:int) -> DataFrame:
     sql = f'''
-    SELECT project_year, year_adjust, folder_name, full_name, member_id,
+    SELECT project_year, folder_name, full_name, member_id,
     video_count, video_duration, file_size, review_count, usable_count, used_count
     FROM folders_summary
     WHERE project_year = {year}
@@ -132,17 +132,20 @@ def fetch_all_member_ids(engine:Engine) -> DataFrame:
 def update_folders(engine:Engine, df:DataFrame):
     # add new folder information
     sql = f'''
-    INSERT INTO folders (folder_name, project_year, year_adjust)
-    VALUES (:folder_name, :project_year, :year_adjust)
-    ON CONFLICT (folder_name, project_year) DO
-    UPDATE SET year_adjust = :year_adjust
+    INSERT INTO folders (folder_name, project_year)
+    VALUES (:folder_name, :project_year)
+    ON CONFLICT (folder_name, project_year) DO NOTHING
     ;'''
     execute_sql(engine, sql, df)
 
-    # # # remove stale folder_ids
-    # # sql = f'''
-    # # ;'''
-    # # execute_sql(engine, sql, df)
+def purge_folders(engine:Engine, df:DataFrame):
+    # remove stale folder_ids
+    sql = f'''
+    DELETE FROM folders
+    WHERE (folder__name, project_year) NOT IN
+    (VALUES (:folder_name, project_year))
+    ;'''
+    execute_sql(engine, sql, df)
 
 def update_files(engine:Engine, df:DataFrame):
     # locally stored
@@ -188,33 +191,33 @@ def update_files(engine:Engine, df:DataFrame):
       AND f.project_year = :project_year
     ON CONFLICT (folder_id, file_name) DO NOTHING
     ;'''
-
     execute_sql(engine, sql, df[df['stored']=='cloud'])
 
-    # # # remove stale file_ids
-    # # sql = '''
-    # # WITH data AS (
-    # #     SELECT *
-    # #     FROM json_to_recordset(:rows_json) AS d (
-    # #         folder_name   text,
-    # #         project_year  int,
-    # #         file_name     text
-    # #     )
-    # # )
-    # # DELETE FROM files fi
-    # # USING folders fo
-    # # LEFT JOIN data d
-    # #     ON d.folder_name  = fo.folder_name
-    # #     AND d.project_year = fo.project_year
-    # #     AND d.file_name    = fi.file_name
-    # # WHERE fi.folder_id = fo.folder_id
-    # #     -- limit to the folder/year you�re processing:
-    # #     AND fo.folder_name  = :folder_name
-    # #     AND fo.project_year = :project_year
-    # #     -- keep only those that are *not* in the dataset
-    # #     AND d.file_name IS NULL
-    # # ;'''
-    # # execute_sql(engine, sql, df)
+def purge_files(engine:Engine, df:DataFrame):
+    # remove stale file_ids
+    sql = '''
+    WITH data AS (
+        SELECT *
+        FROM json_to_recordset(:rows_json) AS d (
+            folder_name   text,
+            project_year  int,
+            file_name     text
+        )
+    )
+    DELETE FROM files fi
+    USING folders fo
+    LEFT JOIN data d
+        ON d.folder_name  = fo.folder_name
+        AND d.project_year = fo.project_year
+        AND d.file_name    = fi.file_name
+    WHERE fi.folder_id = fo.folder_id
+        -- limit to the folder/year you're processing:
+        AND fo.folder_name  = :folder_name
+        AND fo.project_year = :project_year
+        -- keep only those that are *not* in the dataset
+        AND d.file_name IS NULL
+    ;'''
+    execute_sql(engine, sql, df)
     
 def update_files_used(engine:Engine, df:DataFrame):
     sql = f'''

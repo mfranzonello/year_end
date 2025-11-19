@@ -1,3 +1,4 @@
+# specific folder structure and file naming
 [local_storage]
 quarantine = "Quarantine"
 
@@ -6,6 +7,7 @@ videos = "Videos/YIR Clips"
 
 [local_storage.google_drive]
 videos = "YIR Clips"
+shortcuts = ".shortcuts-targets-by-id"
 
 [local_storage.adobe]
 projects = "Reviews"
@@ -13,10 +15,20 @@ reviews = "Year End"
 project = "YIR"
 bin = "Videos"
 
+# executables for Windows and Mac
+[executables]
+
+[executables.windows]
+
 [executables.windows.google_drive]
 vendor = "Google"
 name = "Drive File Stream"
 exe = "GoogleDriveFS"
+
+[executables.windows.drobpox]
+vendor = "Dropbox"
+name = "Client"
+exe = "Dropbox"
 
 [executables.windows.premiere]
 vendor = "Adobe"
@@ -33,8 +45,16 @@ vendor = "Microsoft"
 name = "Edge"
 exe = ["msedge", "msedgedriver"]
 
+[executables.macos]
+
 [executables.macos.google_drive]
 name = "GoogleDrive"
+
+[executables.macos.dropbox]
+name = "Dropbox"
+
+[executables.macos.onedrive]
+name = "OneDrive"
 
 [executables.macos.premiere]
 name = "Adobe Premiere Pro"
@@ -45,6 +65,7 @@ name = "Google Chrome"
 [executables.macos.edge]
 name = "Microsoft Edge"
 
+# browser user data
 [user_data]
 chrome = "Google/Chrome"
 edge = "Microsoft Edge"
