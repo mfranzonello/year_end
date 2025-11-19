@@ -84,16 +84,19 @@ def fetch_folder_summaries(engine:Engine, year:int) -> DataFrame:
 def fetch_usable_summary(engine:Engine, year:int, min_stars:int) -> DataFrame:
     sql = f'''
     SELECT project_year,
-    COUNT(file_id) - GREATEST (
-        COALESCE(SUM(CASE WHEN video_rating > 0 THEN 1 END), 0),
-        COALESCE(SUM(CASE WHEN video_rating >= {min_stars} THEN 1 END), 0),
-        COALESCE(SUM(CASE WHEN used_status THEN 1 END), 0)) AS no_count,
-    SUM(CASE WHEN video_rating > 0 THEN 1 END) - GREATEST (
-        COALESCE(SUM(CASE WHEN video_rating >= {min_stars} THEN 1 END), 0),
-        COALESCE(SUM(CASE WHEN used_status THEN 1 END), 0)) AS lo_count,
-    SUM(CASE WHEN video_rating >= {min_stars} THEN 1 END) - GREATEST (
-        COALESCE(SUM(CASE WHEN used_status THEN 1 END), 0)) as hi_count,
-    SUM(CASE WHEN used_status THEN 1 END) as go_count
+    COUNT(file_id) - SUM (GREATEST (
+        CASE WHEN video_rating > 0 THEN 1 ELSE 0 END,
+        CASE WHEN video_rating >= {min_stars} THEN 1 ELSE 0 END,
+        CASE WHEN used_status THEN 1 ELSE 0 END
+    )) AS no_count,
+    SUM(CASE WHEN video_rating > 0 THEN 1 ELSE 0 END) - SUM (GREATEST (
+        CASE WHEN video_rating >= {min_stars} THEN 1 ELSE 0 END,
+        CASE WHEN used_status THEN 1 ELSE 0 END
+    )) AS lo_count,
+    SUM(CASE WHEN video_rating >= {min_stars} THEN 1 ELSE 0 END) - SUM (
+        CASE WHEN used_status THEN 1 ELSE 0 END
+    ) as hi_count,
+    SUM(CASE WHEN used_status THEN 1 ELSE 0 END) as go_count
     FROM files JOIN folders USING(folder_id)
         WHERE project_year = {year}
     GROUP BY project_year;
