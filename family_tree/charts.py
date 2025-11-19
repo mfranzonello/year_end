@@ -19,13 +19,14 @@ def convert_duration_time(seconds:int) -> str:
 
 def convert_file_size(mbytes:float) -> str:
     factors = {'TB': 1e3, 'GB': 1, 'MB': 1}
+    label = 'MB'
     for label in factors:
         if mbytes >= factors[label]:
             break
     return f'{round(mbytes/factors[label], 1)} {label}'
 
 
-def submission_chart(folder_values, quantity, cloud_name=None, cap=False):
+def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:bool=False):
     display_label = {'video_count': 'Videos',
                      'video_duration': 'Duration',
                      'file_size': 'MB'}[quantity]
@@ -107,7 +108,8 @@ def submission_chart(folder_values, quantity, cloud_name=None, cap=False):
 
 
 def review_pie(review_stats):
-    no, lo, hi, go = review_stats[['no', 'lo', 'hi', 'go']].iloc[0]
+    no, lo, hi, go = review_stats[['no_count', 'lo_count',
+                                   'hi_count', 'go_count']].iloc[0]
     review_df = DataFrame([['n/a', no],
                            ['low', lo],
                            ['high', hi],
