@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 from itertools import combinations
 
-from common.system import is_year_folder, get_videos_in_folder, mount_g_drive
+from common.system import is_year_folder, get_videos_in_folder, get_shortcuts_in_folder, mount_g_drive
 
 def get_year_folders(root:Path) -> list[Path]:
     ''' All folder names that are a year (e.g., '2020') '''
@@ -20,6 +20,17 @@ def get_person_folders(root:Path) -> list[Path]:
         return []
     else:
         return [p for p in root.iterdir() if p.is_dir()]
+
+def get_subfolders(root:Path) -> list[Path]:
+    '''All subdirectories, including via shortcuts'''
+    if not root.exists():
+        return []
+    else:
+        subfolders = []
+        for r in set([root] + get_shortcuts_in_folder(root)):
+            subfolders.append(p for p in r.rglob('*') if p.is_dir())
+        
+        return subfolders
 
 def gather_names_casefold(folder: Path) -> set[str]:
     """Set of existing filenames (casefolded) in a folder (non-recursive)."""

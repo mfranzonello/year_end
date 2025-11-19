@@ -99,12 +99,12 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, quarantine_root:str,
         if len(folders):
             folders_df = concat(folders)
             update_folders(engine, folders_df)
-            purge_folders(engine, folders_df)
+            ##purge_folders(engine, folders_df)
 
         if len(files):
             files_df = concat(files)
             update_files(engine, files_df)
-            purge_files(engine, files_df)
+            ##purge_files(engine, files_df)
 
         if len(files_used):
             files_used_df = concat(files_used)

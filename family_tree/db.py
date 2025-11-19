@@ -142,8 +142,8 @@ def purge_folders(engine:Engine, df:DataFrame):
     # remove stale folder_ids
     sql = f'''
     DELETE FROM folders
-    WHERE (folder__name, project_year) NOT IN
-    (VALUES (:folder_name, project_year))
+    WHERE (folder_name, project_year) NOT IN
+    (VALUES (:folder_name, :project_year))
     ;'''
     execute_sql(engine, sql, df)
 

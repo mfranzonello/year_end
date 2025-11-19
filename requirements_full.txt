@@ -6,6 +6,7 @@ pymiere==1.4.1
 opencv-python==4.12.0.88
 cloudinary==1.44.1
 graphviz==0.21
+pywin32==3.1.1
 
 # Re-enable distutils for Python 3.12+ (hacky)
 setuptools; python_version >= "3.12"

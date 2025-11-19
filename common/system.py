@@ -7,6 +7,9 @@ from time import time, sleep
 import subprocess
 import ctypes
 from ctypes import wintypes
+import pythoncom
+
+from win32com.shell import shell, shellcon
 
 from common.locations import detect_system
 from common.structure import VIDEO_EXTS, PR_EXT, AE_EXT, GOOGLE_DRIVE_FOLDER, GOOGLE_DRIVE_EXE, PREMIERE_EXE
@@ -15,10 +18,10 @@ REQUIRED_PATH = Path(GOOGLE_DRIVE_FOLDER)
 WAIT_UP = 120 # seconds to wait for drive to reappear
 POLL = 3 # seconds between checks
 
-system = detect_system()
+system_name = detect_system()
 
 # Define constants for file attributes
-match system:
+match system_name:
     case 'windows':
         FILE_ATTRIBUTE_REPARSE_POINT = 0x0400
         FILE_ATTRIBUTE_OFFLINE = 0x1000
@@ -35,7 +38,7 @@ match system:
 
 def clear_screen():
     '''Clears the console screen based on the operating system.'''
-    match system:
+    match system_name:
         case 'windows':
             os.system('cls')
         case _:
@@ -78,6 +81,13 @@ def get_premiere_projects_in_folder(folder:Path) -> list[Path]:
 def get_after_effecst_projects_in_folder(folder:Path) -> list[Path]:
     '''Get list of prproj files in a folder'''
     return get_file_types_in_folder(folder, 'AFTER_EFFECTS_PROJECT')
+
+def get_shortcuts_in_folder(folder:Path) -> list[Path]:
+    '''Get list of video files in a folder'''
+    if system_name != 'windows':
+        return []
+    else:
+        return get_file_types_in_folder(folder, 'SHORTCUT')
 
 def is_year_folder(path:Path) -> bool:
     name = path.name  # just the final component
@@ -150,7 +160,7 @@ def mount_g_drive():
 
 def check_file_availability(file_path: Path):
     '''Return one of: 'pinned_local', 'local', 'cloud_placeholder', 'dehydrated_placeholder', 'unknown'.'''
-    match system:
+    match system_name:
         case 'windows':
             attrs = GetFileAttributesW(str(file_path))
             if attrs == 0xFFFFFFFF:  # INVALID_FILE_ATTRIBUTES
@@ -187,3 +197,32 @@ def is_file_available(file_path: Path):
 def resolve_relative_path(parent_path:Path, rel_path:str) -> Path:
 # Combine with the project folder and resolve the .. segments
     return (parent_path / rel_path.replace("\\", "/")).resolve()
+
+def resolve_shortcut_target(shortcut_path:Path) -> Path|None:
+    """
+    Resolve a Windows .lnk shortcut to its target path using pywin32.
+    Returns a Path or None if it can't be resolved.
+    """
+    if system_name == 'windows':
+        # Create COM ShellLink object
+        pythoncom.CoInitialize()
+        try:
+            link = pythoncom.CoCreateInstance(
+                shell.CLSID_ShellLink,
+                None,
+                pythoncom.CLSCTX_INPROC_SERVER,
+                shell.IID_IShellLink
+            )
+            persist_file = link.QueryInterface(pythoncom.IID_IPersistFile)
+
+            # Load the .lnk file
+            persist_file.Load(str(shortcut_path), 0)
+
+            # Get the target path
+            path_buf, _ = link.GetPath(shell.SLGP_UNCPRIORITY)
+            if not path_buf:
+                return None
+
+            return Path(path_buf)
+        finally:
+            pythoncom.CoUninitialize()
