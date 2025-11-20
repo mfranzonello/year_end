@@ -145,7 +145,7 @@ def detect_gdrive_base() -> Path | None:
 
             return _first_existing(candidates)
 
-        case 'macoS':
+        case 'macos':
             # macOS (Apple File Provider)
             cloud_root = home / "Library" / "CloudStorage"
             # Typical names: GoogleDrive-<account>, GoogleDrive, GoogleDriveSharedDrives (the base).

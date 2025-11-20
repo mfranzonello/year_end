@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 from itertools import combinations
 
-from common.system import is_year_folder, get_videos_in_folder, get_shortcuts_in_folder, mount_g_drive
+from common.system import is_year_folder, get_videos_in_folder, get_shortcuts_in_folder, mount_g_drive, sort_paths
 
 def get_year_folders(root:Path) -> list[Path]:
     ''' All folder names that are a year (e.g., '2020') '''
@@ -138,7 +138,7 @@ def copy_from_gdrive(one_drive_folder:Path, google_drive_folder:Path, quarantine
         g_people = get_person_folders(g_year)
 
         ui.set_status('Checking for new videos to copy...')
-        for g_person in sorted(g_people, key=lambda p: p.name.lower()):
+        for g_person in sort_paths(g_people):
             person_name = g_person.name  # e.g., "Michael 2025"
             o_person = o_year / person_name
 
