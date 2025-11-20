@@ -143,29 +143,6 @@ def update_folders(engine:Engine, df:DataFrame):
     ;'''
     execute_sql(engine, sql, df=df)
 
-def purge_folders(engine:Engine, df:DataFrame):
-    # remove stale folder_ids
-    # Build VALUES list with bind params instead of literal strings
-    value_clauses = []
-    params: dict[str, object] = {}
-
-    for idx, row in enumerate(df[['folder_name', 'project_year']].itertuples(index=False)):
-        name_key = f'name_{idx}'
-        year_key = f'year_{idx}'
-        value_clauses.append(f'(:{name_key}, :{year_key})')
-        params[name_key] = row.folder_name
-        params[year_key] = row.project_year
-
-    values = ', '.join(value_clauses)
-
-    sql = f'''
-    DELETE FROM folders 
-    WHERE (folder_name, project_year) NOT IN (
-        VALUES {values}
-    )
-    ;'''
-    execute_sql(engine, sql, params=params)
-
 def update_files(engine:Engine, df:DataFrame):
     # locally stored
     sql = f'''
@@ -212,32 +189,43 @@ def update_files(engine:Engine, df:DataFrame):
     ;'''
     execute_sql(engine, sql, df=df[df['stored']=='cloud'])
 
+def build_values(df: DataFrame, cols:list[str]) -> tuple[str, dict[str, object]]:
+    # get values and params for complex calls
+    value_clauses = []
+    params: dict[str, object] = {}
+
+    for idx, row in df[cols].iterrows():
+        append_string = ', '.join(f':{c}_{idx}' for c in cols)
+        value_clauses.append(f'({append_string})')
+        for c in cols:
+            params[f'{c}_{idx}'] = row[f'{c}_{idx}']
+        
+    values = ', '.join(value_clauses)
+
+    return values, params
+
+def purge_folders(engine:Engine, df:DataFrame):
+    # remove stale folder_ids
+    # Build VALUES list with bind params instead of literal strings
+    values, params = build_values(df, ['folder_name', 'project_year'])
+    sql = f'''
+    DELETE FROM folders 
+    WHERE (folder_name, project_year) NOT IN (VALUES {values})
+    ;'''
+    execute_sql(engine, sql, params=params)
+
 def purge_files(engine:Engine, df:DataFrame):
-    # # # remove stale file_ids
-    # # sql = '''
-    # # WITH data AS (
-    # #     SELECT *
-    # #     FROM json_to_recordset(:rows_json) AS d (
-    # #         folder_name   text,
-    # #         project_year  int,
-    # #         file_name     text
-    # #     )
-    # # )
-    # # DELETE FROM files fi
-    # # USING folders fo
-    # # LEFT JOIN data d
-    # #     ON d.folder_name  = fo.folder_name
-    # #     AND d.project_year = fo.project_year
-    # #     AND d.file_name    = fi.file_name
-    # # WHERE fi.folder_id = fo.folder_id
-    # #     -- limit to the folder/year you're processing:
-    # #     AND fo.folder_name  = :folder_name
-    # #     AND fo.project_year = :project_year
-    # #     -- keep only those that are *not* in the dataset
-    # #     AND d.file_name IS NULL
-    # # ;'''
-    # # execute_sql(engine, sql, df=df)
-    return
+    # remove stale file_ids
+    values, params = build_values(df, ['folder_name', 'file_name', 'project_year'])
+    sql = f'''
+    WITH files_to_keep AS (
+    SELECT file_id FROM files JOIN folders USING (folder_id) WHERE
+    (folder_name, project_year, file_name) IN (VALUES {values})  
+    )
+    
+    DELETE FROM files WHERE file_id NOT IN (SELECT file_id FROM files_to_keep)
+    ;'''
+    execute_sql(engine, sql, params=params)
     
 def update_files_used(engine:Engine, df:DataFrame):
     sql = f'''
