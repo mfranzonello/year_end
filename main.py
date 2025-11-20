@@ -41,15 +41,20 @@ def scan_folders(one_drive_folder, google_drive_folder, dry_run=True):
 
 def harvest_albums(albums, year, google, icloud, headless=True):
     for album in albums:
-        shared_album_url = album['url']
-        person_name = album['person']
-        project_year = album['year']
-        profile_name = album['profile']
-        share_source = get_share_source(shared_album_url)
+        notes = album.get('notes')
+        if notes:
+            print(f'Skipping album: {notes}')
 
-        if project_year == year and source_allowed(share_source, google=google, icloud=icloud):
-             harvest_shared_album(shared_album_url, ONE_DRIVE_FOLDER, person_name, profile_name, year=project_year,
-                                 headless=headless)
+        else:
+            shared_album_url = album['url']
+            person_name = album['person']
+            project_year = album['year']
+            profile_name = album['profile']
+            share_source = get_share_source(shared_album_url)
+
+            if project_year == year and source_allowed(share_source, google=google, icloud=icloud):
+                 harvest_shared_album(shared_album_url, ONE_DRIVE_FOLDER, person_name, profile_name, year=project_year,
+                                     headless=headless)
 
 def update_database(dry_run=True):
     engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)

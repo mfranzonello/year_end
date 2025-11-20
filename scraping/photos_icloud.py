@@ -79,9 +79,9 @@ def open_first_grid_item(driver: WebDriver, grid_items: list=[]):
         # click on first grid-item
         grid_items[0].click()
         # hit enter to open
+        time.sleep(3) ## need better way to wait for loading
         ActionChains(driver).send_keys(Keys.ENTER).perform() # send '->' key
         time.sleep(3) ## need better way to wait for loading
-
     else:
         print('No grid items.')
 
@@ -168,17 +168,25 @@ def harvest_i_shared_album(driver: WebDriver, download_directory: Path, shared_a
                 downloaded_files = []
 
                 all_found = False
+                in_queue = 0
                 while not all_found:
+                    
                     n, N = get_position(driver)
 
                     filename, downloadable = inspect_and_download(driver, known_files, dry_run=dry_run)
 
                     if filename and downloadable:
+                        in_queue += 1
                         downloaded_files.append(filename)
                             
                     # check if there are more to look at
                     all_found = n == N
                     if not all_found:
                         move_to_next_item(driver)
+
+                if in_queue >= 0 and in_queue % 20:
+                    # take a breather if downloading too many
+                    time.sleep(2)
+                    in_queue = 0
 
                 return downloaded_files
