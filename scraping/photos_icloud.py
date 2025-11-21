@@ -52,7 +52,7 @@ def move_to_next_item(driver: WebDriver):
     '''Navigate through gallery'''
     ActionChains(driver).send_keys(Keys.ARROW_RIGHT).perform() # send '->' key
 
-def get_info_panel(driver: WebDriver, timeout=3):
+def get_info_panel(driver: WebDriver, timeout=10):
     '''Open the info panel to see file title'''
     info_panel = driver.find_elements(By.CSS_SELECTOR, f'div.{I_INFO_PANEL_CLASS}')
     if not info_panel:
@@ -120,7 +120,7 @@ def inspect_and_download(driver: WebDriver, known_files: list, dry_run=False):
     downloadable = False
 
     if check_if_video(driver):
-        filename = driver.find_element(By.CSS_SELECTOR, f'div.{I_FILENAME_CLASS}').text.lower() + '.mov'
+        filename = driver.find_element(By.CSS_SELECTOR, f'div.{I_FILENAME_CLASS}').text.lower() # + '.mov'
         downloadable = filename not in known_files
 
         if not downloadable:
@@ -164,7 +164,7 @@ def harvest_i_shared_album(driver: WebDriver, download_directory: Path, shared_a
                 get_info_panel(driver)
 
                 # look at each item
-                known_files = [f.name.lower() for f in get_videos_in_folder(download_directory)]
+                known_files = [f.stem.lower() for f in get_videos_in_folder(download_directory)] ## iCloud Photos obscures file extension
                 downloaded_files = []
 
                 all_found = False
@@ -184,9 +184,9 @@ def harvest_i_shared_album(driver: WebDriver, download_directory: Path, shared_a
                     if not all_found:
                         move_to_next_item(driver)
 
-                if in_queue >= 0 and in_queue % 20:
-                    # take a breather if downloading too many
-                    time.sleep(2)
-                    in_queue = 0
+                    if in_queue and not (in_queue % 20):
+                        # take a breather if downloading too many
+                        time.sleep(1)
+                        in_queue = 0
 
                 return downloaded_files

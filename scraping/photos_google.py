@@ -114,38 +114,6 @@ def inspect_and_download(driver:WebDriver, known_files:list=[], timeout=15, dry_
 
 # ---------- Main block ----------
 
-
-
-# # def inspect_and_download(driver: WebDriver, share_url: str, known_files: list=[], timeout=15, dry_run=False) -> str:
-# #     ''' Checks if file is already downloaded, and downloads if it's new '''
-# #     filename = None
-
-# #     # go to shared URL
-# #     print(f'Navigating to {share_url} ...')
-# #     driver.get(share_url)
-    
-# #     # hit 'I' to see info panel
-# #     ActionChains(driver).send_keys('i').perform() # send 'i' key
-# #     css_match = f'div.{G_FILENAME_CLASS}[aria-label^="{G_FILENAME_ARIA_LABEL}"]' # load info panel
-# #     WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_match))) # wait for filename element
-# #     element = driver.find_element(By.CSS_SELECTOR, css_match) # get filename element
-# #     filename = element.get_attribute('aria-label').replace(f'{G_FILENAME_ARIA_LABEL}: ', '').strip() # extract filename
-
-# #     downloadable = filename.lower() not in known_files
-# #     if not downloadable:
-# #         print(f'Already downloaded {filename}, skipping.')
-# #     else:
-# #         if not dry_run:
-# #             # download by hitting 'Ctrl + D'
-# #             print(f'Downloading {filename} ...')
-# #             download_item(driver)
-# #         else:
-# #             print('Dry run only, no actual download.')
-
-# #     return filename, downloadable
-
-# ---------- Main block ----------
-
 def harvest_g_shared_album(driver: WebDriver, download_directory: Path, shared_album_url: str, dry_run=False):
     # go to Google Photos shared album
     driver.get(shared_album_url)
@@ -187,26 +155,5 @@ def harvest_g_shared_album(driver: WebDriver, download_directory: Path, shared_a
                         downloaded_files.append(filename)
 
                 select_next_tile(driver)
-
-    # # else:
-    # #     # get all image and video files
-    # #     tile_values = get_all_item_tiles(driver)
-
-    # #     # get the share urls for videos only
-    # #     shared_video_urls = get_share_video_urls(tile_values)
-
-    # #     n_videos = len(shared_video_urls)
-    # #     print(f'Total items found: {len(tile_values)}')
-    # #     print(f'Total videos found: {n_videos}')
-
-    # #     if n_videos:
-    # #         known_files = [f.name.lower() for f in get_videos_in_folder(download_directory)]
-    # #         downloaded_files = []
-
-    # #         for v_url, item_type in shared_video_urls:
-    # #             if item_type.lower() == G_VIDEO_ARIA_LABEL.lower():
-    # #                 filename, downloadable = inspect_and_download(driver, v_url, known_files, dry_run=dry_run)
-                    # if filename and downloadable:
-                    #     downloaded_files.append(filename)
 
         return downloaded_files

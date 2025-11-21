@@ -117,13 +117,17 @@ def wait_for_expected_downloads(download_directory: Path,
         all_done = True
         for target in expected:
             # exists and not a temp file still in progress
-            temp = target.with_suffix(target.suffix + ".crdownload")
+            suffix = target.suffix if target.suffix != '' else '.*' ## iCloud Photos doesn't say the extension before downloading
+            temp = target.with_suffix(suffix + ".crdownload")
             if not target.exists() or temp.exists():
                 all_done = False
                 break
+
         if all_done:
             return True
+
         time.sleep(poll)
+
     return False
 
 # ---------- Main block ----------
