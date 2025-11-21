@@ -7,7 +7,7 @@ from database.db import read_sql, execute_sql, build_values
 def fetch_years(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT DISTINCT project_year
-    FROM folders_summary
+    FROM project.folders_summary
     ORDER BY project_year ASC
     ;'''
     return read_sql(engine, sql)
@@ -16,7 +16,7 @@ def fetch_folder_summaries(engine:Engine, year:int) -> DataFrame:
     sql = f'''
     SELECT project_year, folder_name, full_name, member_id,
     video_count, video_duration, file_size, review_count, usable_count, used_count
-    FROM folders_summary
+    FROM project.folders_summary
     WHERE project_year = {year}
     ;'''
     return read_sql(engine, sql)
@@ -37,7 +37,7 @@ def fetch_usable_summary(engine:Engine, year:int, min_stars:int) -> DataFrame:
         CASE WHEN used_status THEN 1 ELSE 0 END
     ) as hi_count,
     SUM(CASE WHEN used_status THEN 1 ELSE 0 END) as go_count
-    FROM files JOIN folders USING(folder_id)
+    FROM project.files JOIN project.folders USING(folder_id)
         WHERE project_year = {year}
     GROUP BY project_year;
     '''
@@ -47,16 +47,16 @@ def fetch_files(engine:Engine, year:int) -> DataFrame:
     sql = f'''
     SELECT file_id, folder_name, project_year, file_name, file_size,
     video_duration, video_resolution, video_rating, used_status
-    FROM files JOIN folders USING (folder_id)
+    FROM project.files JOIN project.folders USING (folder_id)
     WHERE project_year = {year}
     ;'''
     return read_sql(engine, sql)
 
-def fetch_member_ids(engine:Engine, member_type:str) -> DataFrame:
-    sql = f'''
-    SELECT {member_type}_id FROM {member_type}s
-    ;'''
-    return read_sql(engine, sql)
+# # def fetch_member_ids(engine:Engine, member_type:str) -> DataFrame:
+# #     sql = f'''
+# #     SELECT {member_type}_id FROM {member_type}s
+# #     ;'''
+# #     return read_sql(engine, sql)
 
 def fetch_all_member_ids(engine:Engine) -> DataFrame:
     sql = f'''
@@ -64,7 +64,7 @@ def fetch_all_member_ids(engine:Engine) -> DataFrame:
     UNION
     SELECT animal_id AS member_id FROM animals
     UNION
-    SELECT source_id AS source_id FROM sources
+    SELECT source_id AS source_id FROM project.sources
     ;'''
     return read_sql(engine, sql)
 
@@ -72,7 +72,7 @@ def fetch_all_member_ids(engine:Engine) -> DataFrame:
 def update_folders(engine:Engine, df:DataFrame):
     # add new folder information
     sql = f'''
-    INSERT INTO folders (folder_name, project_year)
+    INSERT INTO project.folders (folder_name, project_year)
     VALUES (:folder_name, :project_year)
     ON CONFLICT (folder_name, project_year) DO NOTHING
     ;'''
@@ -81,7 +81,7 @@ def update_folders(engine:Engine, df:DataFrame):
 def update_files(engine:Engine, df:DataFrame):
     # locally stored
     sql = f'''
-    INSERT INTO files (
+    INSERT INTO project.files (
     folder_id,
     file_name,
     file_size,
@@ -96,7 +96,7 @@ def update_files(engine:Engine, df:DataFrame):
         :video_duration,
         :video_resolution,
         :video_rating
-    FROM folders f
+    FROM project.folders f
     WHERE f.folder_name  = :folder_name
       AND f.project_year = :project_year
     ON CONFLICT (folder_id, file_name) DO UPDATE
@@ -110,41 +110,26 @@ def update_files(engine:Engine, df:DataFrame):
 
     # cloud stored
     sql = f'''
-    INSERT INTO files (
+    INSERT INTO project.files (
     folder_id,
     file_name
     )
     SELECT
         f.folder_id,
         :file_name
-    FROM folders f
+    FROM project.folders f
     WHERE f.folder_name  = :folder_name
       AND f.project_year = :project_year
     ON CONFLICT (folder_id, file_name) DO NOTHING
     ;'''
     execute_sql(engine, sql, df=df[df['stored']=='cloud'])
 
-def build_values(df: DataFrame, cols:list[str]) -> tuple[str, dict[str, object]]:
-    # get values and params for complex calls
-    value_clauses = []
-    params: dict[str, object] = {}
-
-    for idx, row in df[cols].iterrows():
-        append_string = ', '.join(f':{c}_{idx}' for c in cols)
-        value_clauses.append(f'({append_string})')
-        for c in cols:
-            params[f'{c}_{idx}'] = row[f'{c}_{idx}']
-        
-    values = ', '.join(value_clauses)
-
-    return values, params
-
 def purge_folders(engine:Engine, df:DataFrame):
     # remove stale folder_ids
     # Build VALUES list with bind params instead of literal strings
     values, params = build_values(df, ['folder_name', 'project_year'])
     sql = f'''
-    DELETE FROM folders 
+    DELETE FROM project.folders 
     WHERE (folder_name, project_year) NOT IN (VALUES {values})
     ;'''
     execute_sql(engine, sql, params=params)
@@ -154,19 +139,19 @@ def purge_files(engine:Engine, df:DataFrame):
     values, params = build_values(df, ['folder_name', 'file_name', 'project_year'])
     sql = f'''
     WITH files_to_keep AS (
-    SELECT file_id FROM files JOIN folders USING (folder_id) WHERE
+    SELECT file_id FROM project.files JOIN project.folders USING (folder_id) WHERE
     (folder_name, project_year, file_name) IN (VALUES {values})  
     )
     
-    DELETE FROM files WHERE file_id NOT IN (SELECT file_id FROM files_to_keep)
+    DELETE FROM project.files WHERE file_id NOT IN (SELECT file_id FROM files_to_keep)
     ;'''
     execute_sql(engine, sql, params=params)
     
 def update_files_used(engine:Engine, df:DataFrame):
     sql = f'''
-    UPDATE files fi
+    UPDATE project.files fi
     SET used_status = :used_status
-    FROM folders fo
+    FROM project.folders fo
     WHERE fi.folder_id   = fo.folder_id
       AND fo.folder_name = :folder_name
       AND fo.project_year = :project_year
@@ -189,10 +174,10 @@ def update_folder_member_ids(engine:Engine) -> DataFrame:
              f_old.folder_name,
              f_old.project_year,
              {ref_sub_ids}
-      FROM folders AS f_old
+      FROM project.folders AS f_old
       CROSS JOIN LATERAL (
         SELECT {f_ref_sub_ids}
-        FROM folders AS f_ref
+        FROM project.folders AS f_ref
         WHERE f_ref.folder_name = f_old.folder_name
           AND num_nonnulls({f_ref_sub_ids}) = 1
         ORDER BY
@@ -202,7 +187,7 @@ def update_folder_member_ids(engine:Engine) -> DataFrame:
       ) AS ref
       WHERE num_nonnulls({f_old_sub_ids}) = 0
     )
-    UPDATE folders AS f
+    UPDATE project.folders AS f
     SET {set_sub_ids}
     FROM to_fill
     WHERE f.folder_id = to_fill.folder_id
