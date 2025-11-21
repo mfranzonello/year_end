@@ -114,7 +114,7 @@ def check_if_video(driver: WebDriver):
     is_video = bool(driver.find_elements(By.CSS_SELECTOR, selector))
     return is_video
 
-def inspect_and_download(driver: WebDriver, known_files: list, dry_run=False):
+def inspect_and_download(driver: WebDriver, known_files: list, dry_run=False): ## for some reason, not acknowledging dry run
     # check if video and get filename extension
     filename = None
     downloadable = False

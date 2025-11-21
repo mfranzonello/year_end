@@ -126,6 +126,7 @@ def wait_for_expected_downloads(download_directory: Path,
         if all_done:
             return True
 
+        print('Waiting for downloads...')
         time.sleep(poll)
 
     return False
