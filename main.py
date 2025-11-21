@@ -10,11 +10,11 @@ from common.structure import YIR_REVIEWS, YIR_PROJECT, PR_EXT ## needed for pymi
 from common.secret import secrets
 from common.console import SplitConsole
 from common.system import get_person_names
+from database.db import get_engine
 from repositories.migrate import copy_from_gdrive
 from repositories.summarize import get_usable_videos, summarize_folders, update_database_images
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
 from scraping.photos import get_share_source, source_allowed, harvest_shared_album
-from family_tree.db import get_engine
 
 PGSECRETS = secrets['postgresql']['host']
 PGHOST = secrets['postgresql']['host']

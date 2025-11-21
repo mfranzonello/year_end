@@ -7,7 +7,7 @@ from common.console import SplitConsole
 from common.system import get_premiere_projects_in_folder, get_videos_in_folder, resolve_relative_path, is_file_available
 from repositories.migrate import dedupe_folder, get_year_folders, get_person_folders
 from adobe.bridge import get_video_rating, get_video_cv2_details, is_file_available, convert_to_xml, extract_media_paths
-from family_tree.db import update_folders, purge_folders, update_files, purge_files, \
+from database.db_project import update_folders, purge_folders, update_files, purge_files, \
     update_folder_member_ids, update_files_used, fetch_all_member_ids, fetch_files
 from family_tree.cloudinary_heavy import configure_cloud, fill_in_temp_pictures
 

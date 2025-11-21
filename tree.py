@@ -3,7 +3,7 @@ from uuid import UUID
 from graphviz import Graph
 
 from common.secret import secrets
-from family_tree.db import get_engine
+from database.db import get_engine
 from family_tree.tree_maker import create_tree
 
 

@@ -9,7 +9,7 @@ from collections import deque, defaultdict
 from graphviz import Graph
 from pandas import notnull, concat, DataFrame, Series
 
-from family_tree.db import fetch_persons, fetch_animals, fetch_parents, fetch_pets, fetch_marriages
+from database.db_family import fetch_persons, fetch_animals, fetch_parents, fetch_pets, fetch_marriages
 from family_tree.cloudinary_lite import get_image_url
 
 def create_maps(parents, pets, spouses):

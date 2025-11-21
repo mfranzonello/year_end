@@ -9,12 +9,6 @@ from common.structure import COLOR_LABELS, ADOBE_BIN
 from common.system import file_type, mount_premiere
 
 ITEM_TYPES = {1: 'CLIP', 2: 'BIN', 3: 'ROOT', 4: 'FILE'}
-ITEM_COLORS = ['Violet', 'Iris', 'Caribbean', 'Lavender',
-               'Cerulean', 'Forest', 'Rose', 'Mango',
-               'Purple', 'Blue', 'Teal', 'Magenta',
-               'Tan', 'Green', 'Brown', 'Yellow']
-
-PREMIERE_LOCATION = r"C:\Program Files\Adobe\Adobe Premiere Pro 2025\Adobe Premiere Pro.exe"
 
 ## TODO: move videos in the wrong bins
 ## projectitem.getMediaPath()

@@ -1,72 +1,7 @@
-from sqlalchemy import create_engine, text, Engine
-from pandas import read_sql_query, DataFrame
+from sqlalchemy import Engine
+from pandas import DataFrame
 
-def get_engine(host:str, port:str, dbname:str, user:str, password:str):
-    engine = create_engine(f'postgresql+psycopg://{user}:{password}@{host}:{port}/{dbname}')
-    return engine
-
-def read_sql(engine:Engine, sql:str) -> DataFrame:
-    with engine.begin() as conn:
-        df = read_sql_query(text(sql), conn)
-
-    return df
-
-def execute_sql(engine:Engine, sql:str, params:dict|None=None,
-                df:DataFrame|None=None, returning:bool=False):
-    if isinstance(params, dict):
-        with engine.begin() as conn:
-            result = conn.execute(text(sql), params or {})
-
-    elif isinstance(df, DataFrame):
-        if not df.empty:
-            rows = df.to_dict(orient="records")
-            with engine.begin() as conn:
-                result = conn.execute(text(sql), rows)
-        else:
-            result = None
-
-    else:
-        with engine.begin() as conn:
-            result = conn.execute(text(sql))
-
-    if returning and result:
-        return result.fetchall()
-
-# Family Tree
-def fetch_persons(engine:Engine) -> DataFrame:
-    sql = f'''SELECT person_id,
-    first_name, last_name, nick_name, suffix,
-    birth_date, birth_date_precision
-    FROM persons
-    ;'''
-    return read_sql(engine, sql)
-
-def fetch_animals(engine:Engine) -> DataFrame:
-    sql = f'''SELECT animal_id,
-    first_name, nick_name, species
-    FROM animals
-    ;'''
-    return read_sql(engine, sql)
-
-def fetch_parents(engine:Engine) -> DataFrame:
-    sql = f'''SELECT child_id, parent_id
-    FROM parents
-    ;'''
-    return read_sql(engine, sql)
-
-def fetch_pets(engine:Engine) -> DataFrame:
-    sql = f'''SELECT pet_id, owner_id, relation_type,
-    gotcha_date, gotcha_date_precision
-    FROM pets
-    ;'''
-    return read_sql(engine, sql)
-
-def fetch_marriages(engine:Engine) -> DataFrame:
-    sql = f'''SELECT husband_id, wife_id, marriage_id
-    FROM marriages
-    ;'''
-    return read_sql(engine, sql)
-
+from database.db import read_sql, execute_sql, build_values
 
 # Adobe project
 def fetch_years(engine:Engine) -> DataFrame:

@@ -3,7 +3,8 @@ from pathlib import Path
 import streamlit as st
 import altair as alt
 
-from family_tree.db import get_engine, fetch_years, fetch_folder_summaries
+from database.db import get_engine
+from database.db_project import fetch_years, fetch_folder_summaries
 from family_tree.charts import submission_chart, review_pie
 
 PGHOST = st.secrets['postgresql']['host']
