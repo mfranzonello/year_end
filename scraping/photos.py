@@ -13,19 +13,19 @@ from scraping.photos_icloud import harvest_i_shared_album
 
 # ---------- Models ----------
 
-def get_share_source(url: str) -> str:
-    '''Determine whether a shared album URL comes from Google Photos or iCloud Photos.
-    Returns: 'google', 'icloud', or 'unknown'''
-    if re.search(r'^https?://(www\.)?photos\.google\.com/share/[A-Za-z0-9_-]+', url):
-        share_source = 'google'
-    elif re.search(r'^https?://(www\.)?icloud\.com/photos/#/[A-Za-z0-9,._-]+', url):
-        share_source = 'icloud'
-    else:
-        share_source = 'unknown'
-    return share_source
+# # def get_share_source(url: str) -> str:
+# #     '''Determine whether a shared album URL comes from Google Photos or iCloud Photos.
+# #     Returns: 'google', 'icloud', or 'unknown'''
+# #     if re.search(r'^https?://(www\.)?photos\.google\.com/share/[A-Za-z0-9_-]+', url):
+# #         share_source = 'google'
+# #     elif re.search(r'^https?://(www\.)?icloud\.com/photos/#/[A-Za-z0-9,._-]+', url):
+# #         share_source = 'icloud'
+# #     else:
+# #         share_source = 'unknown'
+# #     return share_source
 
 def get_browser_profiles(browser: str):
-    BROWSER_STATE = {'Chrome': CHROME_STATE, 'Edge': EDGE_STATE}[browser]
+    BROWSER_STATE = {'chrome': CHROME_STATE, 'edge': EDGE_STATE}[browser]
     
     ''' Returns a dict of browser profile display name → directory name. '''
     browser_profiles = {BROWSER_STATE['profile']['info_cache'][k]['name']: k for k in BROWSER_STATE['profile']['info_cache']}
@@ -39,20 +39,21 @@ def get_browser_profile(browser: str, name: str) -> str:
 
 # ---------- Selenium / browser setup ----------
 
-def make_driver(headless: bool = True, download_directory: Path|None = None, profile_name='',
-                browser='Edge') -> webdriver.Chrome|webdriver.Edge|None:
-    if browser not in ['Chrome', 'Edge']:
+def make_driver(headless: bool = True, download_directory: Path|None = None, browser_profile='',
+                browser='edge') -> webdriver.Chrome|webdriver.Edge|None:
+    browser = browser.lower()
+    if browser not in ['chrome', 'edge']:
         return
 
-    browser_profile = get_browser_profile(browser, profile_name)
+    browser_profile = get_browser_profile(browser, browser_profile)
 
     match browser:
-        case 'Chrome':
+        case 'chrome':
             opts = ChromeOptions()
-        case 'Edge':
+        case 'edge':
             opts = EdgeOptions()
  
-    BROWSER_DATA = {'Chrome': CHROME_DATA, 'Edge': EDGE_DATA}[browser]
+    BROWSER_DATA = {'chrome': CHROME_DATA, 'edge': EDGE_DATA}[browser]
     opts.add_argument(f'--user-data-dir={BROWSER_DATA}')
     opts.add_argument(f'--profile-directory={browser_profile}')
 
@@ -82,13 +83,13 @@ def make_driver(headless: bool = True, download_directory: Path|None = None, pro
 
 
     # Performance logs to read Network.* events (response URLs, mimeTypes)
-    log_prefs = {'Chrome': 'goog', 'Edge': 'ms'}[browser]
+    log_prefs = {'chrome': 'goog', 'edge': 'ms'}[browser]
     opts.set_capability(f'{log_prefs}:loggingPrefs', {'performance': 'ALL'})
 
-    if browser == 'Chrome':
+    if browser == 'chrome':
         driver = webdriver.Chrome(options=opts)
         
-    elif browser == 'Edge':
+    elif browser == 'edge':
         close_exe(EDGE_EXE) # ensure no stale Edge instances
         driver = webdriver.Edge(options=opts)
 
@@ -136,25 +137,18 @@ def source_allowed(source_name, google=False, icloud=False):
         case _:
             return
 
-def harvest_shared_album(shared_album_url: str, 
-                         ond_drive_folder:Path,
-                         person_name: str,
-                         profile_name: str|None = None,
-                         year: int|None = None,
+def harvest_shared_album(shared_album_url:str, download_directory:Path,
+                         scrape_name: str, browser_name, browser_profile: str|None = None,
                          headless=True, dry_run=False):
 
-    # set up downloads folder
-    YEAR = year or datetime.now().year
-    download_directory = ond_drive_folder / f'{YEAR}' / f'{person_name} {YEAR}' ## might need to adjust for actual year
-
     # create Edge driver
-    driver = make_driver(headless=headless, profile_name=profile_name, download_directory=download_directory)
+    driver = make_driver(headless=headless, browser=browser_name, browser_profile=browser_profile, download_directory=download_directory)
 
     downloaded_files = None
 
     shared_album_url = shared_album_url.strip().rstrip('/') # remove ending /
 
-    match get_share_source(shared_album_url):
+    match scrape_name.lower():
         case 'google':
             # get videos from Google Photos
             downloaded_files = harvest_g_shared_album(driver, download_directory, shared_album_url, dry_run=dry_run)

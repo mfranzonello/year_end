@@ -5,16 +5,16 @@ import argparse
 import sys
 from datetime import datetime
 
-from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, QUARANTINE, SHARED_ALBUMS
+from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, QUARANTINE
 from common.structure import YIR_REVIEWS, YIR_PROJECT, PR_EXT ## needed for pymiere control
 from common.secret import secrets
 from common.console import SplitConsole
 from common.system import get_person_names
 from database.db import get_engine
 from repositories.migrate import copy_from_gdrive
+from repositories.ingest import copy_from_web
 from repositories.summarize import get_usable_videos, summarize_folders, update_database_images
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
-from scraping.photos import get_share_source, source_allowed, harvest_shared_album
 
 PGSECRETS = secrets['postgresql']['host']
 PGHOST = secrets['postgresql']['host']
@@ -31,6 +31,9 @@ MIN_STARS = 3
 
 ui = SplitConsole()
 
+def set_up_engine():
+    return get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
+
 def scan_folders(one_drive_folder, google_drive_folder, dry_run=True):
     missing_targets = copy_from_gdrive(one_drive_folder, google_drive_folder, QUARANTINE, ui, dry_run)
 
@@ -39,36 +42,23 @@ def scan_folders(one_drive_folder, google_drive_folder, dry_run=True):
         for name in missing_targets:
             ui.add_update(f"  - {name}")
 
-def harvest_albums(albums, year, google, icloud, headless=True):
-    for album in albums:
-        notes = album.get('notes')
-        if notes:
-            print(f'Skipping album: {notes}')
-
-        else:
-            shared_album_url = album['url']
-            person_name = album['person']
-            project_year = album['year']
-            profile_name = album['profile']
-            share_source = get_share_source(shared_album_url)
-
-            if project_year == year and source_allowed(share_source, google=google, icloud=icloud):
-                 harvest_shared_album(shared_album_url, ONE_DRIVE_FOLDER, person_name, profile_name, year=project_year,
-                                     headless=headless)
+def harvest_albums(year, google, icloud, headless=True):
+    engine = set_up_engine()
+    copy_from_web(engine, ONE_DRIVE_FOLDER, year, google=google, icloud=icloud, headless=headless)
 
 def update_database(dry_run=True):
-    engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
+    engine = set_up_engine()
     summarize_folders(engine, ONE_DRIVE_FOLDER, QUARANTINE, ADOBE_FOLDER,
                       ui, dry_run=dry_run)
     engine.dispose()
 
 def update_images(dry_run=True):
-    engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
+    engine = set_up_engine()
     update_database_images(engine, dry_run, CLOUDINARY_CLOUD, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)
     engine.dispose()
 
 def update_project(year:int, min_stars:int, dry_run=True):
-    engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
+    engine = set_up_engine()
 
     ui.set_status('Opening Premiere project...')
     project_id = open_project(Path(ADOBE_FOLDER) / f'{YIR_REVIEWS} {year}' / f'{YIR_PROJECT} {year}{PR_EXT}')
@@ -137,7 +127,7 @@ def main():
 
     for year in args.year:
         if args.gphotos or args.iphotos:
-            harvest_albums(SHARED_ALBUMS, year, args.gphotos, args.iphotos, args.headless)
+            harvest_albums(year, args.gphotos, args.iphotos, args.headless)
 
         if args.gdrive:
             scan_folders(args.od, args.gd, dry_run)

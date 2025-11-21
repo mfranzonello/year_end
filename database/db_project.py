@@ -3,7 +3,7 @@ from pandas import DataFrame
 
 from database.db import read_sql, execute_sql, build_values
 
-# Adobe project
+# YIR project
 def fetch_years(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT DISTINCT project_year
@@ -213,3 +213,11 @@ def update_folder_member_ids(engine:Engine) -> DataFrame:
     changes_df = DataFrame(rows, columns=['folder_id', 'folder_name', 'project_year'] + [f'{j}_id' for j in member_types])
 
     return changes_df
+
+def fetch_shared_albums(engine:Engine) -> DataFrame:
+    sql = f'''
+    SELECT album_id, share_url, folder_name, project_year,
+    scrape_name, browser_name, profile_name, notes
+    FROM ingestion.shared_album_details
+    ;'''
+    return read_sql(engine, sql)
