@@ -5,20 +5,21 @@ import re
 from pathlib import Path
 from time import time, sleep
 import subprocess
-import ctypes
-from ctypes import wintypes
-
-import pythoncom
-from win32com.shell import shell
 
 from common.locations import detect_system
 from common.structure import VIDEO_EXTS, PR_EXT, AE_EXT, GOOGLE_DRIVE_FOLDER, GOOGLE_DRIVE_EXE, PREMIERE_EXE
+
+system_name = detect_system()
+if system_name == 'windows':
+    import ctypes
+    from ctypes import wintypes
+    import pythoncom
+    from win32com.shell import shell
 
 REQUIRED_PATH = Path(GOOGLE_DRIVE_FOLDER)
 WAIT_UP = 120 # seconds to wait for drive to reappear
 POLL = 3 # seconds between checks
 
-system_name = detect_system()
 
 # Define constants for file attributes
 match system_name:
@@ -112,6 +113,9 @@ def get_person_names(root:Path):
     year = root.name
     person_names = [get_person_name(p) for p in root.iterdir() if p.is_dir() and get_actual_year(p)]
     return person_names
+
+def sort_paths(folder_paths:list[Path]):
+    return sorted(folder_paths, key=lambda p: p.name.lower())
 
 def mount_premiere(t=20):
     subprocess.Popen(PREMIERE_EXE)

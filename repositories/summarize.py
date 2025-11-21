@@ -4,7 +4,7 @@ from pandas import DataFrame, concat
 from sqlalchemy import Engine
 
 from common.console import SplitConsole
-from common.system import get_premiere_projects_in_folder, get_videos_in_folder, resolve_relative_path, is_file_available
+from common.system import get_premiere_projects_in_folder, get_videos_in_folder, resolve_relative_path, is_file_available, sort_paths
 from repositories.migrate import dedupe_folder, get_year_folders, get_person_folders
 from adobe.bridge import get_video_rating, get_video_cv2_details, is_file_available, convert_to_xml, extract_media_paths
 from database.db_project import update_folders, purge_folders, update_files, purge_files, \
@@ -53,7 +53,7 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, quarantine_root:str,
     files_used = []
     folders = []
 
-    for year_folder in year_folders:
+    for year_folder in sort_paths(year_folders):
         ui.add_update(f'Checking {year_folder}')
         project_year = int(year_folder.name)
         
@@ -68,7 +68,8 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, quarantine_root:str,
                 media_files.extend(check_files_used(project_path))
         media_files = list(set(media_files))
 
-        for person_folder in get_person_folders(one_drive_folder / str(project_year)):
+        for person_folder in sort_paths(get_person_folders(one_drive_folder / str(project_year))):
+            ui.set_status(f'Looking at {person_folder}')
             folder_name = person_folder.name
 
             fo_df = DataFrame(data=[[folder_name, project_year]],
