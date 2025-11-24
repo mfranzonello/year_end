@@ -20,22 +20,18 @@ def gather_names_casefold(folder: Path) -> set[str]:
                 names.add(p.name.casefold())
     return names
 
-def copy_if_needed(src_file: Path, dst_folder: Path, q_folder:Path, dry_run: bool) -> bool:
+def copy_if_needed(source_file: Path, destination_folder:Path, existing_videos: list[Path], dry_run: bool) -> bool:
     """
     Copy file if a case-insensitive filename does not already exist in dst_folder.
     Returns True if a copy will/does happen, False otherwise.
     """
-
-    existing = gather_names_casefold(dst_folder)
-    ##if q_folder.exists():
-    ##    existing.update(gather_names_casefold(q_folder))
-
-    if src_file.name.casefold() in existing:
+    if source_file.name.casefold() in existing_videos:
         return False
     if dry_run:
         return True
-    dst_folder.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src_file, dst_folder / src_file.name)
+
+    destination_folder.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_file, destination_folder / source_file.name)
     return True
 
 def are_dupes(file_1:Path, file_2:Path, byte_threshold=50000) -> Path|None:
@@ -80,13 +76,49 @@ def are_dupes(file_1:Path, file_2:Path, byte_threshold=50000) -> Path|None:
 def quarantine_file(file:Path, quarantine_root:Path) -> Path:
     # recreate the folder structure under quarantine
     rel_path = file.relative_to(file.parents[2])   # adjust depending on structure
+
     target = quarantine_root / rel_path
     
     # ensure target directory exists
     target.parent.mkdir(parents=True, exist_ok=True)
+
+    # check that source exists and target does not:
+    if not file.exists():
+        if target.exists():
+            print(f'File {file} already in quarantine.')
+        else:
+            print(f'File {file} is missing.')
+    else:
+        if target.exists():
+            print(f'Cannot move file {file} as it is already in quarantine.')
+        else:
+            # atomic move (fast, keeps metadata)
+            file.rename(target)
+
+    return target
+
+def quarantine_file_2(file:Path, incoming_path:Path, quarantine_root:Path) -> Path:
+    # recreate the folder structure under quarantine
+    rel_path = file.relative_to(incoming_path)   # adjust depending on structure
+
+    target = quarantine_root / rel_path
     
-    # atomic move (fast, keeps metadata)
-    file.rename(target)
+    # ensure target directory exists
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    # check that source exists and target does not:
+    if not file.exists():
+        if target.exists():
+            print(f'File {file} already in quarantine.')
+        else:
+            print(f'File {file} is missing.')
+    else:
+        if target.exists():
+            print(f'Cannot move file {file} as it is already in quarantine.')
+        else:
+            # atomic move (fast, keeps metadata)
+            file.rename(target)
+
     return target
 
 def rebuild_path(parent_folder:Path, folder_name:str, subfolder_name:str, file_name:str) -> Path:
@@ -111,20 +143,23 @@ def dedupe_folder_from_incoming(files_in_folder:list[Path], quarantine_root:Path
             quarantine_file(dupe, quarantine_root)
             return potential_dupes
 
-def dedupe_folder_from_db(duplicates_df:DataFrame, one_drive_folder:Path, quarantine_root:Path, dry_run:bool) -> tuple[list[Path], list[list[Path]]]:
+def dedupe_folder_from_db(duplicates_df:DataFrame, one_drive_folder:Path, quarantine:str, dry_run:bool) -> tuple[list[Path], list[list[Path]]]:
     # identify candidates from removal in OneDrive
     keep_paths = []
     move_paths = []
     for _, row in duplicates_df.iterrows():
         potential_duplicates = row['potential_duplicates']
+        project_year = str(row['project_year'])
+        parent_folder = one_drive_folder / project_year
+        folder_name = row['folder_name']
 
-        file_paths = [rebuild_path(one_drive_folder / d['project_year'], d['folder_name'], d['subfolder_name'], d['file_name']) for d in potential_duplicates]
+        file_paths = [rebuild_path(parent_folder, folder_name, d['subfolder_name'], d['file_name']) for d in potential_duplicates]
         keep_paths.append(file_paths[0])
-        dupe_paths = potential_duplicates[1:]
+        dupe_paths = file_paths[1:]
         move_paths.append(dupe_paths)
         
         for d in dupe_paths:
-            quarantine_file(d, quarantine_root)
+            quarantine_file_2(d, one_drive_folder, one_drive_folder / quarantine)
 
     return keep_paths, move_paths
 
@@ -132,7 +167,7 @@ def dedupe_one_drive(engine:Engine, one_drive_folder:Path, quarantine:str, dry_r
     # dedupe from before
     print('Deduping previous imports...')
     dupes_df = fetch_duplicates(engine)
-    keep_paths, move_paths = dedupe_folder_from_db(dupes_df, one_drive_folder, one_drive_folder / quarantine, dry_run=dry_run)
+    keep_paths, move_paths = dedupe_folder_from_db(dupes_df, one_drive_folder, quarantine, dry_run=dry_run)
     for k, m in zip(keep_paths, move_paths):
         print(f'Kept {k}, moved {m}.')
 
@@ -165,9 +200,14 @@ def copy_from_gdrive(one_drive_folder:Path, google_drive_folder:Path, quarantine
 
             # List candidate videos in the Google Drive person folder (non-recursive).
             candidate_files = [v for v in video_files if v not in dupes] if dupes else video_files
+            
+            destination_files = get_videos_in_folder(o_person, recursive=True)
+            quarantined_files = get_videos_in_folder(q_person, recursive=True) if q_person.exists() else []
+            existing_videos = [f.name.casefold() for f in set(destination_files + quarantined_files)]
+            
             copied_count = 0
             for video_file in candidate_files:
-                if copy_if_needed(video_file, o_person, q_person, dry_run=dry_run):
+                if copy_if_needed(video_file, o_person, existing_videos, dry_run=dry_run):
                     copied_count += 1
 
             copy_report.append((person_name, copied_count))

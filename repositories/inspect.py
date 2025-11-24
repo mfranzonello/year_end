@@ -6,7 +6,6 @@ from sqlalchemy import Engine
 from common.console import SplitConsole
 from common.system import get_premiere_projects_in_folder, get_videos_in_folder, resolve_relative_path, is_file_available, sort_paths, \
     get_year_folders, get_person_folders
-from repositories.migrate import 
 from adobe.bridge import get_video_rating, get_video_date, get_video_cv2_details, is_file_available, convert_to_xml, extract_media_paths
 from database.db_project import \
     fetch_known_folders, update_folders, purge_folders, \
