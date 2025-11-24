@@ -4,20 +4,15 @@ from pandas import DataFrame, concat
 from sqlalchemy import Engine
 
 from common.console import SplitConsole
-from common.system import get_premiere_projects_in_folder, get_videos_in_folder, resolve_relative_path, is_file_available, sort_paths
-from repositories.migrate import dedupe_folder, get_year_folders, get_person_folders
+from common.system import get_premiere_projects_in_folder, get_videos_in_folder, resolve_relative_path, is_file_available, sort_paths, \
+    get_year_folders, get_person_folders
+from repositories.migrate import 
 from adobe.bridge import get_video_rating, get_video_date, get_video_cv2_details, is_file_available, convert_to_xml, extract_media_paths
 from database.db_project import \
     fetch_known_folders, update_folders, purge_folders, \
     fetch_known_files, update_files, purge_files, fetch_files, fetch_files_scanned, update_files_used, \
     fetch_all_member_ids, update_folder_member_ids 
 from family_tree.cloudinary_heavy import configure_cloud, fill_in_temp_pictures
-
-def rebuild_path(parent_folder:Path, folder_name:str, subfolder_name:str, file_name:str) -> list[Path]:
-    if subfolder_name:
-        return parent_folder / folder_name / subfolder_name / file_name
-    else:
-        return parent_folder / folder_name / file_name
 
 def get_child_from_relative(parent_folder, full_path):
     return parent_folder / full_path.relative_to(parent_folder).parents[-2]
@@ -29,7 +24,8 @@ def get_to_purge(known_df: DataFrame, found_df: DataFrame, on_cols: list[str]) -
     merged = known_df.merge(found_df, on=on_cols, how='left', indicator=True)
     return merged[merged['_merge'] == 'left_only']
 
-def purge_stale_content(engine:Engine, year_folders:list[Path]):
+def purge_stale_content(engine:Engine, year_folders:list[Path], dry_run:bool):
+    # purge stale
     print('Purging stale content...')
     current_folders = []
     purged_files = []
@@ -68,10 +64,11 @@ def purge_stale_content(engine:Engine, year_folders:list[Path]):
     purged_folders = get_to_purge(known_folders, folders_df, folder_comp_cols)
 
     # purge folders and files
-    if not purged_folders.empty:
-        purge_folders(engine, purged_folders)
-    if len(purged_files):
-        purge_files(engine, concat(purged_files))
+    if not dry_run:
+        if not purged_folders.empty:
+            purge_folders(engine, purged_folders)
+        if len(purged_files):
+            purge_files(engine, concat(purged_files))
 
 
 def summarize_files(person_folder:Path, year:int, video_files:list[Path], scanned_df:DataFrame) -> DataFrame:
@@ -117,15 +114,15 @@ def compare_used(person_folder:Path, year:int, video_files:list[Path], full_path
    
     return files_df
     
-def summarize_folders(engine:Engine, one_drive_folder:Path, quarantine_root:str, project_folder:Path,
-                      ui:SplitConsole, dedupe:bool=False, dry_run:bool=False):
+def summarize_folders(engine:Engine, one_drive_folder:Path, project_folder:Path,
+                      ui:SplitConsole, dry_run:bool=False):
     year_folders = get_year_folders(one_drive_folder)
 
     files = []
     files_used = []
     folders = []
 
-    purge_stale_content(engine, year_folders)
+    purge_stale_content(engine, year_folders, dry_run)
 
     previously_scanned = fetch_files_scanned(engine)
 
@@ -152,14 +149,6 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, quarantine_root:str,
 
             video_files = get_videos_in_folder(person_folder, recursive=True)
             if len(video_files):
-
-                # get rid of dupes if requested
-                if dedupe:
-                    ui.set_status(f'Deduping {person_folder}')
-                    deduped = dedupe_folder(video_files, one_drive_folder / quarantine_root, dry_run)
-                    if deduped:
-                        # don't check files that were quarantined
-                        video_files = [vf for vf in video_files if vf not in deduped]
 
                 # look at videos
                 scanned_df = previously_scanned[(previously_scanned['folder_name'] == person_folder.name) & 

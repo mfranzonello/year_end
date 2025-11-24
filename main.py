@@ -11,7 +11,7 @@ from common.secret import secrets
 from common.console import SplitConsole
 from common.system import get_person_names
 from database.db import get_engine
-from repositories.migrate import copy_from_gdrive
+from repositories.migrate import dedupe_one_drive, copy_from_gdrive
 from repositories.ingest import copy_from_web
 from repositories.inspect import get_usable_videos, summarize_folders, update_database_images
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
@@ -35,26 +35,30 @@ def set_up_engine():
     return get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 def scan_folders(one_drive_folder, google_drive_folder, dry_run=True):
-    missing_targets = copy_from_gdrive(one_drive_folder, google_drive_folder, QUARANTINE, ui, dry_run)
+    if one_drive_folder:
+        engine = set_up_engine()
+        dedupe_one_drive(engine, one_drive_folder, QUARANTINE, dry_run)
 
-    if dry_run and missing_targets:
-        ui.add_update("\n(Note) These OneDrive destination folders do not exist yet (will be created on --apply if needed):")
-        for name in missing_targets:
-            ui.add_update(f"  - {name}")
+    if one_drive_folder and google_drive_folder:
+        missing_targets = copy_from_gdrive(one_drive_folder, google_drive_folder, QUARANTINE, ui, dry_run)
 
-def harvest_albums(year, google, icloud, headless=True):
+        if dry_run and missing_targets:
+            ui.add_update("\n(Note) These OneDrive destination folders do not exist yet (will be created on --apply if needed):")
+            for name in missing_targets:
+                ui.add_update(f"  - {name}")
+
+def harvest_albums(google, icloud, headless=True):
     engine = set_up_engine()
-    copy_from_web(engine, ONE_DRIVE_FOLDER, year, google=google, icloud=icloud, headless=headless)
+    copy_from_web(engine, ONE_DRIVE_FOLDER, google=google, icloud=icloud, headless=headless)
 
 def update_database(dry_run=True):
     engine = set_up_engine()
-    summarize_folders(engine, ONE_DRIVE_FOLDER, QUARANTINE, ADOBE_FOLDER,
-                      ui, dry_run=dry_run)
+    summarize_folders(engine, ONE_DRIVE_FOLDER, ADOBE_FOLDER, ui, dry_run=dry_run)
     engine.dispose()
 
 def update_images(dry_run=True):
     engine = set_up_engine()
-    update_database_images(engine, dry_run, CLOUDINARY_CLOUD, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)
+    update_database_images(engine, CLOUDINARY_CLOUD, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, dry_run)
     engine.dispose()
 
 def update_project(year:int, min_stars:int, dry_run=True):
@@ -125,12 +129,11 @@ def main():
 
     ui.add_update(f'Running with args: {args}')
 
-    for year in args.year:
-        if args.gphotos or args.iphotos:
-            harvest_albums(year, args.gphotos, args.iphotos, args.headless)
+    if args.gphotos or args.iphotos:
+        harvest_albums(args.gphotos, args.iphotos, args.headless)
 
-        if args.gdrive:
-            scan_folders(args.od, args.gd, dry_run)
+    google_drive_folder = GOOGLE_DRIVE_FOLDER if args.gdrive else None
+    scan_folders(args.od, google_drive_folder, dry_run)
 
     ## can look at whole group at once
     if not args.nodbupdate:

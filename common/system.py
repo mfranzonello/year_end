@@ -95,6 +95,13 @@ def get_shortcuts_in_folder(folder:Path, recursive=False) -> list[Path]:
         return []
     else:
         return get_file_types_in_folder(folder, 'SHORTCUT', recursive)
+    
+def get_year_folders(root:Path) -> list[Path]:
+    ''' All folder names that are a year (e.g., '2020') '''
+    if not root.exists():
+        return []
+    else:
+        return [p for p in root.iterdir() if p.is_dir() and is_year_folder(p)]
 
 def is_year_folder(path:Path) -> bool:
     name = path.name  # just the final component
@@ -104,13 +111,30 @@ def get_actual_year(folder_path:Path) -> int|None:
     match = re.search(r"\s(\d{4})$", folder_path.name)
     return int(match.group(1)) if match else None
 
+def get_person_folders(root:Path) -> list[Path]:
+    """Immediate child directories (e.g., 'Michael 2025')."""
+    if not root.exists():
+        return []
+    else:
+        return [p for p in root.iterdir() if p.is_dir()]
+
+def get_subfolders(root:Path) -> list[Path]:
+    '''All subdirectories, including via shortcuts'''
+    if not root.exists():
+        return []
+    else:
+        subfolders = []
+        for r in set([root] + get_shortcuts_in_folder(root)):
+            subfolders.append(p for p in r.rglob('*') if p.is_dir())
+        
+        return subfolders
+
 def get_person_name(folder_path:Path) -> str:
     year = get_actual_year(folder_path)
     return folder_path.name.replace(f' {year}', '').strip()
 
 def get_person_names(root:Path):
     '''Get person names from OneDrive YIR clips for a given year.'''
-    year = root.name
     person_names = [get_person_name(p) for p in root.iterdir() if p.is_dir() and get_actual_year(p)]
     return person_names
 

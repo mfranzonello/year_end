@@ -5,32 +5,11 @@ from pathlib import Path
 import shutil
 from itertools import combinations
 
-from common.system import is_year_folder, get_videos_in_folder, get_shortcuts_in_folder, mount_g_drive, sort_paths
+from pandas import DataFrame
+from sqlalchemy import Engine
 
-def get_year_folders(root:Path) -> list[Path]:
-    ''' All folder names that are a year (e.g., '2020') '''
-    if not root.exists():
-        return []
-    else:
-        return [p for p in root.iterdir() if p.is_dir() and is_year_folder(p)]
-
-def get_person_folders(root:Path) -> list[Path]:
-    """Immediate child directories (e.g., 'Michael 2025')."""
-    if not root.exists():
-        return []
-    else:
-        return [p for p in root.iterdir() if p.is_dir()]
-
-def get_subfolders(root:Path) -> list[Path]:
-    '''All subdirectories, including via shortcuts'''
-    if not root.exists():
-        return []
-    else:
-        subfolders = []
-        for r in set([root] + get_shortcuts_in_folder(root)):
-            subfolders.append(p for p in r.rglob('*') if p.is_dir())
-        
-        return subfolders
+from common.system import get_videos_in_folder, mount_g_drive, sort_paths, get_year_folders, get_person_folders
+from database.db_project import fetch_duplicates
 
 def gather_names_casefold(folder: Path) -> set[str]:
     """Set of existing filenames (casefolded) in a folder (non-recursive)."""
@@ -41,12 +20,16 @@ def gather_names_casefold(folder: Path) -> set[str]:
                 names.add(p.name.casefold())
     return names
 
-def copy_if_needed(src_file: Path, dst_folder: Path, dry_run: bool) -> bool:
+def copy_if_needed(src_file: Path, dst_folder: Path, q_folder:Path, dry_run: bool) -> bool:
     """
     Copy file if a case-insensitive filename does not already exist in dst_folder.
     Returns True if a copy will/does happen, False otherwise.
     """
+
     existing = gather_names_casefold(dst_folder)
+    ##if q_folder.exists():
+    ##    existing.update(gather_names_casefold(q_folder))
+
     if src_file.name.casefold() in existing:
         return False
     if dry_run:
@@ -106,8 +89,14 @@ def quarantine_file(file:Path, quarantine_root:Path) -> Path:
     file.rename(target)
     return target
 
-def dedupe_folder(files_in_folder:list[Path], quarantine_root, dry_run:bool) -> list[Path]|None:
-    # identify candidates for removal
+def rebuild_path(parent_folder:Path, folder_name:str, subfolder_name:str, file_name:str) -> Path:
+    if subfolder_name:
+        return parent_folder / folder_name / subfolder_name / file_name
+    else:
+        return parent_folder / folder_name / file_name
+
+def dedupe_folder_from_incoming(files_in_folder:list[Path], quarantine_root:Path, dry_run:bool) -> list[Path]|None:
+    # identify candidates for removal in GDrive
 
     file_pairings = combinations(files_in_folder, 2)
     potential_dupes = []
@@ -122,11 +111,36 @@ def dedupe_folder(files_in_folder:list[Path], quarantine_root, dry_run:bool) -> 
             quarantine_file(dupe, quarantine_root)
             return potential_dupes
 
+def dedupe_folder_from_db(duplicates_df:DataFrame, one_drive_folder:Path, quarantine_root:Path, dry_run:bool) -> tuple[list[Path], list[list[Path]]]:
+    # identify candidates from removal in OneDrive
+    keep_paths = []
+    move_paths = []
+    for _, row in duplicates_df.iterrows():
+        potential_duplicates = row['potential_duplicates']
+
+        file_paths = [rebuild_path(one_drive_folder / d['project_year'], d['folder_name'], d['subfolder_name'], d['file_name']) for d in potential_duplicates]
+        keep_paths.append(file_paths[0])
+        dupe_paths = potential_duplicates[1:]
+        move_paths.append(dupe_paths)
+        
+        for d in dupe_paths:
+            quarantine_file(d, quarantine_root)
+
+    return keep_paths, move_paths
+
+def dedupe_one_drive(engine:Engine, one_drive_folder:Path, quarantine:str, dry_run:bool):
+    # dedupe from before
+    print('Deduping previous imports...')
+    dupes_df = fetch_duplicates(engine)
+    keep_paths, move_paths = dedupe_folder_from_db(dupes_df, one_drive_folder, one_drive_folder / quarantine, dry_run=dry_run)
+    for k, m in zip(keep_paths, move_paths):
+        print(f'Kept {k}, moved {m}.')
 
 def copy_from_gdrive(one_drive_folder:Path, google_drive_folder:Path, quarantine:str, ui, dry_run:bool):
-    google_drive_years = get_year_folders(google_drive_folder)
-
+    ''' look at Google Drive folders and copy in new items '''
     mount_g_drive()
+
+    google_drive_years = get_year_folders(google_drive_folder)
 
     for g_year in google_drive_years:
         o_year = one_drive_folder / g_year.name
@@ -141,18 +155,19 @@ def copy_from_gdrive(one_drive_folder:Path, google_drive_folder:Path, quarantine
         for g_person in sort_paths(g_people):
             person_name = g_person.name  # e.g., "Michael 2025"
             o_person = o_year / person_name
+            q_person = o_year / person_name
 
             # see what's in the folder before quarantine
             video_files = get_videos_in_folder(g_person, recursive=True)
         
             # dedupe the source folder
-            dupes = dedupe_folder(video_files, google_drive_folder / quarantine, dry_run)
+            dupes = dedupe_folder_from_incoming(video_files, google_drive_folder / quarantine, dry_run)
 
             # List candidate videos in the Google Drive person folder (non-recursive).
             candidate_files = [v for v in video_files if v not in dupes] if dupes else video_files
             copied_count = 0
             for video_file in candidate_files:
-                if copy_if_needed(video_file, o_person, dry_run=dry_run):
+                if copy_if_needed(video_file, o_person, q_person, dry_run=dry_run):
                     copied_count += 1
 
             copy_report.append((person_name, copied_count))
