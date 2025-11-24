@@ -80,24 +80,34 @@ def get_video_rating(file_path:Path, local_only:bool=True) -> Optional[int]:
         return rating
 
 def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, str]:
+    no_res = 'na'
     resolution_ranges = [(480, 'lo'), (720, 'SD'), (1080, 'HD'), (1920, '4K')]
 
     if is_examinable(file_path, local_only): ## avoids downloading from interweb
         # get duration
         v = VideoCapture(file_path)
-        frame_count = v.get(CAP_PROP_FRAME_COUNT)
-        fps = v.get(CAP_PROP_FPS)
-        duration = round(frame_count / fps) if fps else 0 # return in seconds
 
-        # get resolution
-        w = v.get(CAP_PROP_FRAME_WIDTH)
-        h = v.get(CAP_PROP_FRAME_HEIGHT)
-        dimension = (min(w, h))
-        for dim, res in resolution_ranges[::-1]:
-            if dimension >= dim:
+        if not v.isOpened() or v.get(CAP_PROP_FRAME_COUNT) < 1:
+            # likely moov atom not found
+            duration = None
+            resolution = no_res
+            print(f'{file_path} corrupted')
+
+        else:
+            # video is usable
+            frame_count = v.get(CAP_PROP_FRAME_COUNT)
+            fps = v.get(CAP_PROP_FPS)
+            duration = round(frame_count / fps) if fps else 0 # return in seconds
+
+            # get resolution
+            w = v.get(CAP_PROP_FRAME_WIDTH)
+            h = v.get(CAP_PROP_FRAME_HEIGHT)
+            dimension = (min(w, h))
+            for dim, res in resolution_ranges[::-1]:
+                if dimension >= dim:
+                    resolution = res
+                    break
                 resolution = res
-                break
-            resolution = res
 
         v.release()
         

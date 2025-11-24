@@ -14,7 +14,7 @@ def build_values(df: DataFrame, cols:list[str]) -> tuple[str, dict[str, object]]
         append_string = ', '.join(f':{c}_{idx}' for c in cols)
         value_clauses.append(f'({append_string})')
         for c in cols:
-            params[f'{c}_{idx}'] = row[f'{c}_{idx}']
+            params[f'{c}_{idx}'] = row[f'{c}']
         
     values = ', '.join(value_clauses)
 

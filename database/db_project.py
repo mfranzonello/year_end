@@ -43,10 +43,25 @@ def fetch_usable_summary(engine:Engine, year:int, min_stars:int) -> DataFrame:
     '''
     return read_sql(engine, sql)
 
+def fetch_known_folders(engine:Engine) -> DataFrame:
+    sql = f'''
+    SELECT folder_id, folder_name, project_year
+    FROM project.folders
+    ;'''
+    return read_sql(engine, sql)
+
+def fetch_known_files(engine:Engine, year:int) -> DataFrame: ## consider having this be all years
+    sql = f'''
+    SELECT file_id, folder_name, project_year, file_name, subfolder_name
+    FROM project.files JOIN project.folders USING (folder_id)
+    WHERE project_year = {year}
+    ;'''
+    return read_sql(engine, sql)
+
 def fetch_files(engine:Engine, year:int) -> DataFrame:
     sql = f'''
-    SELECT file_id, folder_name, project_year, file_name, file_size,
-    video_duration, video_resolution, video_rating, used_status
+    SELECT file_id, folder_name, project_year, file_name, subfolder_name,
+    file_size, video_duration, video_resolution, video_rating, used_status
     FROM project.files JOIN project.folders USING (folder_id)
     WHERE project_year = {year}
     ;'''
@@ -83,6 +98,7 @@ def update_files(engine:Engine, df:DataFrame):
     sql = f'''
     INSERT INTO project.files (
     folder_id,
+    subfolder_name,
     file_name,
     file_size,
     video_duration,
@@ -91,6 +107,7 @@ def update_files(engine:Engine, df:DataFrame):
     )
     SELECT
         f.folder_id,
+        :subfolder_name,
         :file_name,
         :file_size,
         :video_duration,
@@ -98,52 +115,46 @@ def update_files(engine:Engine, df:DataFrame):
         :video_rating
     FROM project.folders f
     WHERE f.folder_name  = :folder_name
-      AND f.project_year = :project_year
-    ON CONFLICT (folder_id, file_name) DO UPDATE
+        AND f.project_year = :project_year
+    ON CONFLICT (folder_id, subfolder_name, file_name) DO UPDATE
 
-    SET file_size        = EXCLUDED.file_size,
-        video_duration   = EXCLUDED.video_duration,
+    SET file_size = EXCLUDED.file_size,
+        video_duration = EXCLUDED.video_duration,
         video_resolution = EXCLUDED.video_resolution,
-        video_rating     = EXCLUDED.video_rating
+        video_rating = EXCLUDED.video_rating
     ;'''
     execute_sql(engine, sql, df=df[df['stored']=='local'])
 
     # cloud stored
     sql = f'''
-    INSERT INTO project.files (
-    folder_id,
-    file_name
-    )
-    SELECT
-        f.folder_id,
-        :file_name
+    INSERT INTO project.files (folder_id, subfolder_name, file_name, file_size)
+    SELECT  f.folder_id,
+        :subfolder_name,
+        :file_name,
+        :file_size
     FROM project.folders f
     WHERE f.folder_name  = :folder_name
-      AND f.project_year = :project_year
-    ON CONFLICT (folder_id, file_name) DO NOTHING
+        AND f.project_year = :project_year
+    ON CONFLICT (folder_id, subfolder_name, file_name) DO UPDATE
+
+    SET file_size = EXCLUDED.file_size
     ;'''
     execute_sql(engine, sql, df=df[df['stored']=='cloud'])
 
 def purge_folders(engine:Engine, df:DataFrame):
     # remove stale folder_ids
-    # Build VALUES list with bind params instead of literal strings
-    values, params = build_values(df, ['folder_name', 'project_year'])
+    values, params = build_values(df, ['folder_id'])
     sql = f'''
     DELETE FROM project.folders 
-    WHERE (folder_name, project_year) NOT IN (VALUES {values})
+    WHERE (folder_name, project_year) IN (VALUES {values})
     ;'''
     execute_sql(engine, sql, params=params)
 
 def purge_files(engine:Engine, df:DataFrame):
     # remove stale file_ids
-    values, params = build_values(df, ['folder_name', 'file_name', 'project_year'])
+    values, params = build_values(df, ['file_id'])
     sql = f'''
-    WITH files_to_keep AS (
-    SELECT file_id FROM project.files JOIN project.folders USING (folder_id) WHERE
-    (folder_name, project_year, file_name) IN (VALUES {values})  
-    )
-    
-    DELETE FROM project.files WHERE file_id NOT IN (SELECT file_id FROM files_to_keep)
+    DELETE FROM project.files WHERE file_id IN (VALUES {values})
     ;'''
     execute_sql(engine, sql, params=params)
     
@@ -153,11 +164,20 @@ def update_files_used(engine:Engine, df:DataFrame):
     SET used_status = :used_status
     FROM project.folders fo
     WHERE fi.folder_id   = fo.folder_id
-      AND fo.folder_name = :folder_name
-      AND fo.project_year = :project_year
-      AND fi.file_name    = :file_name;
+        AND subfolder_name = :subfolder_name,
+        AND fo.folder_name = :folder_name
+        AND fo.project_year = :project_year
+        AND fi.file_name    = :file_name;
     '''
     execute_sql(engine, sql, df=df)
+
+def fetch_files_scanned(engine):
+    sql = f'''
+    SELECT folder_name, project_year, subfolder_name, file_name, video_duration, video_resolution
+    FROM project.files JOIN project.folders USING (folder_id)
+    WHERE video_duration IS NOT NULL OR video_resolution IS NOT NULL;
+    '''
+    return read_sql(engine, sql)
 
 def update_folder_member_ids(engine:Engine) -> DataFrame:
     ''' Guess what the best member_ids are based on other years already identified '''
