@@ -9,6 +9,8 @@ from datetime import datetime
 from cv2 import VideoCapture, CAP_PROP_FRAME_COUNT, CAP_PROP_FPS, CAP_PROP_FRAME_WIDTH, CAP_PROP_FRAME_HEIGHT
 from hachoir.parser import createParser
 from hachoir.metadata import extractMetadata
+from hachoir.core import config as HachoirConfig
+HachoirConfig.quiet = True
 
 from common.system import file_type, is_file_available
 
