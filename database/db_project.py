@@ -61,7 +61,7 @@ def fetch_known_files(engine:Engine, year:int) -> DataFrame: ## consider having 
 def fetch_files(engine:Engine, year:int) -> DataFrame:
     sql = f'''
     SELECT file_id, folder_name, project_year, file_name, subfolder_name,
-    file_size, video_duration, video_resolution, video_rating, used_status
+    file_size, video_date, video_duration, video_resolution, video_rating, used_status
     FROM project.files JOIN project.folders USING (folder_id)
     WHERE project_year = {year}
     ;'''
@@ -101,6 +101,7 @@ def update_files(engine:Engine, df:DataFrame):
     subfolder_name,
     file_name,
     file_size,
+    video_date,
     video_duration,
     video_resolution,
     video_rating
@@ -110,6 +111,7 @@ def update_files(engine:Engine, df:DataFrame):
         :subfolder_name,
         :file_name,
         :file_size,
+        :video_date,
         :video_duration,
         :video_resolution,
         :video_rating
@@ -119,6 +121,7 @@ def update_files(engine:Engine, df:DataFrame):
     ON CONFLICT (folder_id, subfolder_name, file_name) DO UPDATE
 
     SET file_size = EXCLUDED.file_size,
+        video_date = EXCLUDED.video_date,
         video_duration = EXCLUDED.video_duration,
         video_resolution = EXCLUDED.video_resolution,
         video_rating = EXCLUDED.video_rating

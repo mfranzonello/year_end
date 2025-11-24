@@ -13,7 +13,7 @@ from common.system import get_person_names
 from database.db import get_engine
 from repositories.migrate import copy_from_gdrive
 from repositories.ingest import copy_from_web
-from repositories.summarize import get_usable_videos, summarize_folders, update_database_images
+from repositories.inspect import get_usable_videos, summarize_folders, update_database_images
 from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
 
 PGSECRETS = secrets['postgresql']['host']

@@ -6,7 +6,7 @@ from sqlalchemy import Engine
 from common.console import SplitConsole
 from common.system import get_premiere_projects_in_folder, get_videos_in_folder, resolve_relative_path, is_file_available, sort_paths
 from repositories.migrate import dedupe_folder, get_year_folders, get_person_folders
-from adobe.bridge import get_video_rating, get_video_cv2_details, is_file_available, convert_to_xml, extract_media_paths
+from adobe.bridge import get_video_rating, get_video_date, get_video_cv2_details, is_file_available, convert_to_xml, extract_media_paths
 from database.db_project import \
     fetch_known_folders, update_folders, purge_folders, \
     fetch_known_files, update_files, purge_files, fetch_files, fetch_files_scanned, update_files_used, \
@@ -85,6 +85,7 @@ def summarize_files(person_folder:Path, year:int, video_files:list[Path], scanne
     files_df['project_year'] = year
     files_df['file_size'] = files_df['full_path'].apply(lambda x: round(x.stat().st_size / 1e6, 1)) # store in MB
     files_df['video_rating'] = files_df['full_path'].apply(get_video_rating).astype('Int64')
+    files_df['video_date'] = files_df['full_path'].apply(get_video_date).astype("datetime64[ns]")
     files_df['stored'] = files_df['full_path'].apply(lambda x: 'local' if is_file_available(x) else 'cloud')
 
     # non changeable aspects

@@ -1,11 +1,14 @@
 '''Functions to extract XMP metadata from video files after reviewed in Adobe Bridge.'''
 
+from ast import parse
 from pathlib import Path
 import gzip
 import xml.etree.ElementTree as ET
-from typing import Optional
+from datetime import datetime
 
 from cv2 import VideoCapture, CAP_PROP_FRAME_COUNT, CAP_PROP_FPS, CAP_PROP_FRAME_WIDTH, CAP_PROP_FRAME_HEIGHT
+from hachoir.parser import createParser
+from hachoir.metadata import extractMetadata
 
 from common.system import file_type, is_file_available
 
@@ -17,7 +20,7 @@ _XMP_END = b"</x:xmpmeta>"
 def is_examinable(file_path:Path, local_only:bool=False) -> bool:
     return (file_type(file_path) == 'VIDEO') and (not local_only or is_file_available(file_path))
 
-def _find_xmp_bytes_fallback(path: Path, tail_bytes: int = 5000) -> Optional[bytes]:
+def _find_xmp_bytes_fallback(path: Path, tail_bytes: int = 5000) -> bytes|None:
     """Search the last N bytes of the file for XMP metadata."""
     file_size = path.stat().st_size
     start_pos = max(file_size - tail_bytes, 0)
@@ -43,7 +46,7 @@ def _find_xmp_bytes_fallback(path: Path, tail_bytes: int = 5000) -> Optional[byt
 
 # --- Extract xmp:Rating from an XMP XML packet ---
 
-def _rating_from_xmp(xmp_bytes: bytes) -> Optional[int]:
+def _rating_from_xmp(xmp_bytes: bytes) -> int|None:
     try:
         root = ET.fromstring(xmp_bytes)
     except Exception:
@@ -71,7 +74,7 @@ def _rating_from_xmp(xmp_bytes: bytes) -> Optional[int]:
 
 # --- Public API ---
 
-def get_video_rating(file_path:Path, local_only:bool=True) -> Optional[int]:
+def get_video_rating(file_path:Path, local_only:bool=True) -> int|None:
     '''Scans for xmp and returns rating'''
     if is_examinable(file_path, local_only): ## avoids downloading from interweb       
         xmp = _find_xmp_bytes_fallback(file_path)
@@ -134,3 +137,38 @@ def extract_media_paths(root:ET.Element) -> list[str]:
                    if m.get('ObjectUID') in master_clips_urefs and m.find('RelativePath') is not None]
 
     return media_paths
+
+def parse_date_string(s: str):
+    """
+    Try multiple date formats commonly found in QuickTime/MP4 metadata.
+    Returns a datetime or None.
+    """
+    s = s.strip()
+
+    formats = [
+        "%Y-%m-%d %H:%M:%S",      # 2024-04-19 16:08:32
+        "%Y-%m-%dT%H:%M:%S",      # 2024-04-19T16:08:32
+        "%Y-%m-%dT%H:%M:%SZ",     # 2024-04-19T16:08:32Z
+        "%Y/%m/%d %H:%M:%S",      # 2024/04/19 16:08:32
+        "%Y:%m:%d %H:%M:%S",      # 2024:04:19 16:08:32 (EXIF-style)
+    ]
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(s, fmt)
+        except ValueError:
+            pass
+
+    return None
+
+def get_video_date(file_path: Path, local_only=True) -> datetime|None:
+    # look at QuickTime metadata
+    if is_examinable(file_path, local_only): ## avoids downloading from interweb
+        parser = createParser(str(file_path))
+        if parser:
+            metadata = extractMetadata(parser)
+            if metadata:
+                for item in metadata.exportPlaintext():
+                    if "creation date" in item.lower():
+                        raw = item.split(":", 1)[1].strip()
+                        return parse_date_string(raw)
