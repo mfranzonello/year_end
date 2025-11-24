@@ -182,6 +182,13 @@ def fetch_files_scanned(engine):
     '''
     return read_sql(engine, sql)
 
+def fetch_duplicates(engine):
+    sql = f'''
+    SELECT folder_name, project_year, duplicate_reasons, potential_duplicates
+    FROM project.duplicates_summary
+    '''
+    return read_sql(engine, sql)
+
 def update_folder_member_ids(engine:Engine) -> DataFrame:
     ''' Guess what the best member_ids are based on other years already identified '''
     member_types = ['person', 'animal', 'source']
