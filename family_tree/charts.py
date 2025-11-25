@@ -126,13 +126,14 @@ def review_pie(review_stats):
 
     base = alt.Chart(review_df).encode(
         theta=alt.Theta('count:Q').stack(True),
+        radius=alt.Radius('count').scale(type='sqrt', zero=False, rangeMin=20),
         color=alt.Color('category:N',
                         scale=alt.Scale(domain=review_df['category'].tolist(),
                                         range=custom_colors))#.legend(None)
         )
-    pie = base.mark_arc(outerRadius=120)
-    text = base.mark_text(radius=140, size=20).encode(text = 'category:N')
+    pie = base.mark_arc()
+    ##text = base.mark_text(radius=140, size=20).encode(text = 'category:N')
     
-    chart = pie + text
+    chart = pie
 
     return chart
