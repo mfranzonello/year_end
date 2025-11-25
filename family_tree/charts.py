@@ -128,7 +128,7 @@ def review_pie(review_stats):
         theta=alt.Theta('count:Q').stack(True),
         color=alt.Color('category:N',
                         scale=alt.Scale(domain=review_df['category'].tolist(),
-                                        range=custom_colors)).legend(None)
+                                        range=custom_colors))#.legend(None)
         )
     pie = base.mark_arc(outerRadius=120)
     text = base.mark_text(radius=140, size=20).encode(text = 'category:N')
