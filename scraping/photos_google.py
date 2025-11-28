@@ -1,4 +1,4 @@
-from __future__ import annotations
+from time import sleep
 from pathlib import Path
 
 from selenium.webdriver.common.by import By
@@ -85,6 +85,7 @@ def open_first_tile(driver: WebDriver, timeout=10):
     ActionChains(driver).send_keys(Keys.ENTER).perform()
 
 def open_info_panel(driver:WebDriver, time=10):
+    sleep(1) # wait a bit for the tile to load
     ActionChains(driver).send_keys('i').perform()
 
 def select_next_tile(driver: WebDriver, timeout=10):
@@ -140,15 +141,15 @@ def harvest_g_shared_album(driver: WebDriver, download_directory: Path, shared_a
             driver.get(shared_album_url) # go back to top
             open_first_tile(driver)
 
+            # hit 'I' to see info panel
+            open_info_panel(driver)
+            css_match = f'div.{G_FILENAME_CLASS}[aria-label^="{G_FILENAME_ARIA_LABEL}"]' # load info panel
+            WebDriverWait(driver, timeout=10).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_match))) # wait for filename element
+
+            known_files = [f.name.lower() for f in get_videos_in_folder(download_directory)]
+            downloaded_files = []
+
             for _ in shared_video_urls:
-
-                # hit 'I' to see info panel
-                open_info_panel(driver)
-                css_match = f'div.{G_FILENAME_CLASS}[aria-label^="{G_FILENAME_ARIA_LABEL}"]' # load info panel
-                WebDriverWait(driver, timeout=10).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_match))) # wait for filename element
-
-                known_files = [f.name.lower() for f in get_videos_in_folder(download_directory)]
-                downloaded_files = []
 
                 filename, downloadable = inspect_and_download(driver, known_files, timeout=15, dry_run=False)
                 if filename and downloadable:
