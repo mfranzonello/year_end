@@ -109,6 +109,7 @@ def compare_used(person_folder:Path, year:int, video_files:list[Path], full_path
     files_df['file_name'] = files_df['full_path'].apply(lambda x: x.name)
     files_df['folder_name'] = person_folder.name
     files_df['project_year'] = year
+    files_df['subfolder_name'] = files_df['full_path'].apply(lambda x: get_subfolder_name(person_folder, x))
     files_df['used_status'] = files_df['full_path'].apply(lambda x: x in full_paths)
    
     return files_df

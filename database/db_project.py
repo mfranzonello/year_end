@@ -167,7 +167,7 @@ def update_files_used(engine:Engine, df:DataFrame):
     SET used_status = :used_status
     FROM project.folders fo
     WHERE fi.folder_id   = fo.folder_id
-        AND subfolder_name = :subfolder_name,
+        AND subfolder_name = :subfolder_name
         AND fo.folder_name = :folder_name
         AND fo.project_year = :project_year
         AND fi.file_name    = :file_name;
