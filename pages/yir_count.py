@@ -37,16 +37,16 @@ quantity = st.radio(label='Display Quantity', options=options, format_func=lambd
 match quantity:
     case 'video_count':
         total_videos = int(folder_values['video_count'].sum())
-        submission_string = f'**{total_videos:,}** videos'
+        submission_string = f'**{total_videos:,} videos**'
     case 'video_duration':
-        total_duration = int(folder_values['video_duration'].sum())
+        total_duration = folder_values['video_duration'].sum()
         hours = total_duration // 3600
         minutes = (total_duration % 3600) // 60
-        submission_string = f'**{hours:,}** hours and **{minutes:,}** minutes'
+        submission_string = f'**{hours:,} hours** and **{minutes:,} minutes**'
     case 'file_size':
-        total_size = int(folder_values['file_size'].sum())
+        total_size = folder_values['file_size'].sum()
         gb_size = total_size / (1024 ** 3)
-        submission_string = f'**{gb_size:,.2f}** GB'
+        submission_string = f'**{gb_size:,.2f} GB**'
 st.write(f'{submission_string} submitted this year!')
 
 chart = submission_chart(folder_values, quantity, cloud_name=CLOUDINARY_CLOUD, cap=True)
