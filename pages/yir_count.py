@@ -40,11 +40,13 @@ match quantity:
         submission_string = f'**{total_videos:,} videos**'
     case 'video_duration':
         total_duration = folder_values['video_duration'].sum()
-        hours = total_duration // 3600
-        minutes = (total_duration % 3600) // 60
+        hours = int(total_duration // 3600)
+        minutes = int((total_duration % 3600) // 60)
         submission_string = f'**{hours:,} hours** and **{minutes:,} minutes**'
     case 'file_size':
+        print(folder_values['file_size'])
         total_size = folder_values['file_size'].sum()
+        print(f'{total_size=}')
         gb_size = total_size / (1024 ** 3)
         submission_string = f'**{gb_size:,.2f} GB**'
 st.write(f'{submission_string} submitted this year!')
