@@ -44,10 +44,8 @@ match quantity:
         minutes = int((total_duration % 3600) // 60)
         submission_string = f'**{hours:,} hours** and **{minutes:,} minutes**'
     case 'file_size':
-        print(folder_values['file_size'])
         total_size = folder_values['file_size'].sum()
-        print(f'{total_size=}')
-        gb_size = total_size / (1024 ** 3)
+        gb_size = total_size / 1e3
         submission_string = f'**{gb_size:,.2f} GB**'
 st.write(f'{submission_string} submitted this year!')
 
