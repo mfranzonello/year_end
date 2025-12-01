@@ -27,7 +27,8 @@ year:int = st.selectbox('Year to Review', years, len(years) - 1, width=100)
 st.title(f'Franzonello YIR {year}')
 
 folder_values = fetch_folder_summaries(engine, year)
-
+total_videos = folder_values['video_count'].sum()
+st.write(f'**{total_videos:,}** submitted this year!')
 
 # bar chart for submissions
 options =['video_count', 'video_duration', 'file_size']
