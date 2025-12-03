@@ -236,3 +236,10 @@ def fetch_shared_albums(engine:Engine) -> DataFrame:
     FROM ingestion.shared_album_details
     ;'''
     return read_sql(engine, sql)
+
+def fetch_year_summaries(engine:Engine) -> DataFrame:
+    sql = f'''
+    SELECT project_year, total_folders, total_videos, total_duration, total_file_size
+    FROM project.years_summary
+    ;'''
+    return read_sql(engine, sql)

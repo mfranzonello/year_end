@@ -79,7 +79,7 @@ def summarize_files(person_folder:Path, year:int, video_files:list[Path], scanne
     files_df['folder_name'] = person_folder.name
     files_df['subfolder_name'] = files_df['full_path'].apply(lambda x: get_subfolder_name(person_folder, x))
     files_df['project_year'] = year
-    files_df['file_size'] = files_df['full_path'].apply(lambda x: round(x.stat().st_size / 1e6, 1)) # store in MB
+    files_df['file_size'] = files_df['full_path'].apply(lambda x: round(x.stat().st_size / (1024**2), 1)) # store in MB
     files_df['video_rating'] = files_df['full_path'].apply(get_video_rating).astype('Int64')
     files_df['video_date'] = files_df['full_path'].apply(get_video_date).astype("datetime64[ns]")
     files_df['stored'] = files_df['full_path'].apply(lambda x: 'local' if is_file_available(x) else 'cloud')

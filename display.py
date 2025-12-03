@@ -18,6 +18,7 @@ CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
 engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 pages = [('yir_count', 'YIR Status'),
+         ('yir_line', 'YIR Growth'),
          ('family_tree', 'Family Tree')]
 
 # set up page
