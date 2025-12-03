@@ -180,6 +180,7 @@ def resolution_chart(year_values):
         var_name="resolution",
         value_name="count"
     )
+    year_melted['resolution_order'] = year_melted['resolution'].map({k: v for v, k in enumerate(resolution_cols)})
 
     chart = (
         alt.Chart(year_melted)
@@ -191,9 +192,10 @@ def resolution_chart(year_values):
                 "resolution:N",
                 sort=resolution_cols,
                 title="Video Resolution",
+                legend=None,
                 scale=alt.Scale(domain=resolution_cols, range=custom_colors)
             ),
-            order=alt.Order("resolution", sort="ascending")
+            order=alt.Order("resolution_order:Q", sort="descending")
         )
     )
     return chart
