@@ -89,10 +89,20 @@ def summarize_files(person_folder:Path, year:int, video_files:list[Path], scanne
     cv2_cols = ['video_duration', 'video_resolution']
     files_df[cv2_cols] = files_df.merge(scanned_df, on=['file_name', 'folder_name', 'subfolder_name'], how='left')[cv2_cols]
     cv2_update = files_df[cv2_cols].isna().all(axis=1)
-    files_df.loc[cv2_update, cv2_cols] = files_df[cv2_update].apply(lambda x: get_video_cv2_details(x['full_path']), axis=1, result_type='expand')
-    files_df['video_duration'] = files_df['video_duration'].astype('Int64')
-    files_df['video_resolution'] = files_df['video_resolution'].astype('string')
-    
+
+    ##files_df.loc[cv2_update, cv2_cols] = files_df[cv2_update].apply(lambda x: get_video_cv2_details(x['full_path']), axis=1, result_type='expand')
+    # # to_fill = files_df[cv2_update].apply(lambda x: get_video_cv2_details(x['full_path']), axis=1, result_type='expand') ##.set_axis(cv2_cols, axis=1).loc[cv2_update, cv2_cols]
+    # # print(f'{cv2_update=}')
+    # # input(f'{to_fill=}')
+
+    if cv2_update.any():
+        files_df.loc[cv2_update, cv2_cols] = files_df[cv2_update]\
+            .apply(lambda x: get_video_cv2_details(x['full_path']), axis=1, result_type='expand')\
+            .set_axis(cv2_cols, axis=1).loc[cv2_update, cv2_cols].loc[cv2_update, cv2_cols]
+
+        files_df['video_duration'] = files_df['video_duration'].astype('Int64')
+        files_df['video_resolution'] = files_df['video_resolution'].astype('string')
+
     return files_df
 
 def check_files_used(project_path:Path) -> list[Path]:
@@ -129,6 +139,9 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, project_folder:Path,
     for year_folder in sort_paths(year_folders):
         ui.add_update(f'Checking {year_folder}')
         project_year = int(year_folder.name)
+
+        if project_year != 2025:
+            continue
         
         # prepare Premiere Project
         media_files:list[Path] = []
@@ -153,6 +166,7 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, project_folder:Path,
                 # look at videos
                 scanned_df = previously_scanned[(previously_scanned['folder_name'] == person_folder.name) & 
                                                 (previously_scanned['project_year'] == project_year)]
+
                 fi_df = summarize_files(person_folder, project_year, video_files, scanned_df)
                 folders.append(fo_df)
                 if not fi_df.empty:

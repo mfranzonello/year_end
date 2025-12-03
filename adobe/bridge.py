@@ -86,7 +86,7 @@ def get_video_rating(file_path:Path, local_only:bool=True) -> int|None:
 
 def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, str]:
     no_res = 'na'
-    resolution_ranges = [(480, 'lo'), (720, 'SD'), (1080, 'HD'), (1920, '4K')]
+    resolution_ranges = [(480, 'lo'), (720, 'sd'), (1080, 'hd'), (1920, '4k'), (4320, '8k')]
 
     if is_examinable(file_path, local_only): ## avoids downloading from interweb
         # get duration

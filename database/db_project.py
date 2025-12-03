@@ -178,7 +178,7 @@ def fetch_files_scanned(engine):
     sql = f'''
     SELECT folder_name, project_year, subfolder_name, file_name, video_duration, video_resolution
     FROM project.files JOIN project.folders USING (folder_id)
-    WHERE video_duration IS NOT NULL OR video_resolution IS NOT NULL;
+    WHERE video_duration IS NOT NULL AND video_resolution IS NOT NULL;
     '''
     return read_sql(engine, sql)
 
