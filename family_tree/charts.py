@@ -6,6 +6,11 @@ from family_tree.cloudinary_lite import grayscale_zero_images, get_image_url
 BLUE_UNDER = '#0D5176'
 BLUE_OVER = '#0D98BA'
 
+NA_COLOR = '#D5C7C5'
+LO_COLOR = '#FAC638'
+MD_COLOR = '#7EA44B'
+HI_COLOR = '#2F6B9A'
+
 def convert_duration_time(seconds:int) -> str:
     string = []
     if seconds >= 60 * 60:
@@ -24,7 +29,6 @@ def convert_file_size(mbytes:float) -> str:
         if mbytes >= factors[label]:
             break
     return f'{round(mbytes/factors[label], 1)} {label}'
-
 
 def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:bool=False):
     display_label = {'video_count': 'Videos',
@@ -105,17 +109,11 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
         height=max(300, bar_height * 1.2 * len(video_counts)))
     return chart
 
-
-
 def review_pie(review_stats):
     no, lo, hi, go = review_stats[['no_count', 'lo_count',
                                    'hi_count', 'go_count']].iloc[0]
 
-    custom_colors = ['#D5C7C5',
-                     '#FAC638',
-                     '#7EA44B',
-                     '#2F6B9A',
-                     ]
+    custom_colors = [NA_COLOR, LO_COLOR, MD_COLOR, HI_COLOR]
 
     review_df = DataFrame([['n/a', no],
                            ['low', lo],
@@ -136,4 +134,66 @@ def review_pie(review_stats):
     
     chart = pie
 
+    return chart
+
+# growth charts over years
+def growth_charts(year_values):
+    year_values['total_duration'] = year_values['total_duration'] / 60  # convert to minutes'
+    year_values['total_file_size'] = year_values['total_file_size'] / 1024  # convert to GB'
+
+    charts = []
+    for quantity in ['total_folders', 'total_videos', 'total_duration', 'total_file_size']:
+        match quantity:
+            case 'total_folders':
+                y_label = 'Number of Video Sources'
+            case 'total_videos':
+                y_label = 'Number of Videos Submitted'
+            case 'total_duration':
+                y_label = 'Total Video Duration (minutes)'
+            case 'total_file_size':
+                y_label = 'Total File Size (GB)'
+
+        chart = alt.Chart(year_values).mark_line(point=True).encode(
+            x='project_year:O',
+            y=alt.Y(f'{quantity}:Q', title=y_label),
+            tooltip=['project_year:O', 'total_folders:Q', 'total_videos:Q', 'total_duration:Q', 'total_file_size:Q']
+        ).interactive()
+
+        charts.append(chart)
+
+    return charts
+
+# resolution stacked bar chart
+def resolution_chart(year_values):
+    resolution_cols = [
+        "resolution_na",
+        "resolution_lo",
+        "resolution_md",
+        "resolution_hi",
+    ]
+
+    custom_colors = [NA_COLOR, LO_COLOR, MD_COLOR, HI_COLOR]
+
+    year_melted = year_values.melt(
+        id_vars=["project_year"],
+        value_vars=resolution_cols,
+        var_name="resolution",
+        value_name="count"
+    )
+
+    chart = (
+        alt.Chart(year_melted)
+        .mark_bar()
+        .encode(
+            x=alt.X("project_year:O", title="Project Year"),
+            y=alt.Y("count:Q", stack="normalize", title="Number of Videos"),
+            color=alt.Color(
+                "resolution:N",
+                sort=resolution_cols,
+                title="Video Resolution",
+                scale=alt.Scale(domain=resolution_cols, range=custom_colors)
+            ),
+            order=alt.Order("resolution", sort="ascending")
+        )
+    )
     return chart

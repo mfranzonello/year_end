@@ -239,7 +239,8 @@ def fetch_shared_albums(engine:Engine) -> DataFrame:
 
 def fetch_year_summaries(engine:Engine) -> DataFrame:
     sql = f'''
-    SELECT project_year, total_folders, total_videos, total_duration, total_file_size
+    SELECT project_year, total_folders, total_videos, total_duration, total_file_size,
+    resolution_na, resolution_lo, resolution_md, resolution_hi
     FROM project.years_summary
     ;'''
     return read_sql(engine, sql)
