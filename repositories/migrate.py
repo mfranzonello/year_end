@@ -8,7 +8,7 @@ from itertools import combinations
 from pandas import DataFrame
 from sqlalchemy import Engine
 
-from common.system import get_videos_in_folder, mount_g_drive, sort_paths, get_year_folders, get_person_folders
+from common.system import get_videos_in_folder, mount_g_drive, sort_paths, get_year_folders, get_person_folders, rebuild_path
 from database.db_project import fetch_duplicates
 
 def gather_names_casefold(folder: Path) -> set[str]:
@@ -120,12 +120,6 @@ def quarantine_file_2(file:Path, incoming_path:Path, quarantine_root:Path) -> Pa
             file.rename(target)
 
     return target
-
-def rebuild_path(parent_folder:Path, folder_name:str, subfolder_name:str, file_name:str) -> Path:
-    if subfolder_name:
-        return parent_folder / folder_name / subfolder_name / file_name
-    else:
-        return parent_folder / folder_name / file_name
 
 def dedupe_folder_from_incoming(files_in_folder:list[Path], quarantine_root:Path, dry_run:bool) -> list[Path]|None:
     # identify candidates for removal in GDrive

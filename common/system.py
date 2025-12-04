@@ -141,6 +141,12 @@ def get_person_names(root:Path):
 def sort_paths(folder_paths:list[Path]):
     return sorted(folder_paths, key=lambda p: p.name.lower())
 
+def rebuild_path(parent_folder:Path, folder_name:str, subfolder_name:str, file_name:str) -> Path:
+    if subfolder_name:
+        return parent_folder / folder_name / subfolder_name / file_name
+    else:
+        return parent_folder / folder_name / file_name
+
 def mount_premiere(t=20):
     subprocess.Popen(PREMIERE_EXE)
     sleep(t)

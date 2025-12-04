@@ -1,8 +1,7 @@
 '''Functions to extract XMP metadata from video files after reviewed in Adobe Bridge.'''
 
-from ast import parse
 from pathlib import Path
-import gzip
+
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
@@ -122,24 +121,6 @@ def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, s
 
     return duration, resolution
 
-def convert_to_xml(project_path:Path) -> ET.Element|None:
-    if file_type(project_path) == 'PREMIERE_PROJECT':
-        with gzip.open(project_path, 'rb') as f:
-            xml_content = f.read()
-
-        return ET.fromstring(xml_content)
-
-def extract_media_paths(root:ET.Element) -> list[str]:
-    clip_refs = [c.find('Clip').get('ObjectRef') for c in root.findall('SubClip')]
-    subbed_clips = [c for c in root.findall('VideoClip') if c.get('ObjectID') in clip_refs]
-    source_refs = set(c.find('Clip').find('Source').get('ObjectRef') for c in subbed_clips)
-    master_clips_urefs = [v.find('MediaSource').find('Media').get('ObjectURef')
-                          for v in root.findall('VideoMediaSource') if v.get('ObjectID') in source_refs]
-    media_paths = [m.find('RelativePath').text for m in root.findall('Media')
-                   if m.get('ObjectUID') in master_clips_urefs and m.find('RelativePath') is not None]
-
-    return media_paths
-
 def parse_date_string(s: str):
     """
     Try multiple date formats commonly found in QuickTime/MP4 metadata.
@@ -157,7 +138,7 @@ def parse_date_string(s: str):
 
     for fmt in formats:
         try:
-            return datetime.strptime(s, fmt)
+            return min(datetime.now(), datetime.strptime(s, fmt))
         except ValueError:
             pass
 

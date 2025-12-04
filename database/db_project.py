@@ -83,7 +83,6 @@ def fetch_all_member_ids(engine:Engine) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-
 def update_folders(engine:Engine, df:DataFrame):
     # add new folder information
     sql = f'''

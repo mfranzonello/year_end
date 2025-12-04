@@ -5,16 +5,16 @@ import argparse
 import sys
 from datetime import datetime
 
-from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, QUARANTINE
+from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, QUARANTINE
 from common.structure import YIR_REVIEWS, YIR_PROJECT, PR_EXT ## needed for pymiere control
 from common.secret import secrets
 from common.console import SplitConsole
-from common.system import get_person_names
 from database.db import get_engine
 from repositories.migrate import dedupe_one_drive, copy_from_gdrive
 from repositories.ingest import copy_from_web
-from repositories.inspect import get_usable_videos, summarize_folders, update_database_images
-from adobe.premiere import open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
+from repositories.inspect import summarize_folders, update_database_images
+from repositories.assemble import import_and_label
+
 
 PGSECRETS = secrets['postgresql']['host']
 PGHOST = secrets['postgresql']['host']
@@ -37,7 +37,8 @@ def set_up_engine():
 def scan_folders(one_drive_folder, google_drive_folder, dry_run=True):
     if one_drive_folder:
         engine = set_up_engine()
-        dedupe_one_drive(engine, one_drive_folder, QUARANTINE, dry_run)
+        if not dry_run:
+            dedupe_one_drive(engine, one_drive_folder, QUARANTINE, dry_run)
 
     if one_drive_folder and google_drive_folder:
         missing_targets = copy_from_gdrive(one_drive_folder, google_drive_folder, QUARANTINE, ui, dry_run)
@@ -53,44 +54,17 @@ def harvest_albums(google, icloud, headless=True):
 
 def update_database(dry_run=True):
     engine = set_up_engine()
-    summarize_folders(engine, ONE_DRIVE_FOLDER, ADOBE_FOLDER, ui, dry_run=dry_run)
+    summarize_folders(engine, ONE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, ui, dry_run=dry_run)
     engine.dispose()
 
 def update_images(dry_run=True):
     engine = set_up_engine()
-    update_database_images(engine, CLOUDINARY_CLOUD, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, dry_run)
+    update_database_images(engine, CLOUDINARY_CLOUD, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, dry_run=dry_run)
     engine.dispose()
 
 def update_project(year:int, min_stars:int, dry_run=True):
     engine = set_up_engine()
-
-    ui.set_status('Opening Premiere project...')
-    project_id = open_project(Path(ADOBE_FOLDER) / f'{YIR_REVIEWS} {year}' / f'{YIR_PROJECT} {year}{PR_EXT}')
-
-    ui.set_status('Finding Videos bin')
-    videos_bin = find_videos_bin(project_id)
-
-    ui.set_status('Creating person bins...')
-    od_videos = Path(ONE_DRIVE_FOLDER) / f'{year}'
-    person_names = get_person_names(od_videos)
-    create_person_bins(videos_bin, person_names)
-
-    ui.set_status(f'Importing reviewed videos ({min_stars} star and above)...')
-    for person_name in person_names:
-        ui.set_status(f'\tLooking at {person_name}...')
-
-        # pull from DB
-        usable_videos = get_usable_videos(engine, year, min_stars)
-
-        if not usable_videos.empty:
-            num_videos = len(usable_videos)
-            v_s = 's' if num_videos != 1 else ''
-            ui.set_status(f'\t\tChecking {len(usable_videos)} video{v_s} for {person_name}...')
-            import_videos(project_id, videos_bin, person_name, usable_videos) ## need to convert to paths
-
-    ui.set_status('Setting labels...')
-    set_family_color_labels(videos_bin)
-
+    import_and_label(engine, year, min_stars, ONE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, YIR_PROJECT, PR_EXT, ui, dry_run=dry_run)
     engine.dispose()
 
 def main():

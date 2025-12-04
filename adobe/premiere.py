@@ -1,7 +1,9 @@
 '''Functions to interact with Adobe Premiere Pro via pymiere.'''
 
-import subprocess
 from time import sleep
+from pathlib import Path
+import gzip
+import xml.etree.ElementTree as ET
 
 import pymiere
 
@@ -15,12 +17,38 @@ ITEM_TYPES = {1: 'CLIP', 2: 'BIN', 3: 'ROOT', 4: 'FILE'}
 ## projectitem.moveBin()
 ## project.consolidateDuplicates()
 
-
-## figure out which items are used in final project
 # # app.project.rootItem.children[index].getProjectColumnsMetadata() -> 'Video Usage'
 
-## how to ignore items that are cloud only? probably just 
+# see what's already used
+def convert_to_xml(project_path:Path) -> ET.Element|None:
+    if file_type(project_path) == 'PREMIERE_PROJECT':
+        with gzip.open(project_path, 'rb') as f:
+            xml_content = f.read()
 
+        return ET.fromstring(xml_content)
+
+def extract_included_video_paths(root:ET.Element) -> list[str]:
+    # returns all videos already imported into the project
+    master_clips_urefs = [v.find('MediaSource').find('Media').get('ObjectURef')
+                          for v in root.findall('VideoMediaSource')]
+    media_paths = [m.find('RelativePath').text for m in root.findall('Media')
+                   if m.get('ObjectUID') in master_clips_urefs and m.find('RelativePath') is not None]
+
+    return media_paths
+
+def extract_used_video_paths(root:ET.Element) -> list[str]:
+    # returns all videos actually used in the timeline
+    clip_refs = [c.find('Clip').get('ObjectRef') for c in root.findall('SubClip')]
+    subbed_clips = [c for c in root.findall('VideoClip') if c.get('ObjectID') in clip_refs]
+    source_refs = set(c.find('Clip').find('Source').get('ObjectRef') for c in subbed_clips)
+    master_clips_urefs = [v.find('MediaSource').find('Media').get('ObjectURef')
+                          for v in root.findall('VideoMediaSource') if v.get('ObjectID') in source_refs]
+    media_paths = [m.find('RelativePath').text for m in root.findall('Media')
+                   if m.get('ObjectUID') in master_clips_urefs and m.find('RelativePath') is not None]
+
+    return media_paths
+
+# bring new items into Premiere
 def open_premiere():
     '''Ensure Premiere Pro is running.'''
     premiere_open = False
@@ -115,22 +143,42 @@ def set_family_color_labels(videos_bin):
                     if ITEM_TYPES[c_item.type] == 'CLIP':
                         set_color_label(c_item, family_color_label)
 
-def import_videos(project_id, videos_bin, person_name, file_list):
-    importable_videos = [str(file_path) for file_path in file_list if not videos_bin.findItemsMatchingMediaPath(str(file_path), ignoreSubclips=1).length]
-    skipped_imports = len(file_list) - len(importable_videos)
+def check_video_in_bin(videos_bin, video_path:Path):
+    return videos_bin.findItemsMatchingMediaPath(str(video_path), ignoreSubclips=1).length > 0
 
-    if skipped_imports == len(file_list):
-        print('\t\tSkipping, all rated videos already imported.')
-    elif skipped_imports:
+def import_videos(project_id, videos_bin, person_name, import_file_list, existing_file_list, dry_run=True):
+    import_success = False
+    person_bin = find_person_bin(videos_bin, person_name)
+
+    # videos that should be in this bin
+    importable_videos = [p for p in import_file_list if p not in existing_file_list]
+    # videos already in the project
+    existing_videos = [p for p in import_file_list if p in existing_file_list]
+    # files that are elsewhere
+    movable_videos = [p for p in existing_videos if not check_video_in_bin(person_bin, p)]
+
+    skipped_imports = len(existing_videos) - (len(importable_videos) + len(movable_videos))
+
+    if skipped_imports > 0:
         v_s = 's' if skipped_imports != 1 else ''
         print(f'\t\tSkipping {skipped_imports} already imported video{v_s}...')
 
     if importable_videos:
-        '''Import videos into the person's bin in Premiere.'''
-        v_s = 's' if skipped_imports != 1 else ''
+        # import videos into the person's bin in Premiere
+        v_s = 's' if len(importable_videos) != 1 else ''
         print(f'\t\tImporting {len(importable_videos)} video{v_s}...')
         person_bin = find_person_bin(videos_bin, person_name)
         if person_bin:
-            import_success = pymiere.objects.app.project.importFiles(arrayOfFilePathsToImport=importable_videos,
-                                                                     suppressUI=False, targetBin=person_bin, importAsNumberedStills=False)
-        return import_success
+            if not dry_run:
+                import_success = pymiere.objects.app.project.importFiles(arrayOfFilePathsToImport=[str(p) for p in importable_videos],
+                                                                         suppressUI=False, targetBin=person_bin, importAsNumberedStills=False)
+
+    if movable_videos:
+        v_s = 's' if len(movable_videos) != 1 else ''
+        print(f'\t\tMoving {len(movable_videos)} video{v_s} to {person_name} bin...')
+        for file_path in movable_videos:
+            for item in videos_bin.findItemsMatchingMediaPath(str(file_path), ignoreSubclips=1):
+                if not dry_run:
+                    item.moveBin(person_bin)
+
+    return import_success

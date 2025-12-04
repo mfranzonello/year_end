@@ -6,7 +6,8 @@ from sqlalchemy import Engine
 from common.console import SplitConsole
 from common.system import get_premiere_projects_in_folder, get_videos_in_folder, resolve_relative_path, is_file_available, sort_paths, \
     get_year_folders, get_person_folders
-from adobe.bridge import get_video_rating, get_video_date, get_video_cv2_details, is_file_available, convert_to_xml, extract_media_paths
+from adobe.bridge import get_video_rating, get_video_date, get_video_cv2_details, is_file_available
+from adobe.premiere import convert_to_xml, extract_used_video_paths
 from database.db_project import \
     fetch_known_folders, update_folders, purge_folders, \
     fetch_known_files, update_files, purge_files, fetch_files, fetch_files_scanned, update_files_used, \
@@ -89,12 +90,6 @@ def summarize_files(person_folder:Path, year:int, video_files:list[Path], scanne
     cv2_cols = ['video_duration', 'video_resolution']
     files_df[cv2_cols] = files_df.merge(scanned_df, on=['file_name', 'folder_name', 'subfolder_name'], how='left')[cv2_cols]
     cv2_update = files_df[cv2_cols].isna().all(axis=1)
-
-    ##files_df.loc[cv2_update, cv2_cols] = files_df[cv2_update].apply(lambda x: get_video_cv2_details(x['full_path']), axis=1, result_type='expand')
-    # # to_fill = files_df[cv2_update].apply(lambda x: get_video_cv2_details(x['full_path']), axis=1, result_type='expand') ##.set_axis(cv2_cols, axis=1).loc[cv2_update, cv2_cols]
-    # # print(f'{cv2_update=}')
-    # # input(f'{to_fill=}')
-
     if cv2_update.any():
         files_df.loc[cv2_update, cv2_cols] = files_df[cv2_update]\
             .apply(lambda x: get_video_cv2_details(x['full_path']), axis=1, result_type='expand')\
@@ -107,7 +102,7 @@ def summarize_files(person_folder:Path, year:int, video_files:list[Path], scanne
 
 def check_files_used(project_path:Path) -> list[Path]:
     root = convert_to_xml(project_path)
-    relative_paths = extract_media_paths(root)
+    relative_paths = extract_used_video_paths(root)
     full_paths = [resolve_relative_path(project_path.parent, r) for r in relative_paths]
 
     return full_paths
@@ -124,7 +119,7 @@ def compare_used(person_folder:Path, year:int, video_files:list[Path], full_path
    
     return files_df
     
-def summarize_folders(engine:Engine, one_drive_folder:Path, project_folder:Path,
+def summarize_folders(engine:Engine, one_drive_folder:Path, review_folder:Path, review_string:str,
                       ui:SplitConsole, dry_run:bool=False):
     year_folders = get_year_folders(one_drive_folder)
 
@@ -140,11 +135,14 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, project_folder:Path,
         ui.add_update(f'Checking {year_folder}')
         project_year = int(year_folder.name)
 
+        ##### for debugging only 2025
         if project_year != 2025:
             continue
         
         # prepare Premiere Project
         media_files:list[Path] = []
+
+        project_folder = review_folder / f'{review_string} {project_year}'
         premiere_projects = get_premiere_projects_in_folder(project_folder)
         for project_path in premiere_projects:
             project_available = is_file_available(project_path)
@@ -153,7 +151,7 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, project_folder:Path,
                 ui.set_status(f'Getting media used for {project_path.name}')
                 media_files.extend(check_files_used(project_path))
         media_files = list(set(media_files))
-
+        
         for person_folder in sort_paths(get_person_folders(one_drive_folder / str(project_year))):
             ui.set_status(f'Looking at {person_folder}')
 
@@ -198,8 +196,3 @@ def update_database_images(engine:Engine, cloud_name:str, api_key:str, api_secre
     member_ids = fetch_all_member_ids(engine)['member_id']
     if not dry_run:
         fill_in_temp_pictures(member_ids.tolist())
-
-def get_usable_videos(engine:Engine, year:int, min_stars:int):
-    files_df = fetch_files(engine, year)
-    usable_videos = files_df.query('video_rating >= @min_stars')
-    return usable_videos
