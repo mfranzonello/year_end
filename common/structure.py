@@ -28,6 +28,8 @@ def write_json(filepath, filename, json_dict, ext='.json'):
     if path.exists():
         with open(Path(filepath) / f'{filename}{ext}', 'w') as f:
             json.dump(json_dict, f)
+    else:
+        print(f'Path {path} does not exist. Cannot write JSON.')
 
 def get_scope(folder):
     scope = read_json(folder, 'scopes')

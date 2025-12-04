@@ -107,10 +107,10 @@ def main():
         harvest_albums(args.gphotos, args.iphotos, args.headless)
 
     google_drive_folder = GOOGLE_DRIVE_FOLDER if args.gdrive else None
-    scan_folders(args.od, google_drive_folder, dry_run)
-
+   
     ## can look at whole group at once
     if not args.nodbupdate:
+        scan_folders(args.od, google_drive_folder, dry_run)
         update_database(dry_run=dry_run)
 
         if args.pictures:

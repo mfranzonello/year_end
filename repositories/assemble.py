@@ -2,8 +2,9 @@ from pathlib import Path
 
 from sqlalchemy import Engine 
 from common.system import get_person_folders, get_person_name, get_person_names, rebuild_path, resolve_relative_path
-from database.db_project import fetch_files, fetch_color_labels
-from adobe.premiere import convert_to_xml, extract_included_video_paths, open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
+from database.db_project import fetch_files, fetch_member_labels, fetch_color_labels
+from adobe.premiere import convert_to_xml, extract_included_video_paths, open_project, find_videos_bin, create_person_bins, \
+    import_videos, set_family_color_labels, create_label_presets
 
 def get_usable_videos(engine:Engine, year:int, min_stars:int):
     files_df = fetch_files(engine, year)
@@ -54,7 +55,10 @@ def import_and_label(engine:Engine, year:int, min_stars:int, one_drive_folder:Pa
 
     ui.set_status('Setting labels...')
 
-    color_labels = fetch_color_labels(engine, year)
-    color_labels['bin_name'] = color_labels['folder_name'].apply(get_person_name)
-    label_map = color_labels.set_index('bin_name')['label_id'].sub(1).to_dict()
+    member_labels = fetch_member_labels(engine, year)
+    member_labels['bin_name'] = member_labels['folder_name'].apply(get_person_name)
+    label_map = member_labels.set_index('bin_name')['label_id'].sub(1).to_dict()
     set_family_color_labels(videos_bin, label_map)
+
+    color_labels = fetch_color_labels(engine)
+    label_presets = create_label_presets(color_labels)
