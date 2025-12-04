@@ -71,8 +71,6 @@ YIR_REVIEWS = _drives['local_storage']['adobe']['reviews']
 YIR_PROJECT = _drives['local_storage']['adobe']['project']
 
 # MAPPINGS
-SHARED_ALBUMS = read_json(_config_folder, 'albums')
-COLOR_LABELS = read_json(_config_folder, 'labels')
 ADOBE_BIN = _drives['local_storage']['adobe']['bin']
 
 # APIS

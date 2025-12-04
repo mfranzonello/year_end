@@ -1,5 +1,6 @@
 '''Functions to interact with Adobe Premiere Pro via pymiere.'''
 
+from calendar import c
 from time import sleep
 from pathlib import Path
 import gzip
@@ -7,16 +8,14 @@ import xml.etree.ElementTree as ET
 
 import pymiere
 
-from common.structure import COLOR_LABELS, ADOBE_BIN
+from common.structure import ADOBE_BIN
 from common.system import file_type, mount_premiere
 
 ITEM_TYPES = {1: 'CLIP', 2: 'BIN', 3: 'ROOT', 4: 'FILE'}
 
-## TODO: move videos in the wrong bins
+## TODO:
 ## projectitem.getMediaPath()
-## projectitem.moveBin()
 ## project.consolidateDuplicates()
-
 # # app.project.rootItem.children[index].getProjectColumnsMetadata() -> 'Video Usage'
 
 # see what's already used
@@ -124,20 +123,14 @@ def get_color_label(project_item):
 
 def set_color_label(project_item, color):
     '''Set the color index of a project item if different.'''
-    if project_item.getColorLabel != color:
+    if get_color_label(project_item) != color:
         project_item.setColorLabel(color)
 
-def get_family_color_label(name: str) -> int | None:
-    '''Returns the index position of the family dictionary whose 'members' list contains the given name.'''
-    for i, fam in enumerate(COLOR_LABELS):
-        if name in fam.get("members", []):
-            return i
-
-def set_family_color_labels(videos_bin):
+def set_family_color_labels(videos_bin, label_map):
     '''Set color labels for clips in person bins based on family membership.'''
     for c_bin in videos_bin.children:
         if ITEM_TYPES[c_bin.type] == 'BIN':
-            family_color_label = get_family_color_label(c_bin.name)
+            family_color_label = label_map.get(c_bin.name)
             if family_color_label:
                 for c_item in c_bin.children:
                     if ITEM_TYPES[c_item.type] == 'CLIP':
@@ -146,15 +139,16 @@ def set_family_color_labels(videos_bin):
 def check_video_in_bin(videos_bin, video_path:Path):
     return videos_bin.findItemsMatchingMediaPath(str(video_path), ignoreSubclips=1).length > 0
 
-def import_videos(project_id, videos_bin, person_name, import_file_list, existing_file_list, dry_run=True):
+def import_videos(project_id, videos_bin, person_name, import_file_list, dry_run=True):
     import_success = False
+
     person_bin = find_person_bin(videos_bin, person_name)
 
     # videos that should be in this bin
-    importable_videos = [p for p in import_file_list if p not in existing_file_list]
-    # videos already in the project
-    existing_videos = [p for p in import_file_list if p in existing_file_list]
-    # files that are elsewhere
+    importable_videos = [p for p in import_file_list if not check_video_in_bin(videos_bin, p)]
+    # videos that already exist in this bin
+    existing_videos = [p for p in import_file_list if check_video_in_bin(person_bin, p)]
+    # videos that already exist in another bin
     movable_videos = [p for p in existing_videos if not check_video_in_bin(person_bin, p)]
 
     skipped_imports = len(existing_videos) - (len(importable_videos) + len(movable_videos))

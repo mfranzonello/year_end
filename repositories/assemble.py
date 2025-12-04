@@ -2,7 +2,7 @@ from pathlib import Path
 
 from sqlalchemy import Engine 
 from common.system import get_person_folders, get_person_name, get_person_names, rebuild_path, resolve_relative_path
-from database.db_project import fetch_files
+from database.db_project import fetch_files, fetch_color_labels
 from adobe.premiere import convert_to_xml, extract_included_video_paths, open_project, find_videos_bin, create_person_bins, import_videos, set_family_color_labels
 
 def get_usable_videos(engine:Engine, year:int, min_stars:int):
@@ -31,9 +31,9 @@ def import_and_label(engine:Engine, year:int, min_stars:int, one_drive_folder:Pa
     ui.set_status(f'Importing reviewed videos ({min_stars} star and above)...')
 
     # check what's already in the project
-    root = convert_to_xml(project_path)
-    included_videos = extract_included_video_paths(root)
-    included_video_paths = [resolve_relative_path(project_folder, p) for p in included_videos]
+    # # root = convert_to_xml(project_path)
+    # # included_videos = extract_included_video_paths(root)
+    # # included_video_paths = [resolve_relative_path(project_folder, p) for p in included_videos]
 
     # pull from DB
     usable_videos = get_usable_videos(engine, year, min_stars)
@@ -50,7 +50,10 @@ def import_and_label(engine:Engine, year:int, min_stars:int, one_drive_folder:Pa
             num_videos = len(usable_video_paths)
             v_s = 's' if num_videos != 1 else ''
             ui.set_status(f'\t\tChecking {len(usable_videos_person)} video{v_s} for {person_name}...')
-            import_videos(project_id, videos_bin, person_name, usable_video_paths, included_video_paths, dry_run)
+            import_videos(project_id, videos_bin, person_name, usable_video_paths, dry_run)
 
     ui.set_status('Setting labels...')
-    set_family_color_labels(videos_bin)
+
+    color_labels = fetch_color_labels(engine, year)
+    label_map = color_labels.set_index('folder_name')['label_id'].to_dict()
+    set_family_color_labels(videos_bin, label_map)

@@ -243,3 +243,14 @@ def fetch_year_summaries(engine:Engine) -> DataFrame:
     FROM project.years_summary
     ;'''
     return read_sql(engine, sql)
+
+def fetch_color_labels(engine:Engine, year:int) -> DataFrame:
+    sql = f'''
+    SELECT project_year, folder_name, label_id, label_name, color_hex
+    FROM project.folders
+    JOIN config.member_labels USING (member_id)
+    JOIN config.adobe_labels USING (label_id)
+    JOIN config.color_palette USING (color_name)
+    WHERE project_year = {year}
+    ;'''
+    return read_sql(engine, sql)
