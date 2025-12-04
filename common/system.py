@@ -107,8 +107,8 @@ def is_year_folder(path:Path) -> bool:
     name = path.name  # just the final component
     return len(name) == 4 and name.isdigit()
 
-def get_actual_year(folder_path:Path) -> int|None:
-    match = re.search(r"\s(\d{4})$", folder_path.name)
+def get_actual_year(folder_name:str) -> int|None:
+    match = re.search(r"\s(\d{4})$", folder_name)
     return int(match.group(1)) if match else None
 
 def get_person_folders(root:Path) -> list[Path]:
@@ -129,13 +129,14 @@ def get_subfolders(root:Path) -> list[Path]:
         
         return subfolders
 
-def get_person_name(folder_path:Path) -> str:
-    year = get_actual_year(folder_path)
-    return folder_path.name.replace(f' {year}', '').strip()
+def get_person_name(folder_path:Path|str) -> str:
+    folder_name = folder_path.name if isinstance(folder_path, Path) else str(folder_path)
+    year = get_actual_year(folder_name)
+    return folder_name.replace(f' {year}', '').strip()  
 
 def get_person_names(root:Path):
     '''Get person names from OneDrive YIR clips for a given year.'''
-    person_names = [get_person_name(p) for p in root.iterdir() if p.is_dir() and get_actual_year(p)]
+    person_names = [get_person_name(p) for p in root.iterdir() if p.is_dir() and get_actual_year(p.name)]
     return person_names
 
 def sort_paths(folder_paths:list[Path]):

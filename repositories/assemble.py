@@ -55,5 +55,6 @@ def import_and_label(engine:Engine, year:int, min_stars:int, one_drive_folder:Pa
     ui.set_status('Setting labels...')
 
     color_labels = fetch_color_labels(engine, year)
-    label_map = color_labels.set_index('folder_name')['label_id'].to_dict()
+    color_labels['bin_name'] = color_labels['folder_name'].apply(get_person_name)
+    label_map = color_labels.set_index('bin_name')['label_id'].sub(1).to_dict()
     set_family_color_labels(videos_bin, label_map)
