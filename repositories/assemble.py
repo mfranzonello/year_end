@@ -52,8 +52,8 @@ def import_and_label(engine:Engine, year:int, min_stars:int, one_drive_folder:Pa
 
             num_videos = len(usable_video_paths)
             v_s = 's' if num_videos != 1 else ''
-            ui.set_status(f'\t\tChecking {len(usable_videos_person)} video{v_s} for {person_name}...')
-            import_videos(project_id, videos_bin, person_name, usable_video_paths, dry_run)
+            ui.set_status(f'Checking {len(usable_videos_person)} video{v_s} for {person_name}...')
+            import_videos(project_id, videos_bin, person_name, usable_video_paths, ui, dry_run)
 
     ui.set_status('Setting labels...')
 

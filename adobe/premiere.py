@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 
 import pymiere
 
+from common.console import SplitConsole
 from common.structure import ADOBE_BIN, write_json, PR_LABEL_EX
 from common.system import file_type, mount_premiere
 
@@ -139,7 +140,7 @@ def set_family_color_labels(videos_bin, label_map):
 def check_video_in_bin(videos_bin, video_path:Path):
     return videos_bin.findItemsMatchingMediaPath(str(video_path), ignoreSubclips=1).length > 0
 
-def import_videos(project_id, videos_bin, person_name, import_file_list, dry_run=True):
+def import_videos(project_id, videos_bin, person_name:str, import_file_list:list[Path], ui:SplitConsole, dry_run=True):
     import_success = False
 
     person_bin = find_person_bin(videos_bin, person_name)
@@ -155,12 +156,12 @@ def import_videos(project_id, videos_bin, person_name, import_file_list, dry_run
 
     if skipped_imports > 0:
         v_s = 's' if skipped_imports != 1 else ''
-        print(f'\t\tSkipping {skipped_imports} already imported video{v_s}...')
+        ui.set_status(f'Skipping {skipped_imports} already imported video{v_s}...')
 
     if importable_videos:
         # import videos into the person's bin in Premiere
         v_s = 's' if len(importable_videos) != 1 else ''
-        print(f'\t\tImporting {len(importable_videos)} video{v_s}...')
+        ui.add_update(f'Importing {len(importable_videos)} video{v_s}...')
         person_bin = find_person_bin(videos_bin, person_name)
         if person_bin:
             if not dry_run:
@@ -169,7 +170,7 @@ def import_videos(project_id, videos_bin, person_name, import_file_list, dry_run
 
     if movable_videos:
         v_s = 's' if len(movable_videos) != 1 else ''
-        print(f'\t\tMoving {len(movable_videos)} video{v_s} to {person_name} bin...')
+        ui.add_update(f'Moving {len(movable_videos)} video{v_s} to {person_name} bin...')
         for file_path in movable_videos:
             for item in videos_bin.findItemsMatchingMediaPath(str(file_path), ignoreSubclips=1):
                 if not dry_run:
