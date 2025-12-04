@@ -14,6 +14,8 @@ projects = "Reviews"
 reviews = "Year End"
 project = "YIR"
 bin = "Videos"
+common = "_Common"
+label_preset = "Nello YIR"
 
 # executables for Windows and Mac
 [executables]

@@ -6,14 +6,14 @@ import sys
 from datetime import datetime
 
 from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, QUARANTINE
-from common.structure import YIR_REVIEWS, YIR_PROJECT, PR_EXT ## needed for pymiere control
+from common.structure import YIR_REVIEWS, YIR_PROJECT, PR_EXT, COMMON_FOLDER, LABEL_PRESET ## needed for pymiere control
 from common.secret import secrets
 from common.console import SplitConsole
 from database.db import get_engine
 from repositories.migrate import dedupe_one_drive, copy_from_gdrive
 from repositories.ingest import copy_from_web
 from repositories.inspect import summarize_folders, update_database_images
-from repositories.assemble import import_and_label
+from repositories.assemble import import_and_label, setup_label_presets
 
 
 PGSECRETS = secrets['postgresql']['host']
@@ -65,6 +65,7 @@ def update_images(dry_run=True):
 def update_project(year:int, min_stars:int, dry_run=True):
     engine = set_up_engine()
     import_and_label(engine, year, min_stars, ONE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, YIR_PROJECT, PR_EXT, ui, dry_run=dry_run)
+    setup_label_presets(engine, COMMON_FOLDER, LABEL_PRESET)
     engine.dispose()
 
 def main():

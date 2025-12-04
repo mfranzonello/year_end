@@ -47,6 +47,7 @@ VIDEO_EXTS = {
 }
 PR_EXT = '.prproj'
 AE_EXT = '.aep'
+PR_LABEL_EX = '.prlabelpreset'
 
 # EXECUTABLES
 GOOGLE_DRIVE_EXE = detect_app_path(_drives['executables'], 'google_drive')
@@ -67,13 +68,16 @@ google_drive_base = detect_gdrive_base()
 ONE_DRIVE_FOLDER = one_drive_base / _drives['local_storage']['onedrive']['videos']
 GOOGLE_DRIVE_FOLDER = google_drive_base / _drives['local_storage']['google_drive']['videos']
 ADOBE_FOLDER = one_drive_base / _drives['local_storage']['adobe']['projects']
+COMMON_FOLDER = ADOBE_FOLDER / _drives['local_storage']['adobe']['common']
 
 QUARANTINE = _drives['local_storage']['quarantine']
 YIR_REVIEWS = _drives['local_storage']['adobe']['reviews']
 YIR_PROJECT = _drives['local_storage']['adobe']['project']
+LABEL_PRESET = _drives['local_storage']['adobe']['label_preset']
 
 # MAPPINGS
 ADOBE_BIN = _drives['local_storage']['adobe']['bin']
+
 
 # APIS
 AZURE_LOGIN_URL = _api['azure']['urls']['login']

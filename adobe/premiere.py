@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 
 import pymiere
 
-from common.structure import ADOBE_BIN, write_json
+from common.structure import ADOBE_BIN, write_json, PR_LABEL_EX
 from common.system import file_type, mount_premiere
 
 ITEM_TYPES = {1: 'CLIP', 2: 'BIN', 3: 'ROOT', 4: 'FILE'}
@@ -183,7 +183,7 @@ def hex_to_rgb(color_hex):
     b = int(color_hex[5:7], 16)
     return (r, g, b)
 
-def create_label_presets(color_labels):
+def create_label_presets(color_labels, common_folder, label_preset_name):
     color_labels.loc[:, ['r', 'g', 'b']] = color_labels.apply(lambda x: hex_to_rgb(x['color_hex']), axis=1, result_type='expand').values
     label_presets = {'colors': [{'color': {'b': row['b'],
                                            'g': row['g'],
@@ -192,6 +192,6 @@ def create_label_presets(color_labels):
                      'defaults': {'audio': 14, 'bin': 7, 'captions': 7, 'dynamiclink': 6, 'movie': 1, 'sequence': 5, 'still': 3, 'video': 15}
                      }
 
-    write_json(r'C:\Users\mfran\OneDrive\Reviews\_Common', 'Nello YIR 2025', label_presets, ext='.prlabelpreset')
+    write_json(common_folder, label_preset_name, label_presets, ext=PR_LABEL_EX)
 
     return label_presets

@@ -1,6 +1,5 @@
 import sys
 import shutil
-import time
 
 from common.system import clear_screen
 
@@ -78,26 +77,3 @@ class SplitConsole:
         sys.stdout.write("\n")
         show_cursor()
         sys.stdout.flush()
-
-
-# ---- Demo usage ----
-if __name__ == "__main__":
-    ui = SplitConsole()
-    try:
-        ui.set_status("Currently checking source X for new information...")
-        time.sleep(0.6)
-        ui.add_update("Added 7 files to folder A.")
-        ui.set_status("Currently checking source Y for new information...")
-        time.sleep(0.6)
-        ui.add_update("Added 12 files to folder B.")
-        ui.add_update("Skipped folder C.")
-        ui.set_status("Currently checking source A for new information...")
-        time.sleep(0.6)
-        ui.add_update("Added 1 file to folder D.")
-        time.sleep(0.6)
-        ui.add_update("Added 3 files to folder E.")
-        ui.set_status("Done.")
-        time.sleep(0.8)
-    finally:
-        ui.close()
-

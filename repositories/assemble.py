@@ -1,6 +1,8 @@
 from pathlib import Path
 
 from sqlalchemy import Engine 
+
+from common.console import SplitConsole
 from common.system import get_person_folders, get_person_name, get_person_names, rebuild_path, resolve_relative_path
 from database.db_project import fetch_files, fetch_member_labels, fetch_color_labels
 from adobe.premiere import convert_to_xml, extract_included_video_paths, open_project, find_videos_bin, create_person_bins, \
@@ -12,7 +14,7 @@ def get_usable_videos(engine:Engine, year:int, min_stars:int):
     return usable_videos
 
 def import_and_label(engine:Engine, year:int, min_stars:int, one_drive_folder:Path, adobe_folder:Path, yir_reviews:str, yir_project:str, pr_ext:str,
-                     ui, dry_run=True):
+                     ui:SplitConsole, dry_run=True):
     
 
     ui.set_status('Opening Premiere project...')
@@ -60,5 +62,6 @@ def import_and_label(engine:Engine, year:int, min_stars:int, one_drive_folder:Pa
     label_map = member_labels.set_index('bin_name')['label_id'].sub(1).to_dict()
     set_family_color_labels(videos_bin, label_map)
 
+def setup_label_presets(engine:Engine, common_folder:Path, label_preset_name:str):
     color_labels = fetch_color_labels(engine)
-    label_presets = create_label_presets(color_labels)
+    return create_label_presets(color_labels, common_folder, label_preset_name)
