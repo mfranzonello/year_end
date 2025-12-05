@@ -1,4 +1,3 @@
-from tkinter import N
 import altair as alt
 from pandas import DataFrame, concat, json_normalize
 
