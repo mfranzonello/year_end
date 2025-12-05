@@ -156,7 +156,7 @@ def fetch_files_scanned(engine):
 
 def fetch_duplicates(engine):
     sql = f'''
-    SELECT folder_name, project_year, duplicate_reasons, potential_duplicates
+    SELECT folder_name, project_year, flags, duplicates_sorted
     FROM project.duplicates_summary
     '''
     return read_sql(engine, sql)

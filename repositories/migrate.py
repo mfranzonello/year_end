@@ -142,7 +142,7 @@ def dedupe_folder_from_db(duplicates_df:DataFrame, one_drive_folder:Path, quaran
     keep_paths = []
     move_paths = []
     for _, row in duplicates_df.iterrows():
-        potential_duplicates = row['potential_duplicates']
+        potential_duplicates = row['duplicates_sorted']
         project_year = str(row['project_year'])
         parent_folder = one_drive_folder / project_year
         folder_name = row['folder_name']

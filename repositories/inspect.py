@@ -24,7 +24,7 @@ def get_to_purge(known_df: DataFrame, found_df: DataFrame, on_cols: list[str]) -
     merged = known_df.merge(found_df, on=on_cols, how='left', indicator=True)
     return merged[merged['_merge'] == 'left_only']
 
-def purge_stale_content(engine:Engine, year_folders:list[Path], dry_run:bool):
+def purge_stale_content(engine:Engine, one_drive_folder:Path, dry_run:bool):
     # purge stale
     print('Purging stale content...')
     current_folders = []
@@ -34,6 +34,8 @@ def purge_stale_content(engine:Engine, year_folders:list[Path], dry_run:bool):
     file_comp_cols = ['folder_name', 'project_year', 'file_name', 'subfolder_name']
 
     # remove stale files from DB
+    year_folders = get_year_folders(one_drive_folder)
+    
     for year_folder in year_folders:
         current_year = int(year_folder.name)
 
@@ -83,7 +85,7 @@ def summarize_files(person_folder:Path, year:int, video_files:list[Path], scanne
     files_df['file_size'] = files_df['full_path'].apply(lambda x: round(x.stat().st_size / (1024**2), 1)) # store in MB
     files_df['video_rating'] = files_df['full_path'].apply(get_video_rating).astype('Int64')
 
-    files_df['video_date'] = files_df['full_path'].apply(get_video_date).astype("datetime64[ns]")
+    files_df['video_date'] = files_df['full_path'].apply(get_video_date).astype('datetime64[ns]')
     files_df['video_date'] = files_df['video_date'].astype(object).where(files_df['video_date'].notnull(), None)
 
     files_df['stored'] = files_df['full_path'].apply(lambda x: 'local' if is_file_available(x) else 'cloud')
@@ -98,8 +100,8 @@ def summarize_files(person_folder:Path, year:int, video_files:list[Path], scanne
             .apply(lambda x: get_video_cv2_details(x['full_path']), axis=1, result_type='expand')\
             .set_axis(cv2_cols, axis=1).loc[cv2_update, cv2_cols].loc[cv2_update, cv2_cols]
 
-        files_df['video_duration'] = files_df['video_duration'].astype('Int64')
-        files_df['video_resolution'] = files_df['video_resolution'].astype('string')
+    files_df['video_duration'] = files_df['video_duration'].astype('Int64')
+    files_df['video_resolution'] = files_df['video_resolution'].astype('string')
 
     return files_df
 
@@ -119,15 +121,13 @@ def compare_used(files_df:Path, parent_folder:Path, year:int, full_paths:list[Pa
     
 def summarize_folders(engine:Engine, one_drive_folder:Path, review_folder:Path, review_string:str,
                       ui:SplitConsole, dry_run:bool=False):
-    year_folders = get_year_folders(one_drive_folder)
-
     files = []
     files_used = []
     folders = []
 
-    purge_stale_content(engine, year_folders, dry_run)
-
     previously_scanned = fetch_files_scanned(engine)
+
+    year_folders = get_year_folders(one_drive_folder)
 
     for year_folder in sort_paths(year_folders):
         ui.add_update(f'Checking {year_folder}')

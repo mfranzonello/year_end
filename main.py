@@ -12,9 +12,8 @@ from common.console import SplitConsole
 from database.db import get_engine
 from repositories.migrate import dedupe_one_drive, copy_from_gdrive
 from repositories.ingest import copy_from_web
-from repositories.inspect import summarize_folders, update_database_images
+from repositories.inspect import summarize_folders, update_database_images, purge_stale_content
 from repositories.assemble import import_and_label, setup_label_presets
-
 
 PGSECRETS = secrets['postgresql']['host']
 PGHOST = secrets['postgresql']['host']
@@ -34,23 +33,32 @@ ui = SplitConsole()
 def set_up_engine():
     return get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
-def scan_folders(one_drive_folder, google_drive_folder, dry_run=True):
-    if one_drive_folder:
-        engine = set_up_engine()
-        if not dry_run:
-            dedupe_one_drive(engine, one_drive_folder, QUARANTINE, dry_run)
+def scan_folders(dry_run=True):
+    engine = set_up_engine()
+    missing_targets = copy_from_gdrive(ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, QUARANTINE, ui, dry_run)
 
-    if one_drive_folder and google_drive_folder:
-        missing_targets = copy_from_gdrive(one_drive_folder, google_drive_folder, QUARANTINE, ui, dry_run)
+    if dry_run and missing_targets:
+        ui.add_update("\n(Note) These OneDrive destination folders do not exist yet (will be created on --apply if needed):")
+        for name in missing_targets:
+            ui.add_update(f"  - {name}")
+    engine.dispose()
 
-        if dry_run and missing_targets:
-            ui.add_update("\n(Note) These OneDrive destination folders do not exist yet (will be created on --apply if needed):")
-            for name in missing_targets:
-                ui.add_update(f"  - {name}")
+def dedupe_folders(dry_run=True):
+    engine = set_up_engine()
+    if not dry_run:
+        dedupe_one_drive(engine, ONE_DRIVE_FOLDER, QUARANTINE, dry_run)
+    engine.dispose()
 
 def harvest_albums(google, icloud, headless=True):
     engine = set_up_engine()
     copy_from_web(engine, ONE_DRIVE_FOLDER, google=google, icloud=icloud, headless=headless)
+    engine.dispose()
+
+def purge_database(dry_run=True):
+    if not dry_run:
+        engine = set_up_engine()
+        purge_stale_content(engine, ONE_DRIVE_FOLDER, dry_run)
+        engine.dispose()
 
 def update_database(dry_run=True):
     engine = set_up_engine()
@@ -70,9 +78,6 @@ def update_project(year:int, min_stars:int, dry_run=True):
 
 def main():
     ap = argparse.ArgumentParser(description=f"Scan for new files and import into current year's Premiere review project.")
-    
-    ap.add_argument("--od", type=Path, default=Path(ONE_DRIVE_FOLDER), help=f"OneDrive Videos root (default: {ONE_DRIVE_FOLDER})")
-    ap.add_argument("--gd", type=Path, default=Path(GOOGLE_DRIVE_FOLDER), help=f"Google Drive Videos root (default: {GOOGLE_DRIVE_FOLDER})")
     
     YEAR = datetime.now().year
     ap.add_argument("--year", type=int, nargs='+', default=[YEAR], help=f"Year(s) subfolder to process (default: {YEAR})")
@@ -106,13 +111,16 @@ def main():
 
     if args.gphotos or args.iphotos:
         harvest_albums(args.gphotos, args.iphotos, args.headless)
-
-    google_drive_folder = GOOGLE_DRIVE_FOLDER if args.gdrive else None
    
     ## can look at whole group at once
     if not args.nodbupdate:
-        scan_folders(args.od, google_drive_folder, dry_run)
+        if args.gdrive:
+            scan_folders(args.gdrive, dry_run=dry_run)
+
+        purge_database(dry_run=dry_run)
         update_database(dry_run=dry_run)
+        dedupe_folders(dry_run=dry_run)
+        purge_database(dry_run=dry_run)
 
         if args.pictures:
             update_images(dry_run=dry_run)
