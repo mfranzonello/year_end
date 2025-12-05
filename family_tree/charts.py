@@ -5,6 +5,8 @@ from family_tree.cloudinary_lite import grayscale_zero_images, get_image_url
 
 BLUE_UNDER = '#0D5176'
 BLUE_OVER = '#0D98BA'
+BLUE_PUSHING = '#8FD9FB' # Sky Blue
+RED_EXTREME = '#E0115F' # Ruby
 
 NA_COLOR = '#D3D3D3'
 EW_COLOR = '#C04000'
@@ -93,11 +95,21 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
 
     # ---------- bars ----------
 
+    color_condition = {'condition': [{'test': 'datum.{quantity} <= {threshold}', 'value': BLUE_UNDER},
+                                     {'test': '{threshold} < datum.{quantity} <= 1.5 * {threshold}', 'value': BLUE_OVER},
+                                     {'test': '2 * {threshold} < datum.{quantity}', 'value': RED_EXTREME},
+                                     ]
+                       }
 
     bars = base.mark_bar(color="steelblue", size=bar_height, clip=False).encode(
         y = alt.Y('display_name:N', title='', sort=order_list, axis=axis),
         x = alt.X(f'{quantity}_capped:Q', title='', scale=alt.Scale(domain=[0, threshold + gap], clamp=True)),
-        color = alt.condition(f'datum.{quantity} >= {threshold}', alt.value(BLUE_OVER), alt.value(BLUE_UNDER)),
+        color = alt
+            .when(f'datum.{quantity} > 4 * {threshold}').then(alt.value(RED_EXTREME))
+            .when(f'datum.{quantity} > 2 * {threshold}').then(alt.value(BLUE_PUSHING))
+            .when(f'datum.{quantity} > 1 * {threshold}').then(alt.value(BLUE_OVER))
+            .otherwise(alt.value(BLUE_UNDER)),
+        #color = alt.condition(f'datum.{quantity} >= {threshold}', alt.value(BLUE_OVER), alt.value(BLUE_UNDER)),
         tooltip = [alt.Tooltip('display_name:N', title='Name'),
                    alt.Tooltip(f'{quantity}:Q', title=display_label)]
         )
