@@ -1,9 +1,8 @@
 import streamlit as st
-import altair as alt
 
 from database.db import get_engine
 from database.db_project import fetch_years_summary
-from family_tree.charts import melt_years, growth_charts
+from family_tree.charts import growth_charts
 from display import set_sidebar
 
 PGHOST = st.secrets['postgresql']['host']

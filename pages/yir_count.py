@@ -1,5 +1,4 @@
 import streamlit as st
-import altair as alt
 
 from database.db import get_engine
 from database.db_project import fetch_years, fetch_folder_summaries, fetch_years_summary
