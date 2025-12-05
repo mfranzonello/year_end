@@ -21,28 +21,6 @@ def fetch_folder_summaries(engine:Engine, year:int) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-def fetch_usable_summary(engine:Engine, year:int, min_stars:int) -> DataFrame:
-    sql = f'''
-    SELECT project_year,
-    COUNT(file_id) - SUM (GREATEST (
-        CASE WHEN video_rating > 0 THEN 1 ELSE 0 END,
-        CASE WHEN video_rating >= {min_stars} THEN 1 ELSE 0 END,
-        CASE WHEN used_status THEN 1 ELSE 0 END
-    )) AS no_count,
-    SUM(CASE WHEN video_rating > 0 THEN 1 ELSE 0 END) - SUM (GREATEST (
-        CASE WHEN video_rating >= {min_stars} THEN 1 ELSE 0 END,
-        CASE WHEN used_status THEN 1 ELSE 0 END
-    )) AS lo_count,
-    SUM(CASE WHEN video_rating >= {min_stars} THEN 1 ELSE 0 END) - SUM (
-        CASE WHEN used_status THEN 1 ELSE 0 END
-    ) as hi_count,
-    SUM(CASE WHEN used_status THEN 1 ELSE 0 END) as go_count
-    FROM project.files JOIN project.folders USING(folder_id)
-        WHERE project_year = {year}
-    GROUP BY project_year;
-    '''
-    return read_sql(engine, sql)
-
 def fetch_known_folders(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT folder_id, folder_name, project_year
@@ -162,14 +140,9 @@ def purge_files(engine:Engine, df:DataFrame):
     
 def update_files_used(engine:Engine, df:DataFrame):
     sql = f'''
-    UPDATE project.files fi
+    UPDATE project.files
     SET used_status = :used_status
-    FROM project.folders fo
-    WHERE fi.folder_id   = fo.folder_id
-        AND subfolder_name = :subfolder_name
-        AND fo.folder_name = :folder_name
-        AND fo.project_year = :project_year
-        AND fi.file_name    = :file_name;
+    WHERE file_id = :file_id;
     '''
     execute_sql(engine, sql, df=df)
 
@@ -236,10 +209,10 @@ def fetch_shared_albums(engine:Engine) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-def fetch_year_summaries(engine:Engine) -> DataFrame:
+def fetch_years_summary(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT project_year, total_folders, total_videos, total_duration, total_file_size,
-    resolution_na, resolution_lo, resolution_md, resolution_hi
+    video_resolutions, video_status 
     FROM project.years_summary
     ;'''
     return read_sql(engine, sql)

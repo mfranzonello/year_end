@@ -1,15 +1,19 @@
+from tkinter import N
 import altair as alt
-from pandas import DataFrame
+from pandas import DataFrame, concat, json_normalize
 
 from family_tree.cloudinary_lite import grayscale_zero_images, get_image_url
 
 BLUE_UNDER = '#0D5176'
 BLUE_OVER = '#0D98BA'
 
-NA_COLOR = '#D5C7C5'
+NA_COLOR = '#D3D3D3'
+EW_COLOR = '#C04000'
+HM_COLOR = '#FF7518'
 LO_COLOR = '#FAC638'
 MD_COLOR = '#7EA44B'
 HI_COLOR = '#2F6B9A'
+SU_COLOR = '#82C8E5'
 
 def convert_duration_time(seconds:int) -> str:
     string = []
@@ -29,6 +33,13 @@ def convert_file_size(mbytes:float) -> str:
         if mbytes >= factors[label]:
             break
     return f'{round(mbytes/factors[label], 1)} {label}'
+
+def melt_years(year_values:DataFrame) -> DataFrame:
+    return concat([year_values[['project_year', 'total_folders', 'total_videos',
+                                'total_file_size', 'total_duration']],
+                   json_normalize(year_values['video_resolutions']).rename(columns=lambda x: 'res_'+x),
+                   json_normalize(year_values['video_status']).rename(columns=lambda x: 'q_'+x),
+                   ], axis=1)
 
 def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:bool=False):
     display_label = {'video_count': 'Videos',
@@ -109,10 +120,15 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
         height=max(300, bar_height * 1.2 * len(video_counts)))
     return chart
 
-def review_pie(review_stats):
-    no, lo, hi, go = review_stats[['no_count', 'lo_count',
-                                   'hi_count', 'go_count']].iloc[0]
-
+def review_pie(year_values, year, min_stars):
+    statuses = year_values.query('project_year == @year')['video_status']
+    if not statuses.empty:
+        s = statuses.iloc[0]
+        no = s.get('0', 0)
+        lo = sum(s.get(str(i), 0) for i in range(1, min_stars))
+        hi = sum(s.get(str(i), 0) for i in range(min_stars, 5)) ## might want to make this a max
+        go = s.get('used', 0)
+    
     custom_colors = [NA_COLOR, LO_COLOR, MD_COLOR, HI_COLOR]
 
     review_df = DataFrame([['n/a', no],
@@ -124,7 +140,7 @@ def review_pie(review_stats):
 
     base = alt.Chart(review_df).encode(
         theta=alt.Theta('count:Q').stack(True),
-        radius=alt.Radius('count').scale(type='sqrt', zero=False, rangeMin=20),
+        radius=alt.Radius('count').scale(type='sqrt', zero=False, rangeMin=min(20, max(0, min(no, lo, hi, go)**0.5 - 1))),
         color=alt.Color('category:N',
                         scale=alt.Scale(domain=review_df['category'].tolist(),
                                         range=custom_colors))#.legend(None)
@@ -138,64 +154,64 @@ def review_pie(review_stats):
 
 # growth charts over years
 def growth_charts(year_values):
-    year_values['total_duration'] = year_values['total_duration'] / 60  # convert to minutes'
-    year_values['total_file_size'] = year_values['total_file_size'] / 1024  # convert to GB'
+    year_values = melt_years(year_values)
 
     charts = []
-    for quantity in ['total_folders', 'total_videos', 'total_duration', 'total_file_size']:
+    for quantity in ['total_folders', 'total_videos', 'total_duration', 'total_file_size',
+                     'video_resolution', 'video_status']:
         match quantity:
             case 'total_folders':
                 y_label = 'Number of Video Sources'
             case 'total_videos':
                 y_label = 'Number of Videos Submitted'
             case 'total_duration':
+                year_values['total_duration'] = year_values['total_duration'] / 60  # convert to minutes'
                 y_label = 'Total Video Duration (minutes)'
             case 'total_file_size':
+                year_values['total_file_size'] = year_values['total_file_size'] / 1024  # convert to GB'
                 y_label = 'Total File Size (GB)'
+            case 'video_resolution':
+                y_label = 'Video Resolution'
+                custom_colors = [NA_COLOR, LO_COLOR, MD_COLOR, HI_COLOR, SU_COLOR]
+                sort_cols = [c for c in ['res_' + r for r in ['na', 'sd', 'hd', '4k', '8k']] if c in year_values.columns]
+            case 'video_status':
+                y_label = 'Video Rating'
+                custom_colors = [NA_COLOR, EW_COLOR, HM_COLOR, LO_COLOR, MD_COLOR, HI_COLOR, SU_COLOR]
+                sort_cols = [c for c in ['q_' + r for r in [str(i) for i in range(5+1)] + ['used']] if c in year_values.columns]
+                print(f'{sort_cols=}')
 
-        chart = alt.Chart(year_values).mark_line(point=True).encode(
-            x='project_year:O',
-            y=alt.Y(f'{quantity}:Q', title=y_label),
-            tooltip=['project_year:O', 'total_folders:Q', 'total_videos:Q', 'total_duration:Q', 'total_file_size:Q']
-        ).interactive()
+        if quantity.startswith('total_'):
+            chart = (alt.Chart(year_values)
+                     .mark_line(point=True).encode(
+                x=alt.X("project_year:O", title="Project Year"),
+                y=alt.Y(f'{quantity}:Q', title=y_label),
+                tooltip=['project_year:O', 'total_folders:Q', 'total_videos:Q', 'total_duration:Q', 'total_file_size:Q']
+            )).interactive()
+        elif quantity.startswith('video_'):
+            year_melted = year_values.melt(
+                id_vars=['project_year'],
+                value_vars=sort_cols,
+                var_name=quantity,
+                value_name='count'
+            )
+            year_melted['sort_order'] = year_melted[quantity].map({k: v for v, k in enumerate(sort_cols)})
+
+            chart = (
+                alt.Chart(year_melted)
+                .mark_bar()
+                .encode(
+                    x=alt.X("project_year:O", title="Project Year"),
+                    y=alt.Y("count:Q", stack="normalize", title=y_label),
+                    color=alt.Color(
+                        f'{quantity}:N',
+                        sort=sort_cols,
+                        legend=None,
+                        scale=alt.Scale(domain=sort_cols, range=custom_colors)
+                    ),
+                    order=alt.Order("sort_order:Q", sort="descending")
+                )
+            ).interactive()
 
         charts.append(chart)
 
     return charts
-
-# resolution stacked bar chart
-def resolution_chart(year_values):
-    resolution_cols = [
-        "resolution_na",
-        "resolution_lo",
-        "resolution_md",
-        "resolution_hi",
-    ]
-
-    custom_colors = [NA_COLOR, LO_COLOR, MD_COLOR, HI_COLOR]
-
-    year_melted = year_values.melt(
-        id_vars=["project_year"],
-        value_vars=resolution_cols,
-        var_name="resolution",
-        value_name="count"
-    )
-    year_melted['resolution_order'] = year_melted['resolution'].map({k: v for v, k in enumerate(resolution_cols)})
-
-    chart = (
-        alt.Chart(year_melted)
-        .mark_bar()
-        .encode(
-            x=alt.X("project_year:O", title="Project Year"),
-            y=alt.Y("count:Q", stack="normalize", title="Number of Videos"),
-            color=alt.Color(
-                "resolution:N",
-                sort=resolution_cols,
-                title="Video Resolution",
-                legend=None,
-                scale=alt.Scale(domain=resolution_cols, range=custom_colors)
-            ),
-            order=alt.Order("resolution_order:Q", sort="descending")
-        )
-    )
-    return chart

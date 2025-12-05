@@ -2,7 +2,7 @@ import streamlit as st
 import altair as alt
 
 from database.db import get_engine
-from database.db_project import fetch_years, fetch_folder_summaries, fetch_usable_summary
+from database.db_project import fetch_years, fetch_folder_summaries, fetch_years_summary
 from family_tree.charts import submission_chart, review_pie
 from display import set_sidebar
 
@@ -53,8 +53,8 @@ chart = submission_chart(folder_values, quantity, cloud_name=CLOUDINARY_CLOUD, c
 st.altair_chart(chart, use_container_width=True) # width='stretch')
 
 # pie chart for review amount
-review_stats = fetch_usable_summary(engine, year, MIN_STARS)
-chart = review_pie(review_stats)
+year_values = fetch_years_summary(engine)
+chart = review_pie(year_values, year, MIN_STARS)
 st.altair_chart(chart, use_container_width=True)
 
 # # # family tree

@@ -2,8 +2,8 @@ import streamlit as st
 import altair as alt
 
 from database.db import get_engine
-from database.db_project import fetch_year_summaries
-from family_tree.charts import growth_charts, resolution_chart
+from database.db_project import fetch_years_summary
+from family_tree.charts import melt_years, growth_charts
 from display import set_sidebar
 
 PGHOST = st.secrets['postgresql']['host']
@@ -20,12 +20,12 @@ st.set_page_config(page_title='Franzonello Family YIR Growth',
                    layout='wide')
 st.title(f'Franzonello YIR Growth')
 
-year_values = fetch_year_summaries(engine)
-
+year_values = fetch_years_summary(engine)
 charts = growth_charts(year_values)
+
 for chart in charts:
     st.altair_chart(chart, use_container_width=True)
 
-# resolution chart
-chart = resolution_chart(year_values)
-st.altair_chart(chart, use_container_width=True)
+# # # resolution chart
+# # chart = resolution_chart(year_values)
+# # st.altair_chart(chart, use_container_width=True)
