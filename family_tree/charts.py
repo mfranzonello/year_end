@@ -93,7 +93,7 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
             .when(f'datum.{quantity} > 4 * {threshold}').then(alt.value(name_to_hex('indianred')))
             .when(f'datum.{quantity} > 2 * {threshold}').then(alt.value(name_to_hex('lightskyblue')))
             .when(f'datum.{quantity} > 1 * {threshold}').then(alt.value(name_to_hex('steelblue')))
-            .otherwise(alt.value(name_to_hex('midnightblue'))),
+            .otherwise(alt.value(name_to_hex('teal'))),
         #color = alt.condition(f'datum.{quantity} >= {threshold}', alt.value(BLUE_OVER), alt.value(BLUE_UNDER)),
         tooltip = [alt.Tooltip('display_name:N', title='Name'),
                    alt.Tooltip(f'{quantity}:Q', title=display_label)]
@@ -168,8 +168,16 @@ def growth_charts(year_values):
                 y_label = 'Total File Size (GB)'
             case 'video_resolution':
                 y_label = 'Video Resolution'
-                custom_colors = get_color_hexes(['gainsboro', 'firebrick', 'lightsalmon', 'gold', 'forestgreen', 'midnightblue', 'lightskyblue'])
-                sort_cols = [c for c in ['res_' + r for r in ['xx', 'na', 'lo', 'sd', 'hd', '4k', '8k']] if c in year_values.columns]
+                colors = {'na': 'gainsboro',
+                          'xx': 'firebrick',
+                          'vhs': 'orchid',
+                          'sd': 'lightsalmon',
+                          'hd': 'gold',
+                          'fhd': 'forestgreen',
+                          '4k': 'midnightblue',
+                          '8k': 'lightskyblue'}
+                custom_colors = get_color_hexes(colors[k] for k in colors if f'res_{k}' in year_values.columns)
+                sort_cols = [c for c in ['res_' + r for r in colors] if c in year_values.columns]
             case 'video_status':
                 y_label = 'Video Rating'
                 custom_colors = get_color_hexes(['gainsboro', 'firebrick', 'lightsalmon', 'gold', 'forestgreen', 'midnightblue', 'lightskyblue'])

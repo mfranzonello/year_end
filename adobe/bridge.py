@@ -88,8 +88,13 @@ def get_video_rating(file_path:Path, local_only:bool=True) -> int|None:
         return rating
 
 def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, str]:
-    no_res = 'na'
-    resolution_ranges = [(480, 'lo'), (720, 'sd'), (1080, 'hd'), (1920, '4k'), (4320, '8k')]
+    no_res = 'xx'
+    resolution_ranges = [(320, 'vhs'), # VHS - 480x320
+                         (480, 'sd'), # DVD / SD - 720x480
+                         (720, 'hd'), # SMS HD - 1280x720
+                         (1080, 'fhd'), # full-HD blu-ray - 1920x1080
+                         (2160, '4k'), # ultra blu-ray - 3840x2160
+                         (4320, '8k')] # 7680 x 4320
 
     if is_examinable(file_path, local_only): ## avoids downloading from interweb
         # get duration
