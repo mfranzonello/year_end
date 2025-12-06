@@ -168,8 +168,8 @@ def growth_charts(year_values):
                 y_label = 'Total File Size (GB)'
             case 'video_resolution':
                 y_label = 'Video Resolution'
-                custom_colors = get_color_hexes(['gainsboro', 'lightsalmon', 'gold', 'forestgreen', 'midnightblue', 'lightskyblue'])
-                sort_cols = [c for c in ['res_' + r for r in ['na', 'lo', 'sd', 'hd', '4k', '8k']] if c in year_values.columns]
+                custom_colors = get_color_hexes(['gainsboro', 'firebrick', 'lightsalmon', 'gold', 'forestgreen', 'midnightblue', 'lightskyblue'])
+                sort_cols = [c for c in ['res_' + r for r in ['xx', 'na', 'lo', 'sd', 'hd', '4k', '8k']] if c in year_values.columns]
             case 'video_status':
                 y_label = 'Video Rating'
                 custom_colors = get_color_hexes(['gainsboro', 'firebrick', 'lightsalmon', 'gold', 'forestgreen', 'midnightblue', 'lightskyblue'])
