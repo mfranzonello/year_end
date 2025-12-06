@@ -174,7 +174,6 @@ def growth_charts(year_values):
                 y_label = 'Video Rating'
                 custom_colors = get_color_hexes(['gainsboro', 'firebrick', 'lightsalmon', 'gold', 'forestgreen', 'midnightblue', 'lightskyblue'])
                 sort_cols = [c for c in ['q_' + r for r in [str(i) for i in range(5+1)] + ['used']] if c in year_values.columns]
-                print(f'{sort_cols=}')
 
         if quantity.startswith('total_'):
             chart = (alt.Chart(year_values)
