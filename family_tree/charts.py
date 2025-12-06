@@ -1,20 +1,11 @@
 import altair as alt
 from pandas import DataFrame, concat, json_normalize
+from webcolors import name_to_hex
 
 from family_tree.cloudinary_lite import grayscale_zero_images, get_image_url
 
-BLUE_UNDER = '#0D5176'
-BLUE_OVER = '#0D98BA'
-BLUE_PUSHING = '#8FD9FB' # Sky Blue
-RED_EXTREME = '#E0115F' # Ruby
-
-NA_COLOR = '#D3D3D3'
-EW_COLOR = '#C04000'
-HM_COLOR = '#FF7518'
-LO_COLOR = '#FAC638'
-MD_COLOR = '#7EA44B'
-HI_COLOR = '#2F6B9A'
-SU_COLOR = '#82C8E5'
+def get_color_hexes(color_names:list[str]) -> list[str]:
+    return [name_to_hex(c) for c in color_names]
 
 def convert_duration_time(seconds:int) -> str:
     string = []
@@ -95,20 +86,14 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
 
     # ---------- bars ----------
 
-    color_condition = {'condition': [{'test': 'datum.{quantity} <= {threshold}', 'value': BLUE_UNDER},
-                                     {'test': '{threshold} < datum.{quantity} <= 1.5 * {threshold}', 'value': BLUE_OVER},
-                                     {'test': '2 * {threshold} < datum.{quantity}', 'value': RED_EXTREME},
-                                     ]
-                       }
-
     bars = base.mark_bar(color="steelblue", size=bar_height, clip=False).encode(
         y = alt.Y('display_name:N', title='', sort=order_list, axis=axis),
         x = alt.X(f'{quantity}_capped:Q', title='', scale=alt.Scale(domain=[0, threshold + gap], clamp=True)),
         color = alt
-            .when(f'datum.{quantity} > 4 * {threshold}').then(alt.value(RED_EXTREME))
-            .when(f'datum.{quantity} > 2 * {threshold}').then(alt.value(BLUE_PUSHING))
-            .when(f'datum.{quantity} > 1 * {threshold}').then(alt.value(BLUE_OVER))
-            .otherwise(alt.value(BLUE_UNDER)),
+            .when(f'datum.{quantity} > 4 * {threshold}').then(alt.value(name_to_hex('indianred')))
+            .when(f'datum.{quantity} > 2 * {threshold}').then(alt.value(name_to_hex('lightskyblue')))
+            .when(f'datum.{quantity} > 1 * {threshold}').then(alt.value(name_to_hex('steelblue')))
+            .otherwise(alt.value(name_to_hex('midnightblue'))),
         #color = alt.condition(f'datum.{quantity} >= {threshold}', alt.value(BLUE_OVER), alt.value(BLUE_UNDER)),
         tooltip = [alt.Tooltip('display_name:N', title='Name'),
                    alt.Tooltip(f'{quantity}:Q', title=display_label)]
@@ -140,7 +125,7 @@ def review_pie(year_values, year, min_stars):
         hi = sum(s.get(str(i), 0) for i in range(min_stars, 5)) ## might want to make this a max
         go = s.get('used', 0)
     
-    custom_colors = [NA_COLOR, LO_COLOR, MD_COLOR, HI_COLOR]
+    custom_colors = get_color_hexes(['gainsboro', 'gold', 'forestgreen', 'midnightblue'])
 
     review_df = DataFrame([['n/a', no],
                            ['low', lo],
@@ -183,11 +168,11 @@ def growth_charts(year_values):
                 y_label = 'Total File Size (GB)'
             case 'video_resolution':
                 y_label = 'Video Resolution'
-                custom_colors = [NA_COLOR, LO_COLOR, MD_COLOR, HI_COLOR, SU_COLOR]
-                sort_cols = [c for c in ['res_' + r for r in ['na', 'sd', 'hd', '4k', '8k']] if c in year_values.columns]
+                custom_colors = get_color_hexes(['gainsboro', 'lightsalmon', 'gold', 'forestgreen', 'midnightblue', 'lightskyblue'])
+                sort_cols = [c for c in ['res_' + r for r in ['na', 'lo', 'sd', 'hd', '4k', '8k']] if c in year_values.columns]
             case 'video_status':
                 y_label = 'Video Rating'
-                custom_colors = [NA_COLOR, EW_COLOR, HM_COLOR, LO_COLOR, MD_COLOR, HI_COLOR, SU_COLOR]
+                custom_colors = get_color_hexes(['gainsboro', 'firebrick', 'lightsalmon', 'gold', 'forestgreen', 'midnightblue', 'lightskyblue'])
                 sort_cols = [c for c in ['q_' + r for r in [str(i) for i in range(5+1)] + ['used']] if c in year_values.columns]
                 print(f'{sort_cols=}')
 

@@ -1,7 +1,6 @@
 '''Functions to extract XMP metadata from video files after reviewed in Adobe Bridge.'''
 
 from pathlib import Path
-
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
@@ -9,6 +8,7 @@ from cv2 import VideoCapture, CAP_PROP_FRAME_COUNT, CAP_PROP_FPS, CAP_PROP_FRAME
 from hachoir.parser import createParser
 from hachoir.metadata import extractMetadata
 from hachoir.core import config as HachoirConfig
+from hachoir.stream.input import NullStreamError
 HachoirConfig.quiet = True
 
 from common.system import file_type, is_file_available
@@ -28,7 +28,11 @@ def _find_xmp_bytes_fallback(path: Path, tail_bytes: int = 5000) -> bytes|None:
 
     with path.open("rb") as f:
         f.seek(start_pos)
-        data = f.read()
+        try:
+            data = f.read()
+        except OSError:
+            print(f'{path} corrupted [xmp]')
+            return
 
         # quick search for known start markers
         start_candidates = [data.find(m) for m in _XMP_STARTS]
@@ -93,9 +97,9 @@ def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, s
 
         if not v.isOpened() or v.get(CAP_PROP_FRAME_COUNT) < 1:
             # likely moov atom not found
-            duration = None
+            duration = 0
             resolution = no_res
-            print(f'{file_path} corrupted')
+            print(f'{file_path} corrupted [cv2]')
 
         else:
             # video is usable
@@ -147,11 +151,15 @@ def parse_date_string(s: str):
 def get_video_date(file_path: Path, local_only=True) -> datetime|None:
     # look at QuickTime metadata
     if is_examinable(file_path, local_only): ## avoids downloading from interweb
-        parser = createParser(str(file_path))
-        if parser:
-            metadata = extractMetadata(parser)
-            if metadata:
-                for item in metadata.exportPlaintext():
-                    if "creation date" in item.lower():
-                        raw = item.split(":", 1)[1].strip()
-                        return parse_date_string(raw)
+        try:
+            parser = createParser(str(file_path))
+            if parser:
+                metadata = extractMetadata(parser)
+                if metadata:
+                    for item in metadata.exportPlaintext():
+                        if "creation date" in item.lower():
+                            raw = item.split(":", 1)[1].strip()
+                            return parse_date_string(raw)
+
+        except NullStreamError:
+            print(f'{file_path} corrupted [hachoir]')
