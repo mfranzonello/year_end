@@ -55,8 +55,6 @@ def fetch_actor_spans(engine:Engine, year:int, relative_ids=[]) -> DataFrame:
     else:
         full_join = ''
 
-    print(f'{relative_ids}')
-
     sql = f'''
     WITH 
       actual_spans AS (

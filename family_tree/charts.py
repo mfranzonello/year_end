@@ -230,8 +230,7 @@ def timeline_chart(actor_spans):
 
     #actor_spans.sort_values(['start_time'], inplace=True)
     actor_spans['sort_order'] = actor_spans['start_time'].rank(na_option='bottom')
-    print(actor_spans)
-
+    
     chart = (
         alt.Chart(actor_spans)
         .mark_bar()
@@ -255,5 +254,7 @@ def timeline_chart(actor_spans):
             ],
         )
     )
+
+    print('test')
 
     return chart
