@@ -1,19 +1,14 @@
 '''Main script to scan for new video files, copy them, summarize ratings, and update Premiere project.'''
 
-from pathlib import Path
 import argparse
-import sys
-from datetime import datetime
 
 from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, QUARANTINE
-from common.structure import YIR_REVIEWS, YIR_PROJECT, PR_EXT, COMMON_FOLDER, LABEL_PRESET ## needed for pymiere control
 from common.secret import secrets
 from common.console import SplitConsole
 from database.db import get_engine
 from repositories.migrate import dedupe_one_drive, copy_from_gdrive
 from repositories.ingest import copy_from_web
 from repositories.inspect import summarize_folders, update_database_images, purge_stale_content
-from repositories.assemble import import_and_label, setup_label_presets
 
 PGSECRETS = secrets['postgresql']['host']
 PGHOST = secrets['postgresql']['host']
@@ -70,18 +65,9 @@ def update_images(dry_run=True):
     update_database_images(engine, CLOUDINARY_CLOUD, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, dry_run=dry_run)
     engine.dispose()
 
-def update_project(year:int, min_stars:int, dry_run=True):
-    engine = set_up_engine()
-    import_and_label(engine, year, min_stars, ONE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, YIR_PROJECT, PR_EXT, ui, dry_run=dry_run)
-    setup_label_presets(engine, COMMON_FOLDER, LABEL_PRESET)
-    engine.dispose()
-
 def main():
     ap = argparse.ArgumentParser(description=f"Scan for new files and import into current year's Premiere review project.")
     
-    YEAR = datetime.now().year
-    ap.add_argument("--year", type=int, nargs='+', default=[YEAR], help=f"Year(s) subfolder to process (default: {YEAR})")
-
     # run Selenium w/ or w/o head
     group = ap.add_mutually_exclusive_group()
     group.add_argument("--headless", dest="headless", action="store_true",
@@ -95,7 +81,6 @@ def main():
     ap.add_argument('--gphotos', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Photos to OneDrive.')
     ap.add_argument('--iphotos', nargs='?', type=bool, const=True, default=False, help='Copy new files from iCloud Photos to OneDrive.')
     ap.add_argument('--gdrive', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Drive to OneDrive.')
-    ap.add_argument('--premiere', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
     ap.add_argument('--pictures', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
 
     ap.add_argument('--stars', type=int, default=MIN_STARS, help='Minimum star rating to use in project.')
@@ -124,12 +109,6 @@ def main():
 
         if args.pictures:
             update_images(dry_run=dry_run)
-
-    for year in args.year:
-        if args.premiere:
-            if sys.version_info >= (3, 12):
-                print('WARNING! Pymiere was built for older versions of Python and may not work properly.')
-            update_project(year, args.stars, dry_run=dry_run)
 
     ui.set_status("Done.")
 

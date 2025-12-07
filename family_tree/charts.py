@@ -218,3 +218,28 @@ def growth_charts(year_values):
         charts.append(chart)
 
     return charts
+
+def timeline_chart(actor_spans):
+    chart = (
+        alt.Chart(actor_spans)
+        .mark_bar()
+        .encode(
+            y=alt.Y(
+                "full_name:N",
+                title=None, #"Actor",
+                sort="x"   # optional: most screen time at top if you pre-aggregate
+            ),
+            x=alt.X(
+                "start_time:Q",
+                title="Time (seconds)"
+            ),
+            x2="end_time:Q",
+            tooltip=[
+                "full_name:N",
+                "start_time:Q",
+                "end_time:Q"
+            ],
+        )
+    )
+
+    return chart

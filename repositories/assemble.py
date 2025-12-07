@@ -1,27 +1,32 @@
 from pathlib import Path
 
 from sqlalchemy import Engine 
+from pandas import DataFrame
 
 from common.console import SplitConsole
 from common.system import get_person_folders, get_person_name, get_person_names, rebuild_path, resolve_relative_path
-from database.db_project import fetch_files, fetch_member_labels, fetch_color_labels
+from database.db_project import fetch_files
+from database.db_adobe import fetch_member_labels, fetch_color_labels, update_appearances, fetch_compilation
 from adobe.premiere import convert_to_xml, extract_included_video_paths, open_project, find_videos_bin, create_person_bins, \
-    import_videos, set_family_color_labels, create_label_presets
+    import_videos, set_family_color_labels, create_label_presets, get_actors_in_project
 
 def get_usable_videos(engine:Engine, year:int, min_stars:int):
     files_df = fetch_files(engine, year)
     usable_videos = files_df.query('video_rating >= @min_stars')
     return usable_videos
 
-def import_and_label(engine:Engine, year:int, min_stars:int, one_drive_folder:Path, adobe_folder:Path, yir_reviews:str, yir_project:str, pr_ext:str,
-                     ui:SplitConsole, dry_run=True):
-    
-
+def ensure_premiere(year:int, adobe_folder:Path, yir_reviews:str, yir_project:str, pr_ext:str, 
+                    ui:SplitConsole) -> int:
     ui.set_status('Opening Premiere project...')
     project_folder = adobe_folder / f'{yir_reviews} {year}'
     project_path =  project_folder / f'{yir_project} {year}{pr_ext}'
     project_id = open_project(project_path)
 
+    return project_id
+
+def import_and_label(engine:Engine, project_id:int, year:int, min_stars:int, one_drive_folder:Path,
+                     ui:SplitConsole, dry_run=True):
+    
     ui.set_status('Finding Videos bin')
     videos_bin = find_videos_bin(project_id)
 
@@ -65,3 +70,17 @@ def import_and_label(engine:Engine, year:int, min_stars:int, one_drive_folder:Pa
 def setup_label_presets(engine:Engine, common_folder:Path, label_preset_name:str):
     color_labels = fetch_color_labels(engine)
     return create_label_presets(color_labels, common_folder, label_preset_name)
+
+def get_actor_timestamps(engine:Engine, project_id:int, project_year:int):
+    compilation_df = fetch_compilation(engine, project_year)
+    if not compilation_df.empty:
+        timeline_name, banned_bins = compilation_df[['timeline_name', 'banned_bins']].iloc[0]
+
+        actor_timestamps = get_actors_in_project(project_id, timeline_name, banned_bins=banned_bins)
+
+        actor_times_df = (DataFrame(actor_timestamps).explode('actor_uuid', ignore_index=True)
+                          .rename(columns={'actor_uuid': 'member_id'})
+                          .drop_duplicates())
+        actor_times_df['project_year'] = project_year
+
+        update_appearances(engine, actor_times_df)

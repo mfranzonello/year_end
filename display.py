@@ -4,8 +4,6 @@ import streamlit as st
 import altair as alt
 
 from database.db import get_engine
-from database.db_project import fetch_years, fetch_folder_summaries
-from family_tree.charts import submission_chart, review_pie
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')
@@ -19,6 +17,7 @@ engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 pages = [('yir_count', 'YIR Status'),
          ('yir_growth', 'YIR Growth'),
+         ('yir_time', 'YIR Timeline'),
          ('family_tree', 'Family Tree')]
 
 # set up page

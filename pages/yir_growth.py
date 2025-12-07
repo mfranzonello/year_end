@@ -24,7 +24,3 @@ charts = growth_charts(year_values)
 
 for chart in charts:
     st.altair_chart(chart, use_container_width=True)
-
-# # # resolution chart
-# # chart = resolution_chart(year_values)
-# # st.altair_chart(chart, use_container_width=True)

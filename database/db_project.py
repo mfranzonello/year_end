@@ -4,7 +4,7 @@ from pandas import DataFrame
 from database.db import read_sql, execute_sql, build_values
 
 # YIR project
-def fetch_years(engine:Engine) -> DataFrame:
+def fetch_project_years(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT DISTINCT project_year
     FROM project.folders_summary
@@ -214,24 +214,5 @@ def fetch_years_summary(engine:Engine) -> DataFrame:
     SELECT project_year, total_folders, total_videos, total_duration, total_file_size,
     video_resolutions, video_status 
     FROM project.years_summary
-    ;'''
-    return read_sql(engine, sql)
-
-def fetch_member_labels(engine:Engine, year:int) -> DataFrame:
-    sql = f'''
-    SELECT project_year, folder_name, label_id, label_name, color_hex
-    FROM project.folders
-    JOIN config.member_labels USING (member_id)
-    JOIN config.adobe_labels USING (label_id)
-    JOIN config.color_palette USING (color_name)
-    WHERE project_year = {year}
-    ;'''
-    return read_sql(engine, sql)
-
-def fetch_color_labels(engine:Engine) -> DataFrame:
-    sql = f'''
-    SELECT label_id, label_name, color_hex
-    FROM config.adobe_labels JOIN config.color_palette USING (color_name)
-    ORDER BY label_id
     ;'''
     return read_sql(engine, sql)

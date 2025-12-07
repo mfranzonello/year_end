@@ -1,6 +1,5 @@
 '''Functions to interact with Adobe Premiere Pro via pymiere.'''
 
-from calendar import c
 from time import sleep
 from pathlib import Path
 import gzip
@@ -196,3 +195,79 @@ def create_label_presets(color_labels, common_folder, label_preset_name):
     write_json(common_folder, label_preset_name, label_presets, ext=PR_LABEL_EX)
 
     return label_presets
+
+def get_sequence_maps(project_id):
+    vals = [(s.name, s.projectItem.nodeId, i) for i, s in enumerate(pymiere.objects.app.projects[project_id].sequences)]
+    sequence_map_by_name = {n: i for n, _, i in vals}
+    sequence_map_by_node = {n: i for _, n, i in vals}
+    return sequence_map_by_name, sequence_map_by_node
+
+def get_sequence(project_id, sequence_id):
+    return pymiere.objects.app.projects[project_id].sequences[sequence_id]
+
+def get_actors_in_sequence(sequence_item, project_id, sequence_map,
+                           seq_start=0, seq_in=0, seq_out=0, ## should also be looking just at things after in and before out
+                           banned_bins=[], banned_nodes=[]): 
+    print(f'Looking in sequence {sequence_item.name}...')
+    actor_appearances = []
+
+    if not seq_out:
+        seq_out = sequence_item.end / 254016000000
+
+    for v_track in sequence_item.videoTracks:
+        for clip in v_track.clips:
+
+            # check if clip has visible video
+            if clip.projectItem and not clip.disabled:
+                project_item = clip.projectItem
+
+                # check if this is automatically ruled out
+                if not any(project_item.treePath.startswith(f'\\{pymiere.objects.app.projects[project_id].name}\\{b}\\') for b in banned_bins):
+
+                    # check if item is in visible timeline
+                    if not(clip.start.seconds > seq_out or clip.end.seconds < seq_in):
+                        start_time = seq_start + max(seq_in, clip.start.seconds)
+                        end_time = seq_start + min(seq_out, clip.end.seconds)
+
+                        # check if sequence that hasn't been ruled out
+                        if project_item.isSequence() and project_item.nodeId not in banned_nodes:
+                            next_sequence_item = get_sequence(project_id, sequence_map[project_item.nodeId])
+                            actor_subappearances = get_actors_in_sequence(next_sequence_item, project_id, sequence_map,
+                                                                            seq_start=start_time + clip.inPoint.seconds,
+                                                                            seq_in=clip.inPoint.seconds, seq_out=clip.outPoint.seconds,
+                                                                            banned_bins=banned_bins, banned_nodes=banned_nodes)
+                            if not actor_subappearances:
+                                # there are no appearances in here, so don't check again
+                                banned_nodes.append(project_item.nodeId)
+
+                            else:
+                                # this sequence has appearances
+                                actor_appearances.extend(actor_subappearances)
+
+                        else:
+                            # actual video content potentially with actors
+                            metadata = project_item.getProjectMetadata()
+                            actor_field = 'ActorUUID'
+                            premiere_private = 'premierePrivateProjectMetaData'
+                            searchword = f'<{premiere_private}:{actor_field}>'
+                            if searchword in metadata:
+                                actor_uuids = metadata[metadata.find(searchword)+len(searchword):
+                                                       metadata.find(searchword.replace('<', '</'))].split(',')
+                                actor_appearances.append({'actor_uuid': actor_uuids,
+                                                          'start_time': round(start_time, 2),
+                                                          'end_time': round(end_time, 2)})
+
+    return actor_appearances
+
+def get_actors_in_project(project_id, sequence_name, banned_bins=[]):
+    print('Getting sequence maps')
+    sequence_map_by_name, sequence_map_by_node = get_sequence_maps(project_id)
+
+    print(f'Pulling up main sequence')
+    actor_appearances = None
+
+    if sequence_name in sequence_map_by_name:
+        sequence_item = get_sequence(project_id, sequence_map_by_name.get(sequence_name))
+        actor_appearances = get_actors_in_sequence(sequence_item, project_id, sequence_map_by_node, banned_bins=banned_bins)
+
+    return actor_appearances

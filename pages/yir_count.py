@@ -1,7 +1,7 @@
 import streamlit as st
 
 from database.db import get_engine
-from database.db_project import fetch_years, fetch_folder_summaries, fetch_years_summary
+from database.db_project import fetch_project_years, fetch_folder_summaries, fetch_years_summary
 from family_tree.charts import submission_chart, review_pie
 from display import set_sidebar
 
@@ -21,7 +21,7 @@ engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 set_sidebar()
 st.set_page_config(page_title='Franzonello Family YIR Stats',
                    layout='wide')
-years = fetch_years(engine) ##.sort_values('project_year')
+years = fetch_project_years(engine) ##.sort_values('project_year')
 year:int = st.selectbox('Year to Review', years, len(years) - 1, width=100)
 st.title(f'Franzonello YIR {year}')
 
