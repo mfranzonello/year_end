@@ -100,7 +100,7 @@ def main():
     ## can look at whole group at once
     if not args.nodbupdate:
         if args.gdrive:
-            scan_folders(args.gdrive, dry_run=dry_run)
+            scan_folders(dry_run=dry_run)
 
         purge_database(dry_run=dry_run)
         update_database(dry_run=dry_run)
