@@ -228,6 +228,7 @@ def timeline_chart(actor_spans):
         "floor(datum.value % 60)"
     )
 
+    #actor_spans.sort_values(['start_time'], inplace=True)
     actor_spans['sort_order'] = actor_spans['start_time'].rank(na_option='bottom')
     print(actor_spans)
 

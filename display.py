@@ -19,23 +19,23 @@ pages = [('yir_count', 'YIR Status'),
          ('yir_growth', 'YIR Growth'),
          ('yir_time', 'YIR Timeline'),
          ('family_tree', 'Family Tree')]
+existing_pages = [(page, n) for (p, n) in pages if (page := f'pages/{p}.py') and Path(page).exists()]
 
 # set up page
 def set_sidebar():
     st.set_page_config(page_title='Franzonello Family')
     with st.sidebar:
         st.page_link('display.py', label='Home')
-        for page_py, page_name in pages:
-            page_module = f'pages/{page_py}.py'
-            if Path(page_module).exists():
-                st.page_link(page_module, label=page_name)
+        for page_py, page_name in existing_pages:
+            st.page_link(page_py, label=page_name)
 
 set_sidebar()
+
 st.title(f'Franzonello Family Fun Times')
 st.write(f'Choose your adventure!')
 
-for page_py, page_name in pages:
-    page_module = f'pages/{page_py}.py'
-    if Path(page_module).exists():
+cols = st.columns(len(existing_pages))
+for col, (page_py, page_name) in zip(cols, existing_pages):
+    with col:
         if st.button(page_name):
-            st.switch_page(page_module)
+            st.switch_page(page_py)
