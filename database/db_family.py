@@ -37,3 +37,17 @@ def fetch_marriages(engine:Engine) -> DataFrame:
     FROM marriages
     ;'''
     return read_sql(engine, sql)
+
+def fetch_spouses(engine:Engine) -> DataFrame:
+    sql = f'''SELECT person_id, spouse_id, marriage_id
+    FROM tree.marrieds
+    ;'''
+    return read_sql(engine, sql)
+
+def fetch_members(engine:Engine) -> DataFrame:
+    sql = f'''
+    SELECT member_id, birth_date, birth_date_precision, death_date, death_date_precision,
+    entry_date, entry_date_precision, member_type
+    FROM tree.members
+    ;'''
+    return read_sql(engine, sql)

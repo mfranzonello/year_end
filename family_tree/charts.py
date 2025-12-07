@@ -220,6 +220,15 @@ def growth_charts(year_values):
     return charts
 
 def timeline_chart(actor_spans):
+    time_format = (
+        "floor(datum.value/60) + ':' + "
+        "(datum.value % 60 < 10 ? '0' : '') + "
+        "floor(datum.value % 60)"
+    )
+
+    actor_spans['sort_order'] = actor_spans['start_time'].rank(na_option='bottom')
+    print(actor_spans)
+
     chart = (
         alt.Chart(actor_spans)
         .mark_bar()
@@ -227,17 +236,18 @@ def timeline_chart(actor_spans):
             y=alt.Y(
                 "full_name:N",
                 title=None, #"Actor",
-                sort="x"   # optional: most screen time at top if you pre-aggregate
+                sort=alt.EncodingSortField(field="sort_order", order="ascending")
             ),
             x=alt.X(
                 "start_time:Q",
-                title="Time (seconds)"
+                title="Time",
+                axis=alt.Axis(labelExpr=time_format),
             ),
             x2="end_time:Q",
             tooltip=[
-                "full_name:N",
-                "start_time:Q",
-                "end_time:Q"
+                'full_name:N',
+                alt.Tooltip("start_time:Q", title="Start", format=".2f"),
+                alt.Tooltip("end_time:Q", title="End", format=".2f")
             ],
         )
     )

@@ -225,7 +225,7 @@ def get_actors_in_sequence(sequence_item, project_id, sequence_map,
                 if not any(project_item.treePath.startswith(f'\\{pymiere.objects.app.projects[project_id].name}\\{b}\\') for b in banned_bins):
 
                     # check if item is in visible timeline
-                    if not(clip.start.seconds > seq_out or clip.end.seconds < seq_in):
+                    if not(clip.start.seconds >= seq_out or clip.end.seconds < seq_in):
                         start_time = seq_start + max(seq_in, clip.start.seconds)
                         end_time = seq_start + min(seq_out, clip.end.seconds)
 

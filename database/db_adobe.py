@@ -45,11 +45,29 @@ def fetch_timeline_years(engine:Engine) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-def fetch_actor_spans(engine:Engine, year:int) -> DataFrame:
+def fetch_actor_spans(engine:Engine, year:int, relative_ids=[]) -> DataFrame:
+    if relative_ids:
+        values = ', '.join(f"('{r}'::uuid)" for r in relative_ids)
+        full_join = f'''
+        FULL JOIN (SELECT member_id FROM (VALUES {values})
+        AS relatives(member_id)) USING (member_id)
+        '''
+    else:
+        full_join = ''
+
+    print(f'{relative_ids}')
+
     sql = f'''
+    WITH 
+      actual_spans AS (
+      SELECT member_id, start_time, end_time, span
+      FROM project.appearance_spans
+        WHERE project_year = {year}
+      )
+
     SELECT member_id, full_name, start_time, end_time, span
-    FROM project.appearance_spans JOIN display_names USING (member_id)
-    WHERE project_year = {year}
+    FROM actual_spans {full_join}
+      JOIN display_names USING (member_id)
     ;'''
     return read_sql(engine, sql)
 

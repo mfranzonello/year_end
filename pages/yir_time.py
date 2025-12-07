@@ -1,8 +1,11 @@
+from uuid import UUID
+
 import streamlit as st
 
 from database.db import get_engine
 from database.db_adobe import fetch_timeline_years, fetch_actor_spans
 from family_tree.charts import timeline_chart
+from family_tree.ancestry import list_relatives
 from display import set_sidebar
 
 PGHOST = st.secrets['postgresql']['host']
@@ -12,6 +15,8 @@ PGUSER = st.secrets['postgresql']['user']
 PGPASSWORD = st.secrets['postgresql']['password']
 
 CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
+
+FOUNDER_ID = UUID('ad1d95a0-1eea-4f7c-a802-256dda0904bb')
 
 engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
@@ -23,7 +28,9 @@ years = fetch_timeline_years(engine)
 year:int = st.selectbox('Year to Review', years, len(years) - 1, width=100)
 st.title(f'Franzonello YIR {year}')
 
-actor_spans = fetch_actor_spans(engine, year)
+relatives = list_relatives(engine, FOUNDER_ID,
+                           include_animals=False, cut_year=year)
+actor_spans = fetch_actor_spans(engine, year, relative_ids=relatives)
 
 # gantt chart of appearances
 chart = timeline_chart(actor_spans)

@@ -1,69 +1,16 @@
-from math import ceil
 from collections import deque
 from uuid import UUID
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from calendar import monthrange
-from collections import deque, defaultdict
+from collections import deque
 
 from graphviz import Graph
-from pandas import notnull, concat, DataFrame, Series
+from pandas import notnull, concat, DataFrame
 
 from database.db_family import fetch_persons, fetch_animals, fetch_parents, fetch_pets, fetch_marriages
+from family_tree.ancestry import create_maps, get_lineage, get_ancestors_and_descendants, nearest_common_lineage, get_relatives
 from family_tree.cloudinary_lite import get_image_url
-
-def create_maps(parents, pets, spouses):
-    relation_df = concat([parents.rename(columns={'child_id': 'lower_id', 'parent_id': 'above_id'}),
-                          parents.rename(columns={'child_id': 'lower_id', 'parent_id': 'above_id'})])
-    ancestors_map = relation_df.groupby('lower_id').agg(list).to_dict()
-    descendants_map = relation_df.groupby('lower_id').agg(list).to_dict()
-    spouses_map = spouses.set_index('person_id').to_dict()
-    return ancestors_map, descendants_map, spouses_map
-
-def get_lineage(start_id, relation_map, spouses_map):
-    lineage = {start_id: (0, False)}   # distance, via_spouse
-    queue = deque([start_id])
-
-    while queue:
-        curr = queue.popleft()
-        dist, via_spouse = lineage[curr]
-
-        # parents / owners grow upward
-        for p in relation_map.get(curr, []):
-            if p not in lineage:
-                lineage[p] = (dist + 1, via_spouse)  # same spouse flag
-                queue.append(p)
-
-        # spouses stay same level but mark branch as “via spouse”
-        for s in spouses_map.get(curr, []):
-            if s not in lineage:
-                lineage[s] = (dist, True)
-                queue.append(s)
-
-    return lineage
-
-def get_ancestors_and_descendants(member_id, parents, pets, spouses):
-    ancestors_map, descendants_map, spouses_map = create_maps(parents, pets, spouses)
-    ancestors = get_lineage(member_id, ancestors_map, spouses_map)
-    descendants = get_lineage(member_id, descendants_map, spouses_map)
-    return ancestors, descendants
-
-def nearest_common_lineage(member_id_1, member_id_2, relation_map, spouses_map):
-    lin_1 = get_lineage(member_id_1, relation_map, spouses_map)
-    lin_2 = get_lineage(member_id_2, relation_map, spouses_map)
-
-    common = set(lin_1.keys()) & set(lin_2.keys())
-    if not common:
-        return None  # unrelated
-
-    # Pick the NCL by minimizing total distance
-    best = min(common, key=lambda a: (lin_1[a] + lin_2[a], max(lin_1[a], lin_2[a])))
-
-    return {'lineage_id': best,
-            'dist_id_1': lin_1[best][0],
-            'dist_id_2': lin_2[best][0],
-            'in-law': not(lin_1[best][1] and lin_2[best][1]) # related by spouse
-            }
 
 def get_tree_data(engine):
     persons = fetch_persons(engine)
@@ -82,33 +29,6 @@ def get_unit_spouses(unit:list[UUID], spouses:DataFrame):
     unit_sorting = {u: unit.index(u) for u in unit}
     unit_spouses = spouses.sort_values(by='person_id', key=lambda x: x.map(unit_sorting)).groupby('marriage_id').first().reset_index()
     return unit_spouses
-
-def get_relatives(member_id:UUID, persons:DataFrame, animals:DataFrame, parents:DataFrame, pets:DataFrame, spouses:DataFrame) -> list[UUID]:
-    members_to_search = deque([member_id])
-
-    bloodline = []
-    inlaws = []
-
-    relatives_found = []
-
-    while len(members_to_search):
-        current_id = members_to_search.pop()
-        if current_id not in relatives_found:
-            spouse_id = spouses.query('person_id == @current_id')['spouse_id']
-            children_ids = parents.query('parent_id == @current_id')['child_id']
-            parent_ids = parents.query('child_id == @current_id')['parent_id']
-            owner_ids = pets.query('pet_id == @current_id')['owner_id']
-            pet_ids = pets.query('owner_id == @current_id')['pet_id']
-            
-            bloodline = [r_id for r_id in concat([children_ids, parent_ids, owner_ids, pet_ids]).tolist()
-                         if r_id not in relatives_found and r_id != current_id]
-            relatives = [r_id for r_id in concat([spouse_id, children_ids, parent_ids, owner_ids, pet_ids]).tolist() \
-                if r_id not in relatives_found and r_id != current_id]
-        
-            members_to_search.extend(relatives)
-            relatives_found.append(current_id)
-
-    return relatives_found
 
 def get_bloodline(member_id:UUID, relatives_found:list[UUID]):
     return
@@ -276,7 +196,7 @@ def sort_family_tree(founder_id:UUID, persons:DataFrame, animals:DataFrame, pare
 
     spouses = get_spouses(marriages)
     
-    relatives_found = get_relatives(founder_id, persons, animals, parents, pets, spouses)
+    relatives_found = get_relatives(founder_id, parents, pets, spouses)
     nodes = get_nodes(persons, animals, parents, pets, spouses)
     sorted_units = get_sorted_units(relatives_found, nodes, persons, pets, spouses)
 
