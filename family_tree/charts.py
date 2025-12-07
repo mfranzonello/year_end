@@ -1,3 +1,5 @@
+from math import ceil
+
 import altair as alt
 from pandas import DataFrame, concat, json_normalize
 from webcolors import name_to_hex
@@ -242,6 +244,7 @@ def timeline_chart(actor_spans):
                 "start_time:Q",
                 title="Time",
                 axis=alt.Axis(labelExpr=time_format),
+                scale=alt.Scale(domain=[0, ceil(actor_spans['end_time'].max()/10)*10]),
             ),
             x2="end_time:Q",
             tooltip=[
