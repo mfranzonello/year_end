@@ -80,7 +80,9 @@ def fetch_actor_spans(engine:Engine, year:int, relative_ids=[]) -> DataFrame:
 
         current_households AS (
         SELECT member_id,
-        CASE WHEN EXTRACT (YEAR FROM clan_date) <= {year} THEN clan_id ELSE nee_clan_id END AS clan_id
+        CASE
+            WHEN EXTRACT (YEAR FROM clan_date) <= {year} OR clan_date IS NULL THEN clan_id
+            ELSE nee_clan_id END sAS clan_id
         FROM tree.households
         )
 
