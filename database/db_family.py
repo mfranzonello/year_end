@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy import Engine
 from pandas import DataFrame
 
@@ -59,7 +61,7 @@ def fetch_households(engine:Engine) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-def fetch_founder(engine:Engine) -> DataFrame:
+def fetch_founder(engine:Engine) -> UUID:
     sql = f'''
     SELECT founder_id
     FROM nello.founder

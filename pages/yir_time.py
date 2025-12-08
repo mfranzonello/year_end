@@ -27,12 +27,13 @@ years = fetch_timeline_years(engine)
 year:int = st.selectbox('Year to Review', years, len(years) - 1, width=100)
 st.title(f'Franzonello YIR {year}')
 
-founder_id = fetch_founder(engine) #UUID('ad1d95a0-1eea-4f7c-a802-256dda0904bb')
+founder_id = fetch_founder(engine) 
 relatives = list_relatives(engine, founder_id,
                            include_animals=True, cut_year=year)
 actor_spans = fetch_actor_spans(engine, year, relative_ids=relatives)
 actor_spans['clan_name'] = actor_spans['clan_name'].where(actor_spans['member_id'].isin(relatives) |
                                                           actor_spans['clan_id'].isna(), 'Friends')
+
 markers = fetch_markers(engine, year)
 
 # gantt chart of appearances

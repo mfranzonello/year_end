@@ -16,7 +16,7 @@ def get_usable_videos(engine:Engine, year:int, min_stars:int):
     return usable_videos
 
 def ensure_premiere(year:int, adobe_folder:Path, yir_reviews:str, yir_project:str, pr_ext:str, 
-                    ui:SplitConsole) -> int:
+                    ui:SplitConsole) -> int|None:
     ui.set_status('Opening Premiere project...')
     project_folder = adobe_folder / f'{yir_reviews} {year}'
     project_path =  project_folder / f'{yir_project} {year}{pr_ext}'
