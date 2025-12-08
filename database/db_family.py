@@ -58,3 +58,10 @@ def fetch_households(engine:Engine) -> DataFrame:
     FROM tree.households
     ;'''
     return read_sql(engine, sql)
+
+def fetch_founder(engine:Engine) -> DataFrame:
+    sql = f'''
+    SELECT founder_id
+    FROM nello.founder
+    ;'''
+    return read_sql(engine, sql).squeeze()
