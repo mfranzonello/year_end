@@ -29,9 +29,11 @@ year:int = st.selectbox('Year to Review', years, len(years) - 1, width=100)
 st.title(f'Franzonello YIR {year}')
 
 relatives = list_relatives(engine, FOUNDER_ID,
-                           include_animals=False, cut_year=year)
+                           include_animals=True, cut_year=year)
 actor_spans = fetch_actor_spans(engine, year, relative_ids=relatives)
+actor_spans['clan_name'] = actor_spans.where(actor_spans['member_id'].isin(relatives), 'Friends')['clan_name']
 markers = fetch_markers(engine, year)
+
 
 # gantt chart of appearances
 chart = timeline_chart(actor_spans, markers)

@@ -219,7 +219,7 @@ def growth_charts(year_values):
 
     return charts
 
-def timeline_chart(actor_spans, markers):
+def timeline_chart(actor_spans:DataFrame, markers:DataFrame, friends:str='Friends'):
     time_format = (
         "floor(datum.value/60) + ':' + "
         "(datum.value % 60 < 10 ? '0' : '') + "
@@ -227,15 +227,16 @@ def timeline_chart(actor_spans, markers):
     )
     x_domain = [0, ceil(actor_spans['end_time'].max()/10)*10]
 
+    blank = DataFrame([['', '', True]], columns=['full_name', 'clan_name', 'boundary'])
     clans = DataFrame(actor_spans['clan_name'].unique(), columns=['clan_name'])
     clans['full_name'] = clans['clan_name']
     clans['boundary'] = True
 
-    spans_sorted = (concat([actor_spans, clans]).fillna({'boundary': False})
-                    .sort_values(by=['clan_name', 'boundary', 'start_time'],
-                                 #ascending=[True, False, True], 
-                                 na_position='last')
-                    )
+    combined = concat([blank, actor_spans, clans]).fillna({'boundary': False})
+    combined['friends'] = combined['clan_name'] == friends
+
+    spans_sorted = combined.sort_values(by=['friends', 'clan_name', 'boundary', 'start_time'],
+                                        na_position='last')
     spans_sorted['sort_order'] = range(len(spans_sorted))
 
     chart = (
