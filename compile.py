@@ -5,8 +5,8 @@ import argparse
 import sys
 from datetime import datetime
 
-from common.structure import ONE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS
-from common.structure import YIR_REVIEWS, YIR_PROJECT, PR_EXT, COMMON_FOLDER, LABEL_PRESET ## needed for pymiere control
+from common.structure import ONE_DRIVE_FOLDER, ADOBE_FOLDER
+from common.structure import YIR_REVIEWS, PR_EXT, COMMON_FOLDER, LABEL_PRESET ## needed for pymiere control
 from common.secret import secrets
 from common.console import SplitConsole
 from database.db import get_engine
@@ -28,20 +28,23 @@ def set_up_engine():
 
 def update_project(year:int, pull:bool, label:bool, appear:bool, min_stars:int, dry_run=True):
     engine = set_up_engine()
-    project_id = ensure_premiere(year, ADOBE_FOLDER, YIR_REVIEWS, YIR_PROJECT, PR_EXT, ui) ## pull project name from DB config
-    if pull:
-        import_and_label(engine, project_id, year, min_stars, ONE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, YIR_PROJECT, PR_EXT, ui, dry_run=dry_run)
-    if label:
-        setup_label_presets(engine, COMMON_FOLDER, LABEL_PRESET)
-    if appear:
-        get_actors_and_chapters(engine, project_id, year)
+    
+    project_id = ensure_premiere(engine, year, ADOBE_FOLDER, YIR_REVIEWS, PR_EXT, ui)
+    if project_id >= 0:
+        if pull:
+            import_and_label(engine, project_id, year, min_stars, ONE_DRIVE_FOLDER, ui, dry_run=dry_run)
+        if label:
+            setup_label_presets(engine, COMMON_FOLDER, LABEL_PRESET)
+        if appear:
+            get_actors_and_chapters(engine, project_id, year)
+
     engine.dispose()
 
 def main():
     ap = argparse.ArgumentParser(description=f"Scan for new files and import into current year's Premiere review project.")
     
     YEAR = datetime.now().year
-    ap.add_argument("--year", type=int, nargs='+', default=[YEAR], help=f"Year(s) subfolder to process (default: {YEAR})")
+    ap.add_argument("--year", type=int, default=YEAR, help=f"Project year to process (default: {YEAR})")
 
     # run Selenium w/ or w/o head
     group = ap.add_mutually_exclusive_group()
@@ -62,7 +65,7 @@ def main():
 
     if sys.version_info >= (3, 12):
         print('WARNING! Pymiere was built for older versions of Python and may not work properly.')
-    update_project(YEAR, args.pull, args.label, args.appear, args.stars, dry_run=dry_run)
+    update_project(args.year, args.pull, args.label, args.appear, args.stars, dry_run=dry_run)
 
     ui.set_status("Done.")
 

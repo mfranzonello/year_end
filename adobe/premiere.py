@@ -78,20 +78,20 @@ def open_project(path):
             # find the project, if open
             for i, proj in enumerate(pymiere.objects.app.projects):
                 if proj.path == str(path):
+                    print(f'Already open {path}')
                     project_id = i
-                    continue
+                    return project_id
 
         # open project if not already open
-        if not project_id:
-            print(f'Trying to open {str(path)}')
-            pymiere.objects.app.openDocument(str(path),
-                                             suppressConversionDialog=True,
-                                             bypassLocateFileDialog=True,
-                                             bypassWarningDialog=True,
-                                             doNotAddToMRUList=True)
-            # assign last position as current project
-            project_id = pymiere.objects.app.projects.numProjects - 1
+        print(f'Trying to open {path}')
+        pymiere.objects.app.openDocument(str(path),
+                                            suppressConversionDialog=True,
+                                            bypassLocateFileDialog=True,
+                                            bypassWarningDialog=True,
+                                            doNotAddToMRUList=True)
 
+        # assign last position as current project
+        project_id = pymiere.objects.app.projects.numProjects - 1
         return project_id
 
 def find_videos_bin(project_id):
@@ -222,7 +222,9 @@ def get_actors_in_sequence(sequence_item, project_id, sequence_map,
                 project_item = clip.projectItem
 
                 # check if this is automatically ruled out
-                if not any(project_item.treePath.startswith(f'\\{pymiere.objects.app.projects[project_id].name}\\{b}\\') for b in banned_bins):
+                if ((banned_bins is None) 
+                    or
+                    not any(project_item.treePath.startswith(f'\\{pymiere.objects.app.projects[project_id].name}\\{b}\\') for b in banned_bins)):
 
                     # check if item is in visible timeline
                     if not(clip.start.seconds >= seq_out or clip.end.seconds < seq_in):

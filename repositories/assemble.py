@@ -15,14 +15,19 @@ def get_usable_videos(engine:Engine, year:int, min_stars:int):
     usable_videos = files_df.query('video_rating >= @min_stars')
     return usable_videos
 
-def ensure_premiere(year:int, adobe_folder:Path, yir_reviews:str, yir_project:str, pr_ext:str, 
+def ensure_premiere(engine:Engine, year:int, adobe_folder:Path, yir_reviews:str, pr_ext:str, 
                     ui:SplitConsole) -> int:
     ui.set_status('Opening Premiere project...')
-    project_folder = adobe_folder / f'{yir_reviews} {year}'
-    project_path =  project_folder / f'{yir_project} {year}{pr_ext}'
-    project_id = open_project(project_path)
 
-    return project_id
+    project_folder = adobe_folder / f'{yir_reviews} {year}'
+    compilation_df = fetch_compilation(engine, year)
+    if not compilation_df.empty:
+        file_name = compilation_df['file_name'].iloc[0]
+
+        project_path =  project_folder / f'{file_name}{pr_ext}'
+        project_id = open_project(project_path)
+
+        return project_id
 
 def import_and_label(engine:Engine, project_id:int, year:int, min_stars:int, one_drive_folder:Path,
                      ui:SplitConsole, dry_run=True):
@@ -79,7 +84,6 @@ def get_actors_and_chapters(engine:Engine, project_id:int, project_year:int):
         print('Getting sequence maps')
         sequence_map_by_name, sequence_map_by_node = get_sequence_maps(project_id)
 
-        '''
         actor_timestamps = get_actors_in_project(project_id, timeline_name, sequence_map_by_name, sequence_map_by_node,
                                                  banned_bins=banned_bins)
 
@@ -88,8 +92,7 @@ def get_actors_and_chapters(engine:Engine, project_id:int, project_year:int):
                           .drop_duplicates())
         actor_times_df['project_year'] = project_year
         update_appearances(engine, actor_times_df)
-        '''
-
+        
         chapter_timestamps = get_chapter_markers(project_id, timeline_name, sequence_map_by_name)
         chapter_markers_df = DataFrame(chapter_timestamps, columns=['chapter_name', 'start_time'])
         chapter_markers_df['project_year'] = project_year
