@@ -6,9 +6,9 @@ from pandas import DataFrame
 from common.console import SplitConsole
 from common.system import get_person_folders, get_person_name, get_person_names, rebuild_path, resolve_relative_path
 from database.db_project import fetch_files
-from database.db_adobe import fetch_member_labels, fetch_color_labels, update_appearances, fetch_compilation
+from database.db_adobe import fetch_member_labels, fetch_color_labels, update_appearances, update_chapters, fetch_compilation
 from adobe.premiere import convert_to_xml, extract_included_video_paths, open_project, find_videos_bin, create_person_bins, \
-    import_videos, set_family_color_labels, create_label_presets, get_actors_in_project
+    import_videos, set_family_color_labels, create_label_presets, get_sequence_maps, get_actors_in_project, get_chapter_markers
 
 def get_usable_videos(engine:Engine, year:int, min_stars:int):
     files_df = fetch_files(engine, year)
@@ -71,16 +71,28 @@ def setup_label_presets(engine:Engine, common_folder:Path, label_preset_name:str
     color_labels = fetch_color_labels(engine)
     return create_label_presets(color_labels, common_folder, label_preset_name)
 
-def get_actor_timestamps(engine:Engine, project_id:int, project_year:int):
+def get_actors_and_chapters(engine:Engine, project_id:int, project_year:int):
     compilation_df = fetch_compilation(engine, project_year)
     if not compilation_df.empty:
         timeline_name, banned_bins = compilation_df[['timeline_name', 'banned_bins']].iloc[0]
 
-        actor_timestamps = get_actors_in_project(project_id, timeline_name, banned_bins=banned_bins)
+        print('Getting sequence maps')
+        sequence_map_by_name, sequence_map_by_node = get_sequence_maps(project_id)
+
+        '''
+        actor_timestamps = get_actors_in_project(project_id, timeline_name, sequence_map_by_name, sequence_map_by_node,
+                                                 banned_bins=banned_bins)
 
         actor_times_df = (DataFrame(actor_timestamps).explode('actor_uuid', ignore_index=True)
                           .rename(columns={'actor_uuid': 'member_id'})
                           .drop_duplicates())
         actor_times_df['project_year'] = project_year
-
         update_appearances(engine, actor_times_df)
+        '''
+
+        chapter_timestamps = get_chapter_markers(project_id, timeline_name, sequence_map_by_name)
+        chapter_markers_df = DataFrame(chapter_timestamps, columns=['chapter_name', 'start_time'])
+        chapter_markers_df['project_year'] = project_year
+        update_chapters(engine, chapter_markers_df)
+
+        

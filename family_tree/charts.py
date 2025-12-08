@@ -70,8 +70,6 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
     pad = 0.1 * x_max
     # make sure the x-domain includes the image position
 
-    x_domain_max = float(x_max + pad)
-
     # UI sizing
     bar_height = 30                   # pixels per row (bigger = easier to read)
     gap = 0# 5.0                      # choose a value in video_count units
@@ -221,40 +219,120 @@ def growth_charts(year_values):
 
     return charts
 
-def timeline_chart(actor_spans):
+def timeline_chart(actor_spans, markers):
     time_format = (
         "floor(datum.value/60) + ':' + "
         "(datum.value % 60 < 10 ? '0' : '') + "
         "floor(datum.value % 60)"
     )
+    x_domain = [0, ceil(actor_spans['end_time'].max()/10)*10]
 
-    #actor_spans.sort_values(['start_time'], inplace=True)
-    actor_spans['sort_order'] = actor_spans['start_time'].rank(na_option='bottom')
-    
+    clans = DataFrame(actor_spans['clan_name'].unique(), columns=['clan_name'])
+    clans['full_name'] = clans['clan_name']
+    clans['boundary'] = True
+
+    spans_sorted = (concat([actor_spans, clans]).fillna({'boundary': False})
+                    .sort_values(by=['clan_name', 'boundary', 'start_time'],
+                                 #ascending=[True, False, True], 
+                                 na_position='last')
+                    )
+    spans_sorted['sort_order'] = range(len(spans_sorted))
+
     chart = (
-        alt.Chart(actor_spans)
+        alt.Chart(spans_sorted)
+        .transform_lookup(
+            lookup='full_name',
+            from_=alt.LookupData(
+                spans_sorted,
+                key='full_name',
+                fields=['y_label'],
+            ),
+        )
         .mark_bar()
         .encode(
             y=alt.Y(
                 "full_name:N",
-                title=None, #"Actor",
+                title=None,
                 sort=alt.EncodingSortField(field="sort_order", order="ascending")
             ),
             x=alt.X(
                 "start_time:Q",
                 title="Time",
                 axis=alt.Axis(labelExpr=time_format),
-                scale=alt.Scale(domain=[0, ceil(actor_spans['end_time'].max()/10)*10]),
+                scale=alt.Scale(domain=x_domain),
             ),
             x2="end_time:Q",
+            color=alt.Color(
+                "clan_name:N",
+                 legend=None,
+            ),
             tooltip=[
                 'full_name:N',
+                'clan_name:N',
                 alt.Tooltip("start_time:Q", title="Start", format=".2f"),
                 alt.Tooltip("end_time:Q", title="End", format=".2f")
             ],
         )
     )
 
-    print('test')
+    x_pad = 5
+    y_extend = -20
 
-    return chart
+    rules_y1 = (
+        alt.Chart(markers)
+        .mark_rule() 
+        .encode(
+            x="start_time:Q",
+            color=alt.value(name_to_hex('indianred')),
+            tooltip=[
+                alt.Tooltip("chapter_name:N", title="Chapter"),
+                alt.Tooltip("start_time:Q", title="Start (s)", format=".2f"),
+            ],
+        )
+    )
+
+    rules_y2 = (
+        alt.Chart(markers)
+        .mark_rule() 
+        .encode(
+            x="start_time:Q",
+            color=alt.value(name_to_hex('indianred')),
+            tooltip=[
+                alt.Tooltip("chapter_name:N", title="Chapter"),
+                alt.Tooltip("start_time:Q", title="Start (s)", format=".2f"),
+            ],
+            y=alt.value(0),
+            y2=alt.value(y_extend)
+        )
+    )
+
+    # find boundaries where clan changes
+    boundaries = spans_sorted[spans_sorted['boundary']]
+
+    rules_x = (
+        alt.Chart(boundaries)
+        .mark_rule()
+        .encode(
+            y=alt.Y(
+                "full_name:N",
+                title=None, #"Actor",
+                sort=alt.EncodingSortField(field="sort_order", order="ascending")
+            ),
+            x=alt.X(scale=alt.Scale(domain=x_domain)),
+            #x=alt.value(0),
+        )
+    )
+
+    rules = rules_y1 + rules_y2 + rules_x
+
+    labels = (
+        alt.Chart(markers)
+        .mark_text(dx=x_pad, dy=y_extend, baseline='top', align="left") # angle=90, 
+        .encode(
+            y=alt.value(0),
+            x="start_time:Q",
+            text="chapter_name:N",
+        )
+    )
+    
+    return chart + rules + labels

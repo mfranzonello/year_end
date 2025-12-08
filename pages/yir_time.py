@@ -3,7 +3,7 @@ from uuid import UUID
 import streamlit as st
 
 from database.db import get_engine
-from database.db_adobe import fetch_timeline_years, fetch_actor_spans
+from database.db_adobe import fetch_timeline_years, fetch_actor_spans, fetch_markers
 from family_tree.charts import timeline_chart
 from family_tree.ancestry import list_relatives
 from display import set_sidebar
@@ -31,7 +31,8 @@ st.title(f'Franzonello YIR {year}')
 relatives = list_relatives(engine, FOUNDER_ID,
                            include_animals=False, cut_year=year)
 actor_spans = fetch_actor_spans(engine, year, relative_ids=relatives)
+markers = fetch_markers(engine, year)
 
 # gantt chart of appearances
-chart = timeline_chart(actor_spans)
+chart = timeline_chart(actor_spans, markers)
 st.altair_chart(chart, use_container_width=True) # width='stretch')

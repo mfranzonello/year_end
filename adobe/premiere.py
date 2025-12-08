@@ -259,15 +259,29 @@ def get_actors_in_sequence(sequence_item, project_id, sequence_map,
 
     return actor_appearances
 
-def get_actors_in_project(project_id, sequence_name, banned_bins=[]):
-    print('Getting sequence maps')
-    sequence_map_by_name, sequence_map_by_node = get_sequence_maps(project_id)
-
+def get_actors_in_project(project_id, sequence_name, sequence_map_by_name, sequence_map_by_node, banned_bins=[]):
     print(f'Pulling up main sequence')
-    actor_appearances = None
 
     if sequence_name in sequence_map_by_name:
         sequence_item = get_sequence(project_id, sequence_map_by_name.get(sequence_name))
-        actor_appearances = get_actors_in_sequence(sequence_item, project_id, sequence_map_by_node, banned_bins=banned_bins)
+        return get_actors_in_sequence(sequence_item, project_id, sequence_map_by_node, banned_bins=banned_bins)
 
-    return actor_appearances
+def get_chapter_markers(project_id, sequence_name, sequence_map_by_name):
+    print('Getting chapter markers')
+
+    if sequence_name in sequence_map_by_name:
+        sequence = pymiere.objects.app.projects[project_id].sequences[sequence_map_by_name[sequence_name]]
+        markers = sequence.markers
+        
+        n_markers = markers.numMarkers
+        if n_markers:
+            chapters = []
+            marker = markers.getFirstMarker()
+            for i in range(n_markers):
+                if marker.type == 'Chapter':
+                    chapters.append((marker.name, round(marker.start.seconds, 2)))
+
+                if i < n_markers - 1:
+                    marker = markers.getNextMarker(marker)
+
+            return chapters

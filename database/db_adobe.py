@@ -37,6 +37,21 @@ def update_appearances(engine:Engine, df:DataFrame):
     ;'''
     execute_sql(engine, sql, params=params)
 
+def update_chapters(engine:Engine, df:DataFrame):
+    project_year = df['project_year'].iloc[0]
+    sql = f'''
+    DELETE FROM project.chapters WHERE project_year = {project_year}
+    ;'''
+    execute_sql(engine, sql)
+
+    val_cols = ['project_year', 'chapter_name', 'start_time']
+    val_ins = ', '.join(val_cols)
+    values, params = build_values(df, val_cols)
+    sql = f'''
+    INSERT INTO project.chapters ({val_ins}) VALUES {values}
+    ;'''
+    execute_sql(engine, sql, params=params)
+
 def fetch_timeline_years(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT DISTINCT project_year
@@ -63,9 +78,20 @@ def fetch_actor_spans(engine:Engine, year:int, relative_ids=[]) -> DataFrame:
         WHERE project_year = {year}
       )
 
-    SELECT member_id, full_name, start_time, end_time, span
+    SELECT member_id, full_name, clan_id, clan_name,
+    start_time, end_time, span
     FROM actual_spans {full_join}
       JOIN display_names USING (member_id)
+      JOIN tree.households USING (member_id)
+      JOIN tree.clans USING (clan_id)
+    ;'''
+    return read_sql(engine, sql)
+
+def fetch_markers(engine:Engine, year:int) -> DataFrame:
+    sql = f'''
+    SELECT chapter_name, start_time
+    FROM project.chapters
+    WHERE project_year = {year}
     ;'''
     return read_sql(engine, sql)
 

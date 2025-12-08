@@ -51,3 +51,10 @@ def fetch_members(engine:Engine) -> DataFrame:
     FROM tree.members
     ;'''
     return read_sql(engine, sql)
+
+def fetch_households(engine:Engine) -> DataFrame:
+    sql = f'''
+    SELECT member_id, clan_id
+    FROM tree.households
+    ;'''
+    return read_sql(engine, sql)

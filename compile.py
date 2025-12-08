@@ -10,7 +10,7 @@ from common.structure import YIR_REVIEWS, YIR_PROJECT, PR_EXT, COMMON_FOLDER, LA
 from common.secret import secrets
 from common.console import SplitConsole
 from database.db import get_engine
-from repositories.assemble import ensure_premiere, import_and_label, setup_label_presets, get_actor_timestamps
+from repositories.assemble import ensure_premiere, import_and_label, setup_label_presets, get_actors_and_chapters
 
 PGSECRETS = secrets['postgresql']['host']
 PGHOST = secrets['postgresql']['host']
@@ -34,7 +34,7 @@ def update_project(year:int, pull:bool, label:bool, appear:bool, min_stars:int, 
     if label:
         setup_label_presets(engine, COMMON_FOLDER, LABEL_PRESET)
     if appear:
-        get_actor_timestamps(engine, project_id, year)
+        get_actors_and_chapters(engine, project_id, year)
     engine.dispose()
 
 def main():
