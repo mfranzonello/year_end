@@ -235,6 +235,8 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, friends:str='Friend
 
     combined = concat([blank, actor_spans, clans]).fillna({'boundary': False})
     combined['friends'] = combined['clan_name'] == friends
+    combined['y_label'] = combined.apply(lambda x: ' ' if x['boundary'] else x['full_name'], axis=1)
+    print(combined[['member_id', 'full_name', 'y_label']].to_string())
 
     spans_sorted = combined.sort_values(by=['friends', 'clan_name', 'boundary', 'start_time'],
                                         na_position='last')
@@ -242,20 +244,16 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, friends:str='Friend
 
     chart = (
         alt.Chart(spans_sorted)
-        .transform_lookup(
-            lookup='full_name',
-            from_=alt.LookupData(
-                spans_sorted,
-                key='full_name',
-                fields=['y_label'],
-            ),
-        )
         .mark_bar()
         .encode(
             y=alt.Y(
                 "full_name:N",
                 title=None,
-                sort=alt.EncodingSortField(field="sort_order", order="ascending")
+                sort=alt.EncodingSortField(
+                    field="sort_order",
+                    order="ascending"
+                ),
+                axis=None, #alt.Axis(labelExpr="datum.y_label")
             ),
             x=alt.X(
                 "start_time:Q",
@@ -264,15 +262,12 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, friends:str='Friend
                 scale=alt.Scale(domain=x_domain),
             ),
             x2="end_time:Q",
-            color=alt.Color(
-                "clan_name:N",
-                 legend=None,
-            ),
+            color=alt.Color("clan_name:N", legend=None),
             tooltip=[
-                'full_name:N',
-                'clan_name:N',
+                "full_name:N",
+                "clan_name:N",
                 alt.Tooltip("start_time:Q", title="Start", format=".2f"),
-                alt.Tooltip("end_time:Q", title="End", format=".2f")
+                alt.Tooltip("end_time:Q", title="End", format=".2f"),
             ],
         )
     )
@@ -309,16 +304,16 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, friends:str='Friend
     )
 
     # find boundaries where clan changes
-    boundaries = spans_sorted[spans_sorted['boundary']]
-
     rules_x = (
-        alt.Chart(boundaries)
+        alt.Chart(spans_sorted[spans_sorted['boundary']])
         .mark_rule()
         .encode(
             y=alt.Y(
                 "full_name:N",
                 title=None, #"Actor",
-                sort=alt.EncodingSortField(field="sort_order", order="ascending")
+                sort=alt.EncodingSortField(field="sort_order", order="ascending"),
+                axis=None,
+                #axis=alt.Axis(labelExpr="datum.y_label"),
             ),
             x=alt.X(scale=alt.Scale(domain=x_domain)),
             #x=alt.value(0),
@@ -327,7 +322,7 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, friends:str='Friend
 
     rules = rules_y1 + rules_y2 + rules_x
 
-    labels = (
+    labels_x = (
         alt.Chart(markers)
         .mark_text(dx=x_pad, dy=y_extend, baseline='top', align="left") # angle=90, 
         .encode(
@@ -336,5 +331,25 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, friends:str='Friend
             text="chapter_name:N",
         )
     )
+
     
+    labels_y = (
+        alt.Chart(spans_sorted.groupby('full_name').first().reset_index())
+        .mark_text(
+            align="right",
+            baseline="middle",
+            dx=-10,  # nudge left a bit if you want it near the axis
+        )
+        .encode(
+            y=alt.Y(
+                "full_name:N",
+                sort=alt.EncodingSortField(field="sort_order", order="ascending"),
+            ),
+            x=alt.value(0),        # or the left edge in pixels
+            text="y_label:N",
+        )
+    )
+    
+    labels = labels_x + labels_y
+
     return chart + rules + labels

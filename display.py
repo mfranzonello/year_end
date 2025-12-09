@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import streamlit as st
-import altair as alt
 
 from database.db import get_engine
 
