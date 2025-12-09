@@ -53,7 +53,7 @@ def scan_folders(media_locations:DataFrame, dry_run:bool=True):
 def dedupe_folders(media_locations, dry_run:bool=True):
     engine = set_up_engine()
     for _, (media_type, supfolder_name) in media_locations.iterrows():
-        dedupe_one_drive(engine, ONE_DRIVE_FOLDER / supfolder_name, QUARANTINE, dry_run)
+        dedupe_one_drive(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type, QUARANTINE, dry_run)
     engine.dispose()
 
 def harvest_albums(google:bool, icloud:bool, headless:bool=True):
@@ -119,7 +119,7 @@ def main():
     if not args.no_dbupdate:
         purge_database(media_locations, dry_run=dry_run)
         update_database(media_locations, dry_run=dry_run)
-        ##dedupe_folders(dry_run=dry_run)
+        dedupe_folders(media_locations, dry_run=dry_run)
         purge_database(media_locations, dry_run=dry_run)
 
     if args.pictures:

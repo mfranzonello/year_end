@@ -157,10 +157,10 @@ def dedupe_folder_from_db(duplicates_df:DataFrame, one_drive_folder:Path, quaran
 
     return keep_paths, move_paths
 
-def dedupe_one_drive(engine:Engine, one_drive_folder:Path, quarantine:str, dry_run:bool):
+def dedupe_one_drive(engine:Engine, one_drive_folder:Path, media_type:str, quarantine:str, dry_run:bool):
     # dedupe from before
     print('Deduping previous imports...')
-    dupes_df = fetch_duplicates(engine)
+    dupes_df = fetch_duplicates(engine, media_type)
     keep_paths, move_paths = dedupe_folder_from_db(dupes_df, one_drive_folder, quarantine, dry_run=dry_run)
     for k, m in zip(keep_paths, move_paths):
         print(f'Kept {k}, moved {m}.')
