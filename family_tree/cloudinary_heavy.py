@@ -9,7 +9,7 @@ from cloudinary.exceptions import NotFound
 
 CLOUDINARY_DOMAIN = 'https://res.cloudinary.com'
 DEFAULT_IMAGE = 'images/default_image.png'
-PROFILES = 'profiles'
+PROFILES = 'profile_to_replace'
 
 def configure_cloud(cloud_name:str, api_key:str, api_secret:str):
     _ = cloudinary.config(cloud_name=cloud_name,
@@ -34,7 +34,7 @@ def upload_image(public_id:UUID, image_path:Path, display_name:str):
 def update_display_name(public_id:UUID, display_name:str):
     cloudinary.api.update(str(public_id), display_name=display_name)
 
-def fill_in_temp_pictures(display_names:DataFrame, default_image:Path=Path(DEFAULT_IMAGE)): # public_ids:list[UUID]
+def fill_in_temp_pictures(display_names:DataFrame, default_image:Path=Path(DEFAULT_IMAGE)):
     if default_image:
         for _, (member_id, full_name) in display_names.iterrows():
             result = fetch_resource(member_id)
