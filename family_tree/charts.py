@@ -52,10 +52,11 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
         # adjust threshold down
         threshold = adjust_threshold
 
-    video_counts['display_name'] = video_counts['full_name'].where(
-        video_counts['full_name'].notna(),
-        video_counts['folder_name']
-    )#.str.replace(' ', '\n')
+    video_counts['display_name'] = (video_counts['full_name']
+                                    .fillna(video_counts['folder_name'])
+                                    .fillna('_ROOT')
+                                    )
+
     video_counts['image_url'] = video_counts.apply(lambda x: get_image_url(cloud_name, x['member_id']), axis=1)
     video_counts['image_url'] = video_counts.apply(lambda x: grayscale_zero_images(x['image_url'], x[quantity]), axis=1)
 
