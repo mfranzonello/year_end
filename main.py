@@ -8,7 +8,7 @@ from common.console import SplitConsole
 from database.db import get_engine
 from repositories.migrate import dedupe_one_drive, copy_from_gdrive
 from repositories.ingest import copy_from_web
-from repositories.inspect import summarize_folders, update_database_images, purge_stale_content
+from repositories.inspect import get_media_locations, summarize_folders, update_database_images, purge_stale_content
 
 PGSECRETS = secrets['postgresql']['host']
 PGHOST = secrets['postgresql']['host']
@@ -27,6 +27,12 @@ ui = SplitConsole()
 
 def set_up_engine():
     return get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
+
+def set_up_media_locations():
+    engine = set_up_engine()
+    media_locations = get_media_locations(engine)[['media_type', 'supfolder_name']].values
+    engine.dispose()
+    return media_locations
 
 def scan_folders(dry_run=True):
     engine = set_up_engine()
@@ -49,15 +55,18 @@ def harvest_albums(google, icloud, headless=True):
     copy_from_web(engine, ONE_DRIVE_FOLDER, google=google, icloud=icloud, headless=headless)
     engine.dispose()
 
-def purge_database(dry_run=True):
+def purge_database(media_locations, dry_run=True):
     if not dry_run:
         engine = set_up_engine()
-        purge_stale_content(engine, ONE_DRIVE_FOLDER, dry_run)
+        for media_type, supfolder_name in media_locations:
+            purge_stale_content(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type, dry_run)
         engine.dispose()
 
-def update_database(dry_run=True):
+def update_database(media_locations, dry_run=True):
     engine = set_up_engine()
-    summarize_folders(engine, ONE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, ui, dry_run=dry_run)
+
+    for media_type, supfolder_name in media_locations:
+        summarize_folders(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type, ADOBE_FOLDER, YIR_REVIEWS, ui, dry_run=dry_run)
     engine.dispose()
 
 def update_images(dry_run=True):
@@ -76,7 +85,7 @@ def main():
                        help="Run Selenium with UI visible")
     ap.set_defaults(headless=True)
 
-    ap.add_argument('--nodbupdate', nargs='?', type=bool, const=True, default=False, help="Don't update the database.")
+    ap.add_argument('--no-dbupdate', nargs='?', type=bool, const=True, default=False, help="Don't update the database.")
 
     ap.add_argument('--gphotos', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Photos to OneDrive.')
     ap.add_argument('--iphotos', nargs='?', type=bool, const=True, default=False, help='Copy new files from iCloud Photos to OneDrive.')
@@ -94,21 +103,23 @@ def main():
 
     ui.add_update(f'Running with args: {args}')
 
+    media_locations = set_up_media_locations()
+
     if args.gphotos or args.iphotos:
         harvest_albums(args.gphotos, args.iphotos, args.headless)
    
     ## can look at whole group at once
-    if not args.nodbupdate:
+    if not args.no_dbupdate:
         if args.gdrive:
             scan_folders(dry_run=dry_run)
 
-        purge_database(dry_run=dry_run)
-        update_database(dry_run=dry_run)
-        dedupe_folders(dry_run=dry_run)
-        purge_database(dry_run=dry_run)
+        purge_database(media_locations, dry_run=dry_run)
+        update_database(media_locations, dry_run=dry_run)
+        ##dedupe_folders(dry_run=dry_run)
+        purge_database(media_locations, dry_run=dry_run)
 
-        if args.pictures:
-            update_images(dry_run=dry_run)
+    if args.pictures:
+        update_images(dry_run=dry_run)
 
     ui.set_status("Done.")
 

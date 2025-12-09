@@ -1,3 +1,4 @@
+from numpy import median
 from sqlalchemy import Engine
 from pandas import DataFrame
 
@@ -14,59 +15,53 @@ def fetch_project_years(engine:Engine) -> DataFrame:
 
 def fetch_folder_summaries(engine:Engine, year:int) -> DataFrame:
     sql = f'''
-    SELECT project_year, folder_name, full_name, member_id,
+    SELECT project_year, folder_name, media_type, full_name, member_id,
     video_count, video_duration, file_size, review_count, usable_count, used_count
     FROM project.folders_summary
     WHERE project_year = {year}
     ;'''
     return read_sql(engine, sql)
 
-def fetch_known_folders(engine:Engine) -> DataFrame:
+def fetch_known_folders(engine:Engine, media_type:str) -> DataFrame:
     sql = f'''
-    SELECT folder_id, folder_name, project_year
+    SELECT folder_id, folder_name, project_year, media_type
     FROM project.folders
+    WHERE media_type = '{media_type}'
     ;'''
     return read_sql(engine, sql)
 
-def fetch_known_files(engine:Engine, year:int) -> DataFrame: ## consider having this be all years
+def fetch_known_files(engine:Engine, year:int, media_type:str) -> DataFrame: ## consider having this be all years
     sql = f'''
-    SELECT file_id, folder_name, project_year, file_name, subfolder_name
+    SELECT file_id, folder_name, project_year, media_type, file_name, subfolder_name
     FROM project.files JOIN project.folders USING (folder_id)
     WHERE project_year = {year}
+    AND media_type = '{media_type}'
     ;'''
     return read_sql(engine, sql)
 
-def fetch_files(engine:Engine, year:int) -> DataFrame:
+def fetch_files(engine:Engine, year:int, media_type:str) -> DataFrame:
     sql = f'''
-    SELECT file_id, folder_name, project_year, file_name, subfolder_name,
+    SELECT file_id, folder_name, project_year, media_type, file_name, subfolder_name,
     file_size, video_date, video_duration, video_resolution, video_rating, used_status
     FROM project.files JOIN project.folders USING (folder_id)
     WHERE project_year = {year}
+    AND media_type = '{media_type}'
     ;'''
     return read_sql(engine, sql)
 
-# # def fetch_member_ids(engine:Engine, member_type:str) -> DataFrame:
-# #     sql = f'''
-# #     SELECT {member_type}_id FROM {member_type}s
-# #     ;'''
-# #     return read_sql(engine, sql)
-
-def fetch_all_member_ids(engine:Engine) -> DataFrame:
+def fetch_display_names(engine:Engine) -> DataFrame:
     sql = f'''
-    SELECT person_id AS member_id FROM persons
-    UNION
-    SELECT animal_id AS member_id FROM animals
-    UNION
-    SELECT source_id AS source_id FROM project.sources
+    SELECT member_id, full_name
+    FROM display_names
     ;'''
     return read_sql(engine, sql)
 
 def update_folders(engine:Engine, df:DataFrame):
     # add new folder information
     sql = f'''
-    INSERT INTO project.folders (folder_name, project_year)
-    VALUES (:folder_name, :project_year)
-    ON CONFLICT (folder_name, project_year) DO NOTHING
+    INSERT INTO project.folders (folder_name, project_year, media_type)
+    VALUES (:folder_name, :project_year, :media_type)
+    ON CONFLICT (folder_name, project_year, media_type) DO NOTHING
     ;'''
     execute_sql(engine, sql, df=df)
 
@@ -93,8 +88,9 @@ def update_files(engine:Engine, df:DataFrame):
         :video_resolution,
         :video_rating
     FROM project.folders f
-    WHERE f.folder_name  = :folder_name
+    WHERE f.folder_name IS NOT DISTINCT FROM :folder_name
         AND f.project_year = :project_year
+        AND f.media_type = :media_type
     ON CONFLICT (folder_id, subfolder_name, file_name) DO UPDATE
 
     SET file_size = EXCLUDED.file_size,
@@ -108,13 +104,14 @@ def update_files(engine:Engine, df:DataFrame):
     # cloud stored
     sql = f'''
     INSERT INTO project.files (folder_id, subfolder_name, file_name, file_size)
-    SELECT  f.folder_id,
+    SELECT f.folder_id,
         :subfolder_name,
         :file_name,
         :file_size
     FROM project.folders f
-    WHERE f.folder_name  = :folder_name
+    WHERE f.folder_name IS NOT DISTINCT FROM :folder_name
         AND f.project_year = :project_year
+        AND f.media_type = :media_type
     ON CONFLICT (folder_id, subfolder_name, file_name) DO UPDATE
 
     SET file_size = EXCLUDED.file_size
@@ -125,9 +122,8 @@ def purge_folders(engine:Engine, df:DataFrame):
     # remove stale folder_ids
     values, params = build_values(df, ['folder_id'])
     sql = f'''
-    DELETE FROM project.folders 
-    WHERE (folder_name, project_year) IN (VALUES {values})
-    ;'''
+    DELETE FROM project.folders WHERE folder_id IN (VALUES {values})
+    ;''' # (folder_name, project_year, media_type) IN (VALUES {values})
     execute_sql(engine, sql, params=params)
 
 def purge_files(engine:Engine, df:DataFrame):
@@ -142,68 +138,30 @@ def update_files_used(engine:Engine, df:DataFrame):
     sql = f'''
     UPDATE project.files
     SET used_status = :used_status
-    WHERE file_id = :file_id;
-    '''
+    WHERE file_id = :file_id
+    ;'''
     execute_sql(engine, sql, df=df)
 
-def fetch_files_scanned(engine):
+def fetch_files_scanned(engine:Engine, media_type:str):
     sql = f'''
-    SELECT folder_name, project_year, subfolder_name, file_name, video_duration, video_resolution
+    SELECT folder_name, project_year, media_type, subfolder_name, file_name, video_duration, video_resolution
     FROM project.files JOIN project.folders USING (folder_id)
-    WHERE video_duration IS NOT NULL AND video_resolution IS NOT NULL;
-    '''
-    return read_sql(engine, sql)
-
-def fetch_duplicates(engine):
-    sql = f'''
-    SELECT folder_name, project_year, flags, duplicates_sorted
-    FROM project.duplicates_summary
-    '''
-    return read_sql(engine, sql)
-
-def update_folder_member_ids(engine:Engine) -> DataFrame:
-    ''' Guess what the best member_ids are based on other years already identified '''
-    member_types = ['person', 'animal', 'source']
-    set_sub_ids = ', '.join(f'{k} = to_fill.{k}' for j in member_types if (k := f'{j}_id'))
-    f_ref_sub_ids = ', '.join(f'f_ref.{j}_id' for j in member_types)
-    f_old_sub_ids = ', '.join(f'f_old.{j}_id' for j in member_types)
-    ref_sub_ids = ', '.join(f'ref.{j}_id' for j in member_types)
-    f_sub_ids = ', '.join(f'f.{j}_id' for j in member_types)
-
-    sql = f'''
-    WITH to_fill AS (
-      SELECT f_old.folder_id,
-             f_old.folder_name,
-             f_old.project_year,
-             {ref_sub_ids}
-      FROM project.folders AS f_old
-      CROSS JOIN LATERAL (
-        SELECT {f_ref_sub_ids}
-        FROM project.folders AS f_ref
-        WHERE f_ref.folder_name = f_old.folder_name
-          AND num_nonnulls({f_ref_sub_ids}) = 1
-        ORDER BY
-          ABS(f_ref.project_year - f_old.project_year) ASC,
-          f_ref.project_year DESC
-        LIMIT 1
-      ) AS ref
-      WHERE num_nonnulls({f_old_sub_ids}) = 0
-    )
-    UPDATE project.folders AS f
-    SET {set_sub_ids}
-    FROM to_fill
-    WHERE f.folder_id = to_fill.folder_id
-    RETURNING f.folder_id, f.folder_name, f.project_year, {f_sub_ids}
+    WHERE video_duration IS NOT NULL AND video_resolution IS NOT NULL
+    AND media_type = '{media_type}'
     ;'''
-    rows = execute_sql(engine, sql, returning=True)
+    return read_sql(engine, sql)
 
-    changes_df = DataFrame(rows, columns=['folder_id', 'folder_name', 'project_year'] + [f'{j}_id' for j in member_types])
-
-    return changes_df
+def fetch_duplicates(engine:Engine, media_type:str):
+    sql = f'''
+    SELECT folder_name, project_year, media_type, flags, duplicates_sorted
+    FROM project.duplicates_summary
+    WHERE media_type = '{media_type}'
+    ;'''
+    return read_sql(engine, sql)
 
 def fetch_shared_albums(engine:Engine) -> DataFrame:
     sql = f'''
-    SELECT album_id, share_url, folder_name, project_year,
+    SELECT album_id, share_url, folder_name, project_year, 'smartphone' AS media_type,
     scrape_name, browser_name, profile_name, notes
     FROM ingestion.shared_album_details
     ;'''
@@ -214,5 +172,13 @@ def fetch_years_summary(engine:Engine) -> DataFrame:
     SELECT project_year, total_folders, total_videos, total_duration, total_file_size,
     video_resolutions, video_status 
     FROM project.years_summary
+    ;'''
+    return read_sql(engine, sql)
+
+def fetch_media_types(engine:Engine) -> DataFrame:
+    sql = f'''
+    SELECT media_type, supfolder_name
+    FROM config.media
+    ORDER BY medium_id
     ;'''
     return read_sql(engine, sql)

@@ -89,12 +89,12 @@ def get_video_rating(file_path:Path, local_only:bool=True) -> int|None:
 
 def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, str]:
     no_res = 'xx'
-    resolution_ranges = [(320, 'vhs'), # VHS - 480x320
-                         (480, 'sd'), # DVD / SD - 720x480
-                         (720, 'hd'), # SMS HD - 1280x720
-                         (1080, 'fhd'), # full-HD blu-ray - 1920x1080
-                         (2160, '4k'), # ultra blu-ray - 3840x2160
-                         (4320, '8k')] # 7680 x 4320
+    resolution_ranges = [((320, 240), 'vhs'), # VHS - 480x320
+                         ((720, 480), 'sd'), # DVD / SD - 720x480
+                         ((1280, 720), 'hd'), # SMS HD - 1280x720
+                         ((1920, 1080), 'fhd'), # full-HD blu-ray - 1920x1080
+                         ((3840, 2160), '4k'), # ultra blu-ray - 3840x2160
+                         ((7680, 4320), '8k')] # 7680 x 4320
 
     if is_examinable(file_path, local_only): ## avoids downloading from interweb
         # get duration
@@ -104,7 +104,7 @@ def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, s
             # likely moov atom not found
             duration = 0
             resolution = no_res
-            print(f'{file_path} corrupted [cv2]')
+            print(f'{file_path} corrupted [cv2 - no frames]')
 
         else:
             # video is usable
@@ -115,12 +115,17 @@ def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, s
             # get resolution
             w = v.get(CAP_PROP_FRAME_WIDTH)
             h = v.get(CAP_PROP_FRAME_HEIGHT)
-            dimension = (min(w, h))
-            for dim, res in resolution_ranges[::-1]:
-                if dimension >= dim:
+
+            if min(w, h) == 0 or None in (w, h):
+                resolution = no_res
+                print(f'{file_path} corrupted [cv2 - no pixels]')
+
+            else:
+                for (h_dim, v_dim), res in resolution_ranges[::-1]:
+                    if (max(w, h) >= h_dim) or (min(w, h) >= v_dim):
+                        resolution = res
+                        break
                     resolution = res
-                    break
-                resolution = res
 
         v.release()
         

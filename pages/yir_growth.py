@@ -20,6 +20,7 @@ st.set_page_config(page_title='Franzonello Family YIR Growth',
 st.title(f'Franzonello YIR Growth')
 
 year_values = fetch_years_summary(engine)
+
 charts = growth_charts(year_values)
 
 for chart in charts:

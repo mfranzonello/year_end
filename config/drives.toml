@@ -3,7 +3,7 @@
 quarantine = "Quarantine"
 
 [local_storage.onedrive]
-videos = "Videos/YIR Clips"
+videos = "Videos"
 
 [local_storage.google_drive]
 videos = "YIR Clips"
