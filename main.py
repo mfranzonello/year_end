@@ -34,14 +34,18 @@ def set_up_media_locations():
     engine.dispose()
     return media_locations
 
-def scan_folders(dry_run=True):
+def scan_folders(media_locations:list[list[str]], dry_run=True):
     engine = set_up_engine()
-    missing_targets = copy_from_gdrive(ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, QUARANTINE, ui, dry_run)
 
-    if dry_run and missing_targets:
-        ui.add_update("\n(Note) These OneDrive destination folders do not exist yet (will be created on --apply if needed):")
-        for name in missing_targets:
-            ui.add_update(f"  - {name}")
+    for media_type, supfolder_name in media_locations:
+        if (GOOGLE_DRIVE_FOLDER / supfolder_name).exists():
+            missing_targets = copy_from_gdrive(ONE_DRIVE_FOLDER / supfolder_name, GOOGLE_DRIVE_FOLDER / supfolder_name, QUARANTINE, ui, dry_run)
+
+            if dry_run and missing_targets:
+                ui.add_update("\n(Note) These OneDrive destination folders do not exist yet (will be created on --apply if needed):")
+                for name in missing_targets:
+                    ui.add_update(f"  - {name}")
+
     engine.dispose()
 
 def dedupe_folders(dry_run=True):
@@ -55,7 +59,7 @@ def harvest_albums(google, icloud, headless=True):
     copy_from_web(engine, ONE_DRIVE_FOLDER, google=google, icloud=icloud, headless=headless)
     engine.dispose()
 
-def purge_database(media_locations, dry_run=True):
+def purge_database(media_locations:list[list[str]], dry_run=True):
     if not dry_run:
         engine = set_up_engine()
         for media_type, supfolder_name in media_locations:
@@ -108,11 +112,10 @@ def main():
     if args.gphotos or args.iphotos:
         harvest_albums(args.gphotos, args.iphotos, args.headless)
    
-    ## can look at whole group at once
-    if not args.no_dbupdate:
-        if args.gdrive:
-            scan_folders(dry_run=dry_run)
+    if args.gdrive:
+        scan_folders(media_locations, dry_run=dry_run)
 
+    if not args.no_dbupdate:
         purge_database(media_locations, dry_run=dry_run)
         update_database(media_locations, dry_run=dry_run)
         ##dedupe_folders(dry_run=dry_run)

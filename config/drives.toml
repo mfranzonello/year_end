@@ -6,7 +6,7 @@ quarantine = "Quarantine"
 videos = "Videos"
 
 [local_storage.google_drive]
-videos = "YIR Clips"
+videos = "Videos"
 shortcuts = ".shortcuts-targets-by-id"
 
 [local_storage.adobe]
