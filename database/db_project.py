@@ -161,7 +161,7 @@ def fetch_duplicates(engine:Engine, media_type:str):
 
 def fetch_shared_albums(engine:Engine) -> DataFrame:
     sql = f'''
-    SELECT album_id, share_url, folder_name, project_year, 'smartphone' AS media_type,
+    SELECT album_id, share_url, folder_name, project_year, supfolder_name,
     scrape_name, browser_name, profile_name, notes
     FROM ingestion.shared_album_details
     ;'''

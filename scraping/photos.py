@@ -11,19 +11,6 @@ from common.system import close_exe
 from scraping.photos_google import harvest_g_shared_album
 from scraping.photos_icloud import harvest_i_shared_album
 
-# ---------- Models ----------
-
-# # def get_share_source(url: str) -> str:
-# #     '''Determine whether a shared album URL comes from Google Photos or iCloud Photos.
-# #     Returns: 'google', 'icloud', or 'unknown'''
-# #     if re.search(r'^https?://(www\.)?photos\.google\.com/share/[A-Za-z0-9_-]+', url):
-# #         share_source = 'google'
-# #     elif re.search(r'^https?://(www\.)?icloud\.com/photos/#/[A-Za-z0-9,._-]+', url):
-# #         share_source = 'icloud'
-# #     else:
-# #         share_source = 'unknown'
-# #     return share_source
-
 def get_browser_profiles(browser: str):
     BROWSER_STATE = {'chrome': CHROME_STATE, 'edge': EDGE_STATE}[browser]
     

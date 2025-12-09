@@ -2,6 +2,8 @@
 
 import argparse
 
+from pandas import DataFrame
+
 from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, QUARANTINE
 from common.secret import secrets
 from common.console import SplitConsole
@@ -30,14 +32,14 @@ def set_up_engine():
 
 def set_up_media_locations():
     engine = set_up_engine()
-    media_locations = get_media_locations(engine)[['media_type', 'supfolder_name']].values
+    media_locations = get_media_locations(engine)
     engine.dispose()
     return media_locations
 
-def scan_folders(media_locations:list[list[str]], dry_run=True):
+def scan_folders(media_locations:DataFrame, dry_run:bool=True):
     engine = set_up_engine()
 
-    for media_type, supfolder_name in media_locations:
+    for _, (media_type, supfolder_name) in media_locations.iterrows():
         if (GOOGLE_DRIVE_FOLDER / supfolder_name).exists():
             missing_targets = copy_from_gdrive(ONE_DRIVE_FOLDER / supfolder_name, GOOGLE_DRIVE_FOLDER / supfolder_name, QUARANTINE, ui, dry_run)
 
@@ -48,32 +50,31 @@ def scan_folders(media_locations:list[list[str]], dry_run=True):
 
     engine.dispose()
 
-def dedupe_folders(dry_run=True):
+def dedupe_folders(media_locations, dry_run:bool=True):
     engine = set_up_engine()
-    if not dry_run:
-        dedupe_one_drive(engine, ONE_DRIVE_FOLDER, QUARANTINE, dry_run)
+    for _, (media_type, supfolder_name) in media_locations.iterrows():
+        dedupe_one_drive(engine, ONE_DRIVE_FOLDER / supfolder_name, QUARANTINE, dry_run)
     engine.dispose()
 
-def harvest_albums(google, icloud, headless=True):
+def harvest_albums(google:bool, icloud:bool, headless:bool=True):
     engine = set_up_engine()
     copy_from_web(engine, ONE_DRIVE_FOLDER, google=google, icloud=icloud, headless=headless)
     engine.dispose()
 
-def purge_database(media_locations:list[list[str]], dry_run=True):
-    if not dry_run:
-        engine = set_up_engine()
-        for media_type, supfolder_name in media_locations:
-            purge_stale_content(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type, dry_run)
-        engine.dispose()
+def purge_database(media_locations:DataFrame, dry_run:bool=True):
+    engine = set_up_engine()
+    for _, (media_type, supfolder_name) in media_locations.iterrows():
+        purge_stale_content(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type, dry_run)
+    engine.dispose()
 
-def update_database(media_locations, dry_run=True):
+def update_database(media_locations:DataFrame, dry_run:bool=True):
     engine = set_up_engine()
 
-    for media_type, supfolder_name in media_locations:
+    for _, (media_type, supfolder_name) in media_locations.iterrows():
         summarize_folders(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type, ADOBE_FOLDER, YIR_REVIEWS, ui, dry_run=dry_run)
     engine.dispose()
 
-def update_images(dry_run=True):
+def update_images(dry_run:bool=True):
     engine = set_up_engine()
     update_database_images(engine, CLOUDINARY_CLOUD, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, dry_run=dry_run)
     engine.dispose()
