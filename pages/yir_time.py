@@ -38,6 +38,7 @@ actor_spans = fetch_actor_spans(engine, year, relative_ids=relative_ids)
 actor_spans['clan_name'] = actor_spans['clan_name'].where(actor_spans['member_id'].isin(relative_ids),
                                                           'Friends')
 actor_spans = actor_spans.merge(relatives, on='member_id')
+print(f'{actor_spans.columns=}')
 
 markers = fetch_markers(engine, year)
 
