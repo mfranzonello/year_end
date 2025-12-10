@@ -28,8 +28,9 @@ year:int = st.selectbox('Year to Review', years, len(years) - 1, width=100)
 st.title(f'Franzonello YIR {year}')
 
 founder_id = fetch_founder(engine) 
+
 relatives = list_relatives(engine, founder_id,
-                           include_animals=True, cut_year=year)
+                           include_animals=True, cut_year=year, include_deceased=False)
 actor_spans = fetch_actor_spans(engine, year, relative_ids=relatives)
 actor_spans['clan_name'] = actor_spans['clan_name'].where(actor_spans['member_id'].isin(relatives),
                                                           'Friends')
