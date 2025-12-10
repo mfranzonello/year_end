@@ -220,13 +220,15 @@ def growth_charts(year_values):
 
     return charts
 
-def timeline_chart(actor_spans:DataFrame, markers:DataFrame, friends:str='Friends'):
+def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, friends:str='Friends'):
     time_format = (
         "floor(datum.value/60) + ':' + "
         "(datum.value % 60 < 10 ? '0' : '') + "
         "floor(datum.value % 60)"
     )
     x_domain = [0, ceil(actor_spans['end_time'].max()/10)*10]
+
+    bar_height = 50
 
     blank = DataFrame([['', '', True]], columns=['full_name', 'clan_name', 'boundary'])
     clans = DataFrame(actor_spans['clan_name'].unique(), columns=['clan_name'])
@@ -238,9 +240,14 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, friends:str='Friend
     combined['y_label'] = combined.apply(lambda x: ' ' if x['boundary'] else x['full_name'], axis=1)
     print(combined[['member_id', 'full_name', 'y_label']].to_string())
 
-    spans_sorted = combined.sort_values(by=['friends', 'clan_name', 'boundary', 'start_time'],
+    spans_sorted = combined.sort_values(by=['friends', 'clan_name', 'boundary', 'birth_date'], # 'start_time'
                                         na_position='last')
     spans_sorted['sort_order'] = range(len(spans_sorted))
+
+    actor_labels = spans_sorted.groupby('full_name').first().reset_index()
+    actor_images = actor_labels[actor_labels['member_id'].notna()]
+    actor_images['image_url'] = actor_images.apply(lambda x: get_image_url(cloud_name, x['member_id']), axis=1)
+    actor_images['image_url'] = actor_images.apply(lambda x: grayscale_zero_images(x['image_url'], x['start_time']), axis=1)
 
     chart = (
         alt.Chart(spans_sorted)
@@ -279,7 +286,10 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, friends:str='Friend
         alt.Chart(markers)
         .mark_rule() 
         .encode(
-            x="start_time:Q",
+            x=alt.X(
+                "start_time:Q",
+                scale=alt.Scale(domain=x_domain),
+            ),
             color=alt.value(name_to_hex('indianred')),
             tooltip=[
                 alt.Tooltip("chapter_name:N", title="Chapter"),
@@ -324,21 +334,24 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, friends:str='Friend
 
     labels_x = (
         alt.Chart(markers)
-        .mark_text(dx=x_pad, dy=y_extend, baseline='top', align="left") # angle=90, 
+        .mark_text(dx=x_pad, dy=y_extend, baseline='top', align="left", fontSize=bar_height*.3) # angle=90, 
         .encode(
             y=alt.value(0),
-            x="start_time:Q",
+            x=alt.X(
+                "start_time:Q",
+                scale=alt.Scale(domain=x_domain),
+            ),
             text="chapter_name:N",
         )
     )
-
     
     labels_y = (
-        alt.Chart(spans_sorted.groupby('full_name').first().reset_index())
+        alt.Chart(actor_labels)
         .mark_text(
             align="right",
             baseline="middle",
-            dx=-10,  # nudge left a bit if you want it near the axis
+            dx=-bar_height*1.2,  # nudge left a bit if you want it near the axis
+            fontSize=bar_height*.3,
         )
         .encode(
             y=alt.Y(
@@ -352,4 +365,22 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, friends:str='Friend
     
     labels = labels_x + labels_y
 
-    return chart + rules + labels
+    images = (alt.Chart(actor_images)
+        ##chart
+        .transform_filter(alt.datum.image_url != None)
+        .mark_image(width=bar_height*.9, height=bar_height*.9)
+        .encode(
+            x=alt.value(0),
+            xOffset=alt.value(-bar_height * 0.6),
+            y=alt.Y(
+                "full_name:N",
+                sort=alt.EncodingSortField(field="sort_order", order="ascending"),
+            ),
+            url = 'image_url:N',
+            tooltip = [alt.Tooltip('full_name:N', title='Name'),
+                       ##alt.Tooltip(f'{quantity}:Q', title=display_label),
+                       ]
+        )
+    )
+
+    return (chart + rules + labels + images).properties(height = bar_height * spans_sorted['full_name'].nunique())

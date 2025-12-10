@@ -37,5 +37,5 @@ actor_spans['clan_name'] = actor_spans['clan_name'].where(actor_spans['member_id
 markers = fetch_markers(engine, year)
 
 # gantt chart of appearances
-chart = timeline_chart(actor_spans, markers)
+chart = timeline_chart(actor_spans, markers, cloud_name=CLOUDINARY_CLOUD)
 st.altair_chart(chart, use_container_width=True) # width='stretch')
