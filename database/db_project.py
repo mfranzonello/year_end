@@ -49,13 +49,6 @@ def fetch_files(engine:Engine, year:int, media_type:str) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-def fetch_display_names(engine:Engine) -> DataFrame:
-    sql = f'''
-    SELECT member_id, full_name
-    FROM display_names
-    ;'''
-    return read_sql(engine, sql)
-
 def update_folders(engine:Engine, df:DataFrame):
     # add new folder information
     sql = f'''

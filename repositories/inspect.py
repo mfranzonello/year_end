@@ -13,8 +13,8 @@ from adobe.premiere import convert_to_xml, extract_used_video_paths
 from database.db_project import (
     fetch_known_folders, update_folders, purge_folders, fetch_media_types,
     fetch_known_files, update_files, purge_files, fetch_files, fetch_files_scanned, update_files_used,
-    fetch_display_names
     )
+from database.db_display import fetch_display_names
     
 from family_tree.cloudinary_heavy import configure_cloud, fill_in_temp_pictures
 
