@@ -229,13 +229,21 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, fri
 
     bar_height = 50
 
-    actor_spans['clan_first_born'] = actor_spans.merge(actor_spans[~actor_spans['in-law']].groupby('clan_id')['birth_date'].min(),
-                                                       on='clan_id')['birth_date']
+    print(actor_spans[['full_name', 'clan_name', 'in-law']].to_string())
+    ##actor_spans['clan_str'] = actor_spans['clan_id'].astype(str)
+    actor_spans['birth_date'] = actor_spans['birth_date'].astype('datetime64[ns]')
+    first_born = (actor_spans[(~actor_spans['in-law']) & (actor_spans['birth_date'].notna())]
+                  .groupby('clan_name')['birth_date'].min()
+                  .reset_index().rename(columns={'birth_date': 'clan_first_born'}))
+    ##print(f'{first_born=}')
+    actor_spans['clan_first_born'] = actor_spans.merge(first_born, how='left', on='clan_name')['clan_first_born']
+    print(actor_spans[['full_name', 'clan_name', 'clan_first_born']].to_string())
 
     blank = DataFrame([['', '', True]], columns=['full_name', 'clan_name', 'boundary'])
     clans = DataFrame(actor_spans['clan_name'].unique(), columns=['clan_name'])
     clans['full_name'] = clans['clan_name']
     clans['boundary'] = True
+    clans['clan_first_born'] = clans.merge(first_born, on='clan_name')['clan_first_born']
 
     combined = concat([blank, actor_spans, clans]).fillna({'boundary': False})
     combined['friends'] = combined['clan_name'] == friends

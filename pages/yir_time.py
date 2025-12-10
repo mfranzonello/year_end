@@ -34,9 +34,11 @@ relatives = list_relatives(engine, founder_id,
 
 relative_ids = relatives['member_id'].tolist()
 actor_spans = fetch_actor_spans(engine, year, relative_ids=relative_ids)
-actor_spans['clan_name'] = actor_spans['clan_name'].where(actor_spans['member_id'].isin(relative_ids),
-                                                          'Friends')
-actor_spans = actor_spans.merge(relatives, on='member_id')
+actor_spans[~actor_spans['member_id'].isin(relative_ids)]['clan_name'] = 'Friends'
+actor_spans = actor_spans.merge(relatives, how='left', on='member_id') #, indicator=True)
+#actor_spans[actor_spans['_merge'] == 'left_only']['clan_name'] = 'Friends'
+actor_spans['in-law'] = actor_spans['in-law'].fillna(False)
+#actor_spans = actor_spans.drop('_merge', axis=1)
 
 markers = fetch_markers(engine, year)
 
