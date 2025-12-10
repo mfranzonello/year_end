@@ -95,7 +95,6 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
             .when(f'datum.{quantity} > 2 * {threshold}').then(alt.value(name_to_hex('lightskyblue')))
             .when(f'datum.{quantity} > 1 * {threshold}').then(alt.value(name_to_hex('steelblue')))
             .otherwise(alt.value(name_to_hex('teal'))),
-        #color = alt.condition(f'datum.{quantity} >= {threshold}', alt.value(BLUE_OVER), alt.value(BLUE_UNDER)),
         tooltip = [alt.Tooltip('display_name:N', title='Name'),
                    alt.Tooltip(f'{quantity}:Q', title=display_label)]
         )

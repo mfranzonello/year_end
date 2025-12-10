@@ -127,15 +127,13 @@ def harvest_g_shared_album(driver: WebDriver, download_directory: Path, shared_a
         # get all image and video files
         tile_values = get_all_item_tiles(driver)
         
-
         # get the share urls for videos only
         shared_video_urls = get_share_video_urls(tile_values)
 
         n_videos = len(shared_video_urls)
         print(f'Total items found: {len(tile_values)}')
         print(f'Total videos found: {n_videos}')
-
-        
+                
         if shared_video_urls:
             known_files = [f.name.lower() for f in get_videos_in_folder(download_directory)]
             driver.get(shared_album_url) # go back to top
@@ -150,7 +148,6 @@ def harvest_g_shared_album(driver: WebDriver, download_directory: Path, shared_a
             downloaded_files = []
 
             for _ in shared_video_urls:
-
                 filename, downloadable = inspect_and_download(driver, known_files, timeout=15, dry_run=False)
                 if filename and downloadable:
                         downloaded_files.append(filename)
