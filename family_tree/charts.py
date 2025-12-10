@@ -240,7 +240,6 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, fri
     combined = concat([blank, actor_spans, clans]).fillna({'boundary': False})
     combined['friends'] = combined['clan_name'] == friends
     combined['y_label'] = combined.apply(lambda x: ' ' if x['boundary'] else x['full_name'], axis=1)
-    print(combined[['member_id', 'full_name', 'y_label']].to_string())
 
     spans_sorted = combined.sort_values(by=['friends', 'clan_first_born', 'boundary', 'birth_date'], # 'start_time'
                                         na_position='last')
