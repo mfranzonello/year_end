@@ -4,7 +4,8 @@ from pathlib import Path
 import json
 import tomllib
 
-from common.locations import detect_gdrive_base, detect_onedrive_base, detect_app_path, get_browser_data
+from common.locations import (detect_gdrive_base, detect_onedrive_base, detect_app_path, 
+                              detect_external_drive, get_browser_data)
 
 _auths_folder = 'auths'
 _config_folder = 'config'
@@ -70,6 +71,9 @@ ONE_DRIVE_FOLDER = one_drive_base / _drives['local_storage']['onedrive']['videos
 GOOGLE_DRIVE_FOLDER = google_drive_base / _drives['local_storage']['google_drive']['videos']
 ADOBE_FOLDER = one_drive_base / _drives['local_storage']['adobe']['projects']
 COMMON_FOLDER = ADOBE_FOLDER / _drives['local_storage']['adobe']['common']
+
+external_drive = detect_external_drive(_drives['ssd']['name'])
+QUARANTINE_FOLDER = external_drive / _drives['ssd']['videos'] if external_drive else ONE_DRIVE_FOLDER
 
 QUARANTINE = _drives['local_storage']['quarantine']
 YIR_REVIEWS = _drives['local_storage']['adobe']['reviews']

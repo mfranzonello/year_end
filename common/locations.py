@@ -3,6 +3,9 @@ import os
 import sys
 from glob import glob
 from pathlib import Path
+import string
+import ctypes
+
 
 # ---------- Helpers
 
@@ -229,3 +232,78 @@ def get_browser_data(browser_details):
             return Path.home() / 'AppData' / 'Local'/ browser_details / 'User Data'
         case 'macos':
             return Path.home() / 'Library' / 'Application Support' / browser_details
+
+def detect_external_drive(volume_label: str) -> Path | None:
+    """
+    Return the root path of a mounted volume with the given label, or None if not found.
+    """
+    if sys.platform == "win32":
+        return _find_volume_windows(volume_label)
+    elif sys.platform == "darwin":
+        return _find_volume_macos(volume_label)
+    else:
+        # You can add Linux or others here if needed.
+        return None
+
+# ---------- Windows implementation ----------
+
+def _find_volume_windows(volume_label: str) -> Path | None:
+    kernel32 = ctypes.windll.kernel32
+
+    GetVolumeInformationW = kernel32.GetVolumeInformationW
+    GetVolumeInformationW.argtypes = [
+        ctypes.c_wchar_p,        # lpRootPathName
+        ctypes.c_wchar_p,        # lpVolumeNameBuffer
+        ctypes.c_uint32,         # nVolumeNameSize
+        ctypes.POINTER(ctypes.c_uint32),  # lpVolumeSerialNumber
+        ctypes.POINTER(ctypes.c_uint32),  # lpMaximumComponentLength
+        ctypes.POINTER(ctypes.c_uint32),  # lpFileSystemFlags
+        ctypes.c_wchar_p,        # lpFileSystemNameBuffer
+        ctypes.c_uint32,         # nFileSystemNameSize
+    ]
+    GetVolumeInformationW.restype = ctypes.c_uint32
+
+    volume_buf = ctypes.create_unicode_buffer(256)
+
+    target = volume_label.casefold()
+
+    for letter in string.ascii_uppercase:
+        root = f"{letter}:\\"
+        # Quick existence check; avoids calling API on nonexistent drives
+        if not Path(root).exists():
+            continue
+
+        res = GetVolumeInformationW(
+            root,                  # lpRootPathName
+            volume_buf,            # lpVolumeNameBuffer
+            len(volume_buf),       # nVolumeNameSize
+            None, None, None,      # serial, maxlen, flags (ignored)
+            None, 0                # fs name and size (ignored)
+        )
+
+        if res == 0:
+            # Call failed – skip this drive
+            continue
+
+        current_label = volume_buf.value
+        if current_label and current_label.casefold() == target:
+            return Path(root)
+
+    return None
+
+
+# ---------- macOS implementation ----------
+
+def _find_volume_macos(volume_label: str) -> Path | None:
+    volumes_root = Path("/Volumes")
+    target = volume_label.casefold()
+
+    if not volumes_root.exists():
+        return None
+
+    for child in volumes_root.iterdir():
+        # The directory name is the volume label on macOS
+        if child.name.casefold() == target:
+            return child
+
+    return None

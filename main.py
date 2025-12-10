@@ -4,7 +4,7 @@ import argparse
 
 from pandas import DataFrame
 
-from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, QUARANTINE
+from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER, YIR_REVIEWS, QUARANTINE_FOLDER, QUARANTINE
 from common.secret import secrets
 from common.console import SplitConsole
 from database.db import get_engine
@@ -41,7 +41,8 @@ def scan_folders(media_locations:DataFrame, dry_run:bool=True):
 
     for _, (media_type, supfolder_name) in media_locations.iterrows():
         if (GOOGLE_DRIVE_FOLDER / supfolder_name).exists():
-            missing_targets = copy_from_gdrive(ONE_DRIVE_FOLDER / supfolder_name, GOOGLE_DRIVE_FOLDER / supfolder_name, QUARANTINE, ui, dry_run)
+            missing_targets = copy_from_gdrive(ONE_DRIVE_FOLDER / supfolder_name, GOOGLE_DRIVE_FOLDER / supfolder_name,
+                                               QUARANTINE_FOLDER, QUARANTINE, ui, dry_run)
 
             if dry_run and missing_targets:
                 ui.add_update("\n(Note) These OneDrive destination folders do not exist yet (will be created on --apply if needed):")
@@ -53,7 +54,8 @@ def scan_folders(media_locations:DataFrame, dry_run:bool=True):
 def dedupe_folders(media_locations, dry_run:bool=True):
     engine = set_up_engine()
     for _, (media_type, supfolder_name) in media_locations.iterrows():
-        dedupe_one_drive(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type, QUARANTINE, dry_run)
+        dedupe_one_drive(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type,
+                         QUARANTINE_FOLDER / supfolder_name / QUARANTINE, dry_run)
     engine.dispose()
 
 def harvest_albums(google:bool, icloud:bool, headless:bool=True):

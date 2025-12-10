@@ -8,7 +8,8 @@ from itertools import combinations
 from pandas import DataFrame
 from sqlalchemy import Engine
 
-from common.system import get_videos_in_folder, mount_g_drive, sort_paths, get_year_folders, get_person_folders, rebuild_path
+from common.system import (get_shortcuts_in_folder, resolve_shortcut_target, mount_g_drive, sort_paths,
+                            get_videos_in_folder, get_year_folders, get_person_folders, rebuild_path)
 from database.db_project import fetch_duplicates
 
 def gather_names_casefold(folder: Path) -> set[str]:
@@ -117,7 +118,8 @@ def quarantine_file_2(file:Path, incoming_path:Path, quarantine_root:Path) -> Pa
             print(f'Cannot move file {file} as it is already in quarantine.')
         else:
             # atomic move (fast, keeps metadata)
-            file.rename(target)
+            shutil.move(file, target)
+            #file.rename(target)
 
     return target
 
@@ -137,7 +139,8 @@ def dedupe_folder_from_incoming(files_in_folder:list[Path], quarantine_root:Path
             quarantine_file(dupe, quarantine_root)
             return potential_dupes
 
-def dedupe_folder_from_db(duplicates_df:DataFrame, one_drive_folder:Path, quarantine:str, dry_run:bool) -> tuple[list[Path], list[list[Path]]]:
+def dedupe_folder_from_db(duplicates_df:DataFrame, one_drive_folder:Path, quarantine_folder:Path,
+                          dry_run:bool) -> tuple[list[Path], list[list[Path]]]:
     # identify candidates from removal in OneDrive
     keep_paths = []
     move_paths = []
@@ -152,20 +155,23 @@ def dedupe_folder_from_db(duplicates_df:DataFrame, one_drive_folder:Path, quaran
         dupe_paths = file_paths[1:]
         move_paths.append(dupe_paths)
         
-        for d in dupe_paths:
-            quarantine_file_2(d, one_drive_folder, one_drive_folder / quarantine)
+        if not dry_run:
+            for d in dupe_paths:
+                quarantine_file_2(d, one_drive_folder, quarantine_folder)
 
     return keep_paths, move_paths
 
-def dedupe_one_drive(engine:Engine, one_drive_folder:Path, media_type:str, quarantine:str, dry_run:bool):
+def dedupe_one_drive(engine:Engine, one_drive_folder:Path, media_type:str,
+                     quarantine_folder:Path, dry_run:bool):
     # dedupe from before
     print('Deduping previous imports...')
     dupes_df = fetch_duplicates(engine, media_type)
-    keep_paths, move_paths = dedupe_folder_from_db(dupes_df, one_drive_folder, quarantine, dry_run=dry_run)
+    keep_paths, move_paths = dedupe_folder_from_db(dupes_df, one_drive_folder, quarantine_folder, dry_run=dry_run)
     for k, m in zip(keep_paths, move_paths):
         print(f'Kept {k}, moved {m}.')
 
-def copy_from_gdrive(one_drive_folder:Path, google_drive_folder:Path, quarantine:str, ui, dry_run:bool):
+def copy_from_gdrive(one_drive_folder:Path, google_drive_folder:Path,
+                     quarantine_folder:Path, quarantine:str, ui, dry_run:bool):
     ''' look at Google Drive folders and copy in new items '''
     mount_g_drive()
 
@@ -173,6 +179,7 @@ def copy_from_gdrive(one_drive_folder:Path, google_drive_folder:Path, quarantine
 
     for g_year in google_drive_years:
         o_year = one_drive_folder / g_year.name
+        q_year = quarantine_folder / g_year.name
         if not o_year.exists():
             ui.add_update(f"WARNING: OneDrive year folder missing (will be created on demand): {g_year.name}", file=sys.stderr)
 
@@ -184,27 +191,32 @@ def copy_from_gdrive(one_drive_folder:Path, google_drive_folder:Path, quarantine
         for g_person in sort_paths(g_people):
             person_name = g_person.name  # e.g., "Michael 2025"
             o_person = o_year / person_name
-            q_person = o_year / person_name
+            q_person = q_year / person_name
 
-            # see what's in the folder before quarantine
-            video_files = get_videos_in_folder(g_person, recursive=True)
+            # check if there are shortcuts in the top level
+            shortcut_folders = get_shortcuts_in_folder(g_person) # recursive=True if more than top level
+            checkable_folders = [g_person] + [resolve_shortcut_target(s) for s in shortcut_folders if s]
+
+            for folder in checkable_folders:
+                # see what's in the folder before quarantine
+                video_files = get_videos_in_folder(folder, recursive=True)
         
-            # dedupe the source folder
-            dupes = dedupe_folder_from_incoming(video_files, google_drive_folder / quarantine, dry_run)
+                # dedupe the source folder
+                dupes = dedupe_folder_from_incoming(video_files, google_drive_folder / quarantine, dry_run)
 
-            # List candidate videos in the Google Drive person folder (non-recursive).
-            candidate_files = [v for v in video_files if v not in dupes] if dupes else video_files
+                # List candidate videos in the Google Drive person folder (non-recursive).
+                candidate_files = [v for v in video_files if v not in dupes] if dupes else video_files
             
-            destination_files = get_videos_in_folder(o_person, recursive=True)
-            quarantined_files = get_videos_in_folder(q_person, recursive=True) if q_person.exists() else []
-            existing_videos = [f.name.casefold() for f in set(destination_files + quarantined_files)]
+                destination_files = get_videos_in_folder(o_person, recursive=True)
+                quarantined_files = get_videos_in_folder(q_person, recursive=True) if q_person.exists() else []
+                existing_videos = [f.name.casefold() for f in set(destination_files + quarantined_files)]
             
-            copied_count = 0
-            for video_file in candidate_files:
-                if copy_if_needed(video_file, o_person, existing_videos, dry_run=dry_run):
-                    copied_count += 1
+                copied_count = 0
+                for video_file in candidate_files:
+                    if copy_if_needed(video_file, o_person, existing_videos, dry_run=dry_run):
+                        copied_count += 1
 
-            copy_report.append((person_name, copied_count))
+                copy_report.append((person_name, copied_count))
 
         # Also include note for any GDrive person folders that do not exist in OneDrive yet (only relevant when dry-run)
         missing_targets = []

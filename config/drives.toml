@@ -17,6 +17,11 @@ bin = "Videos"
 common = "_Common"
 label_preset = "Nello YIR"
 
+[ssd]
+name = 'Nello Drive'
+videos = 'Videos'
+
+
 # executables for Windows and Mac
 [executables]
 
@@ -66,6 +71,7 @@ name = "Google Chrome"
 
 [executables.macos.edge]
 name = "Microsoft Edge"
+
 
 # browser user data
 [user_data]
