@@ -229,6 +229,9 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, fri
 
     bar_height = 50
 
+    actor_spans['clan_first_born'] = actor_spans.merge(actor_spans[~actor_spans['in-law']].groupby('clan_id')['birth_date'].min(),
+                                                       on='clan_id')['birth_date']
+
     blank = DataFrame([['', '', True]], columns=['full_name', 'clan_name', 'boundary'])
     clans = DataFrame(actor_spans['clan_name'].unique(), columns=['clan_name'])
     clans['full_name'] = clans['clan_name']
@@ -239,7 +242,7 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, fri
     combined['y_label'] = combined.apply(lambda x: ' ' if x['boundary'] else x['full_name'], axis=1)
     print(combined[['member_id', 'full_name', 'y_label']].to_string())
 
-    spans_sorted = combined.sort_values(by=['friends', 'clan_name', 'boundary', 'birth_date'], # 'start_time'
+    spans_sorted = combined.sort_values(by=['friends', 'clan_first_born', 'boundary', 'birth_date'], # 'start_time'
                                         na_position='last')
     spans_sorted['sort_order'] = range(len(spans_sorted))
 

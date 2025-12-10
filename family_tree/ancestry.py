@@ -7,17 +7,17 @@ from sqlalchemy import Engine
 
 from database.db_family import fetch_members, fetch_parents, fetch_pets, fetch_spouses
 
-def get_member_data(engine:Engine) -> tuple[DataFrame]:
+def get_member_data(engine:Engine) -> DataFrame:
     members = fetch_members(engine)
     return members
 
-def get_map_data(engine:Engine):
+def get_map_data(engine:Engine) -> tuple[DataFrame, DataFrame, DataFrame]:
     parents = fetch_parents(engine)
     pets = fetch_pets(engine)
     spouses = fetch_spouses(engine)
     return parents, pets, spouses
 
-def create_maps(parents, pets, spouses) -> tuple[DataFrame]:
+def create_maps(parents:DataFrame, pets:DataFrame, spouses:DataFrame) -> tuple[dict, dict, dict]:
     relation_df = concat([parents.rename(columns={'child_id': 'below_id', 'parent_id': 'above_id'}),
                           pets.rename(columns={'pet_id': 'below_id', 'owner_id': 'above_id'})])
     ancestors_map = relation_df.groupby('below_id').agg(list).to_dict()['above_id']
@@ -47,15 +47,15 @@ def get_lineage(start_id:UUID, relation_map:dict, spouses_map:dict, direction:in
 
     return lineage
 
-def get_ancestors_and_descendants(member_id, parents, pets, spouses):
+def get_ancestors_and_descendants(member_id:UUID, parents:DataFrame, pets:DataFrame, spouses:DataFrame) -> tuple[dict, dict]:
     ancestors_map, descendants_map, spouses_map = create_maps(parents, pets, spouses)
     ancestors = get_lineage(member_id, ancestors_map, spouses_map, direction=-1)
     descendants = get_lineage(member_id, descendants_map, spouses_map, direction=1)
     return ancestors, descendants
 
-def nearest_common_lineage(member_id_1, member_id_2, relation_map, spouses_map):
-    lin_1 = get_lineage(member_id_1, relation_map, spouses_map)
-    lin_2 = get_lineage(member_id_2, relation_map, spouses_map)
+def nearest_common_lineage(member_id_1:UUID, member_id_2:UUID, relation_map:dict, spouses_map:dict, direction:int):
+    lin_1 = get_lineage(member_id_1, relation_map, spouses_map, direction)
+    lin_2 = get_lineage(member_id_2, relation_map, spouses_map, direction)
 
     common = set(lin_1.keys()) & set(lin_2.keys())
     if not common:
@@ -71,7 +71,7 @@ def nearest_common_lineage(member_id_1, member_id_2, relation_map, spouses_map):
             }
 
 def get_relatives(member_id:UUID, members:DataFrame, parents:DataFrame, pets:DataFrame, spouses:DataFrame,
-                    include_animals:bool=False, cut_date:date=date.today(), include_deceased=True) -> list[UUID]:
+                    include_animals:bool=False, cut_date:date|None=date.today(), include_deceased=True) -> DataFrame:
     ancestors, descendents = get_ancestors_and_descendants(member_id, parents, pets, spouses)
     
     relatives = (DataFrame.from_dict({**ancestors, **descendents},
@@ -96,9 +96,10 @@ def get_relatives(member_id:UUID, members:DataFrame, parents:DataFrame, pets:Dat
 
     return relatives
 
-def list_relatives(engine:Engine, founder_id:UUID, include_animals=False, cut_year=None, include_deceased=False) -> list[UUID]:
+def list_relatives(engine:Engine, founder_id:UUID, include_animals=False, cut_year=None, include_deceased=False) -> DataFrame:
     members = get_member_data(engine)
     parents, pets, spouses = get_map_data(engine)
+    cut_date = date(cut_year + 1, 1, 1) - timedelta(days=1) if isinstance(cut_year, int) else None
     relatives = get_relatives(founder_id, members, parents, pets, spouses,
-                              include_animals=include_animals, cut_date=date(cut_year + 1, 1, 1) - timedelta(days=1), include_deceased=include_deceased)
-    return relatives['member_id'].tolist()
+                              include_animals=include_animals, cut_date=cut_date, include_deceased=include_deceased)
+    return relatives
