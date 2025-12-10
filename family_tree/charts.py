@@ -229,28 +229,36 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, fri
 
     bar_height = 50
 
-    print(actor_spans[['full_name', 'clan_name', 'in-law']].to_string())
     ##actor_spans['clan_str'] = actor_spans['clan_id'].astype(str)
     actor_spans['birth_date'] = actor_spans['birth_date'].astype('datetime64[ns]')
+    actor_spans['sort_date'] = actor_spans.apply(lambda x: x['birth_date'] if (not x['in-law'] and not (x['member_type']=='animal')) else x['entry_date'],
+                                                 axis=1)
     first_born = (actor_spans[(~actor_spans['in-law']) & (actor_spans['birth_date'].notna())]
                   .groupby('clan_name')['birth_date'].min()
                   .reset_index().rename(columns={'birth_date': 'clan_first_born'}))
-    ##print(f'{first_born=}')
+    first_gen = (actor_spans
+                 .groupby('clan_name')['generation'].min()
+                 .reset_index().rename(columns={'generation': 'clan_generation'}))
     actor_spans['clan_first_born'] = actor_spans.merge(first_born, how='left', on='clan_name')['clan_first_born']
-    print(actor_spans[['full_name', 'clan_name', 'clan_first_born']].to_string())
+    actor_spans['clan_generation'] = actor_spans.merge(first_gen, how='left', on='clan_name')['clan_generation']
 
-    blank = DataFrame([['', '', True]], columns=['full_name', 'clan_name', 'boundary'])
+    
+
     clans = DataFrame(actor_spans['clan_name'].unique(), columns=['clan_name'])
     clans['full_name'] = clans['clan_name']
     clans['boundary'] = True
     clans['clan_first_born'] = clans.merge(first_born, on='clan_name')['clan_first_born']
+    clans['clan_generation'] = clans.merge(first_gen, on='clan_name')['clan_generation']
 
-    combined = concat([blank, actor_spans, clans]).fillna({'boundary': False})
+    combined = concat([actor_spans, clans]).fillna({'boundary': False})
     combined['friends'] = combined['clan_name'] == friends
     combined['y_label'] = combined.apply(lambda x: ' ' if x['boundary'] else x['full_name'], axis=1)
 
-    spans_sorted = combined.sort_values(by=['friends', 'clan_first_born', 'boundary', 'birth_date'], # 'start_time'
-                                        na_position='last')
+    spans_sorted = concat([DataFrame({'full_name': '', 'clan_name': '', 'y_label': ' ', 'boundary': True}, index=[0]),
+                           combined.sort_values(by=['friends', 'clan_generation', 'clan_first_born', 'boundary', 'generation', 'sort_date'],
+                                                na_position='last')
+                           ]
+    )
     spans_sorted['sort_order'] = range(len(spans_sorted))
 
     actor_labels = spans_sorted.groupby('full_name').first().reset_index()
@@ -328,8 +336,8 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, fri
         .mark_rule()
         .encode(
             y=alt.Y(
-                "full_name:N",
-                title=None, #"Actor",
+                "clan_name:N",
+                title=None, 
                 sort=alt.EncodingSortField(field="sort_order", order="ascending"),
                 axis=None,
                 #axis=alt.Axis(labelExpr="datum.y_label"),
