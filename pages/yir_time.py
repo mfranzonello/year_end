@@ -31,8 +31,8 @@ founder_id = fetch_founder(engine)
 relatives = list_relatives(engine, founder_id,
                            include_animals=True, cut_year=year)
 actor_spans = fetch_actor_spans(engine, year, relative_ids=relatives)
-actor_spans['clan_name'] = actor_spans['clan_name'].where(actor_spans['member_id'].isin(relatives) |
-                                                          actor_spans['clan_id'].isna(), 'Friends')
+actor_spans['clan_name'] = actor_spans['clan_name'].where(actor_spans['member_id'].isin(relatives),
+                                                          'Friends')
 
 markers = fetch_markers(engine, year)
 

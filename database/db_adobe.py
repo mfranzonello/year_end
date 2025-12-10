@@ -90,8 +90,8 @@ def fetch_actor_spans(engine:Engine, year:int, relative_ids=[]) -> DataFrame:
     start_time, end_time, span
     FROM actual_spans {full_join}
       JOIN display_names USING (member_id)
-      JOIN current_households USING (member_id)
-      JOIN tree.clans USING (clan_id)
+      LEFT JOIN current_households USING (member_id)
+      LEFT JOIN tree.clans USING (clan_id)
       JOIN tree.members USING (member_id)
     ;'''
     return read_sql(engine, sql)

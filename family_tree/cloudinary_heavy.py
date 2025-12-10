@@ -37,10 +37,10 @@ def update_display_name(public_id:UUID, display_name:str):
 def fill_in_temp_pictures(display_names:DataFrame, default_image:Path=Path(DEFAULT_IMAGE)):
     if default_image:
         for _, (member_id, full_name) in display_names.iterrows():
+            print(f'Looking for {full_name}')
             result = fetch_resource(member_id)
             if not result:
                 upload_image(public_id=member_id, image_path=default_image, display_name=full_name)
             else:
                 if result['display_name'] != full_name:
                     update_display_name(member_id, full_name)
-
