@@ -1,4 +1,5 @@
 from math import ceil
+from uuid import UUID
 
 import altair as alt
 from pandas import DataFrame, concat, json_normalize
@@ -219,7 +220,7 @@ def growth_charts(year_values):
 
     return charts
 
-def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, friends:str='Friends'):
+def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str):
     time_format = (
         "floor(datum.value/60) + ':' + "
         "(datum.value % 60 < 10 ? '0' : '') + "
@@ -229,37 +230,48 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, fri
 
     bar_height = 50
 
-    ##actor_spans['clan_str'] = actor_spans['clan_id'].astype(str)
     actor_spans['birth_date'] = actor_spans['birth_date'].astype('datetime64[ns]')
     actor_spans['sort_date'] = actor_spans.apply(lambda x: x['birth_date'] if (not x['in-law'] and not (x['member_type']=='animal')) else x['entry_date'],
                                                  axis=1)
+    actor_spans['clan_name'] = actor_spans['clan_name'].mask(actor_spans['clan_id']==UUID(int=0), 'Friends')
+
     first_born = (actor_spans[(~actor_spans['in-law']) & (actor_spans['birth_date'].notna())]
-                  .groupby('clan_name')['birth_date'].min()
+                  .groupby('clan_id')['birth_date'].min()
                   .reset_index().rename(columns={'birth_date': 'clan_first_born'}))
     first_gen = (actor_spans
-                 .groupby('clan_name')['generation'].min()
+                 .groupby('clan_id')['generation'].min()
                  .reset_index().rename(columns={'generation': 'clan_generation'}))
-    actor_spans['clan_first_born'] = actor_spans.merge(first_born, how='left', on='clan_name')['clan_first_born']
-    actor_spans['clan_generation'] = actor_spans.merge(first_gen, how='left', on='clan_name')['clan_generation']
 
-    
+    print(f'{first_born=}')
+    print(f'{first_gen=}')
+    print(f'{actor_spans["clan_id"].unique()}')
 
-    clans = DataFrame(actor_spans['clan_name'].unique(), columns=['clan_name'])
+    actor_spans['clan_first_born'] = actor_spans.merge(first_born, how='left', on='clan_id')['clan_first_born']
+    actor_spans['clan_generation'] = actor_spans.merge(first_gen, how='left', on='clan_id')['clan_generation']
+
+    clans = actor_spans[actor_spans['clan_id'].notna()].drop_duplicates('clan_id')[['clan_id', 'clan_name']]
+
+    print(f'Before: \n{clans=}')
     clans['full_name'] = clans['clan_name']
     clans['boundary'] = True
-    clans['clan_first_born'] = clans.merge(first_born, on='clan_name')['clan_first_born']
-    clans['clan_generation'] = clans.merge(first_gen, on='clan_name')['clan_generation']
+    clans['clan_first_born'] = clans.merge(first_born, how='left', on='clan_id')['clan_first_born'].tolist()
+    clans['clan_generation'] = clans.merge(first_gen, how='left', on='clan_id')['clan_generation'].tolist()
+
+    print(f'After: \n{clans=}')
 
     combined = concat([actor_spans, clans]).fillna({'boundary': False})
-    combined['friends'] = combined['clan_name'] == friends
+    combined['friends'] = combined['clan_id'] == UUID(int=0)
     combined['y_label'] = combined.apply(lambda x: ' ' if x['boundary'] else x['full_name'], axis=1)
 
-    spans_sorted = concat([DataFrame({'full_name': '', 'clan_name': '', 'y_label': ' ', 'boundary': True}, index=[0]),
+    spans_sorted = concat([DataFrame({'full_name': '', 'clan_id': UUID(int=0xffffffffffffffffffffffffffffffff), 'y_label': ' ', 'boundary': True}, index=[0]),
                            combined.sort_values(by=['friends', 'clan_generation', 'clan_first_born', 'boundary', 'generation', 'sort_date'],
                                                 na_position='last')
                            ]
     )
     spans_sorted['sort_order'] = range(len(spans_sorted))
+    spans_sorted['y_position'] = spans_sorted.apply(lambda x: str(x['member_id']) if not x['boundary'] else ('+' + str(x['clan_id'])), axis=1)
+
+    print(spans_sorted[['full_name', 'y_label', 'y_position', 'friends', 'clan_generation', 'clan_first_born', 'boundary', 'generation', 'sort_date']].to_string())
 
     actor_labels = spans_sorted.groupby('full_name').first().reset_index()
     actor_images = actor_labels[actor_labels['member_id'].notna()]
@@ -271,7 +283,7 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, fri
         .mark_bar()
         .encode(
             y=alt.Y(
-                "full_name:N",
+                "y_position:N",
                 title=None,
                 sort=alt.EncodingSortField(
                     field="sort_order",
@@ -286,10 +298,10 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, fri
                 scale=alt.Scale(domain=x_domain),
             ),
             x2="end_time:Q",
-            color=alt.Color("clan_name:N", legend=None),
+            color=alt.Color("clan_id:N", legend=None),
             tooltip=[
-                "full_name:N",
-                "clan_name:N",
+                alt.Tooltip('full_name:N', title='Name'),
+                alt.Tooltip('clan_name:N', title='Clan'),
                 alt.Tooltip("start_time:Q", title="Start", format=".2f"),
                 alt.Tooltip("end_time:Q", title="End", format=".2f"),
             ],
@@ -336,14 +348,14 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, fri
         .mark_rule()
         .encode(
             y=alt.Y(
-                "clan_name:N",
+                "y_position:N",
                 title=None, 
                 sort=alt.EncodingSortField(field="sort_order", order="ascending"),
                 axis=None,
                 #axis=alt.Axis(labelExpr="datum.y_label"),
             ),
             x=alt.X(scale=alt.Scale(domain=x_domain)),
-            #x=alt.value(0),
+            tooltip = [alt.Tooltip('clan_name:N', title='Clan')],
         )
     )
 
@@ -372,7 +384,7 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, fri
         )
         .encode(
             y=alt.Y(
-                "full_name:N",
+                "y_position:N",
                 sort=alt.EncodingSortField(field="sort_order", order="ascending"),
             ),
             x=alt.value(0),        # or the left edge in pixels
@@ -390,7 +402,7 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str, fri
             x=alt.value(0),
             xOffset=alt.value(-bar_height * 0.6),
             y=alt.Y(
-                "full_name:N",
+                "y_position:N",
                 sort=alt.EncodingSortField(field="sort_order", order="ascending"),
             ),
             url = 'image_url:N',
