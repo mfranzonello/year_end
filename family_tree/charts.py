@@ -242,22 +242,15 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str):
                  .groupby('clan_id')['generation'].min()
                  .reset_index().rename(columns={'generation': 'clan_generation'}))
 
-    print(f'{first_born=}')
-    print(f'{first_gen=}')
-    print(f'{actor_spans["clan_id"].unique()}')
-
     actor_spans['clan_first_born'] = actor_spans.merge(first_born, how='left', on='clan_id')['clan_first_born']
     actor_spans['clan_generation'] = actor_spans.merge(first_gen, how='left', on='clan_id')['clan_generation']
 
     clans = actor_spans[actor_spans['clan_id'].notna()].drop_duplicates('clan_id')[['clan_id', 'clan_name']]
 
-    print(f'Before: \n{clans=}')
     clans['full_name'] = clans['clan_name']
     clans['boundary'] = True
     clans['clan_first_born'] = clans.merge(first_born, how='left', on='clan_id')['clan_first_born'].tolist()
     clans['clan_generation'] = clans.merge(first_gen, how='left', on='clan_id')['clan_generation'].tolist()
-
-    print(f'After: \n{clans=}')
 
     combined = concat([actor_spans, clans]).fillna({'boundary': False})
     combined['friends'] = combined['clan_id'] == UUID(int=0)
@@ -270,8 +263,6 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str):
     )
     spans_sorted['sort_order'] = range(len(spans_sorted))
     spans_sorted['y_position'] = spans_sorted.apply(lambda x: str(x['member_id']) if not x['boundary'] else ('+' + str(x['clan_id'])), axis=1)
-
-    print(spans_sorted[['full_name', 'y_label', 'y_position', 'friends', 'clan_generation', 'clan_first_born', 'boundary', 'generation', 'sort_date']].to_string())
 
     actor_labels = spans_sorted.groupby('full_name').first().reset_index()
     actor_images = actor_labels[actor_labels['member_id'].notna()]

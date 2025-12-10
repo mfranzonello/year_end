@@ -60,38 +60,11 @@ def fetch_timeline_years(engine:Engine) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-def fetch_actor_spans(engine:Engine, year:int, relative_ids=[]) -> DataFrame:
-    if relative_ids:
-        values = ', '.join(f"('{r}'::uuid)" for r in relative_ids)
-        full_join = f'''
-        FULL JOIN (SELECT member_id FROM (VALUES {values})
-        AS relatives(member_id)) USING (member_id)
-        '''
-    else:
-        full_join = ''
-
+def fetch_actor_spans(engine:Engine, year:int) -> DataFrame:
     sql = f'''
-    WITH 
-      actual_spans AS (
-      SELECT member_id, start_time, end_time, span
-      FROM project.appearance_spans
-        WHERE project_year = {year}
-      ),
-
-        current_households AS (
-        SELECT member_id,
-        CASE
-            WHEN EXTRACT (YEAR FROM clan_date) <= {year} OR clan_date IS NULL THEN clan_id
-            ELSE nee_clan_id END AS clan_id
-        FROM tree.households
-        )
-
-    SELECT member_id, full_name, clan_id, clan_name,
-    start_time, end_time, span
-    FROM actual_spans {full_join}
-      JOIN display_names USING (member_id)
-      LEFT JOIN current_households USING (member_id)
-      LEFT JOIN tree.clans USING (clan_id)
+    SELECT member_id, start_time, end_time, span
+    FROM project.appearance_spans
+    WHERE project_year = {year}
     ;'''
     return read_sql(engine, sql)
 

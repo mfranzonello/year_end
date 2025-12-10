@@ -96,10 +96,9 @@ def get_relatives(member_id:UUID, members:DataFrame, parents:DataFrame, pets:Dat
 
     return relatives
 
-def list_relatives(engine:Engine, founder_id:UUID, include_animals=False, cut_year=None, include_deceased=False) -> DataFrame:
+def list_relatives(engine:Engine, founder_id:UUID, include_animals=False, cut_date:date|None=None, include_deceased=False) -> DataFrame:
     members = get_member_data(engine)
     parents, pets, spouses = get_map_data(engine)
-    cut_date = date(cut_year + 1, 1, 1) - timedelta(days=1) if isinstance(cut_year, int) else None
     relatives = get_relatives(founder_id, members, parents, pets, spouses,
                               include_animals=include_animals, cut_date=cut_date, include_deceased=include_deceased)
     return relatives

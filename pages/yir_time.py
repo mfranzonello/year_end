@@ -1,10 +1,12 @@
 from uuid import UUID
+from datetime import date, timedelta
 
 import streamlit as st
 
 from database.db import get_engine
+from database.db_display import fetch_display_names, fetch_member_information
 from database.db_adobe import fetch_timeline_years, fetch_actor_spans, fetch_markers
-from database.db_family import fetch_founder
+from database.db_family import fetch_founder, fetch_members
 from family_tree.charts import timeline_chart
 from family_tree.ancestry import list_relatives
 from display import set_sidebar
@@ -27,15 +29,20 @@ years = fetch_timeline_years(engine)
 year:int = st.selectbox('Year to Review', years, len(years) - 1, width=100)
 st.title(f'Franzonello YIR {year}')
 
-founder_id = fetch_founder(engine) 
-
+cut_date = date(year + 1, 1, 1) - timedelta(days=1)
+founder_id = fetch_founder(engine)
 relatives = list_relatives(engine, founder_id,
-                           include_animals=True, cut_year=year, include_deceased=False)
-
+                           include_animals=True, cut_date=cut_date, include_deceased=False)
 relative_ids = relatives['member_id'].tolist()
-actor_spans = fetch_actor_spans(engine, year, relative_ids=relative_ids)
+
+member_info = fetch_member_information(engine, cut_date=cut_date)
+actor_spans = fetch_actor_spans(engine, year)
+actor_spans = (actor_spans
+               .merge(relatives[['member_id', 'generation', 'in-law']], how='outer', on='member_id')
+               .merge(member_info, on='member_id')
+               )
+
 actor_spans.loc[~actor_spans['member_id'].isin(relative_ids), 'clan_id'] = UUID(int=0) # can use ['generation'].isna() too
-actor_spans = actor_spans.merge(relatives, how='left', on='member_id') #, indicator=True)
 actor_spans['in-law'] = actor_spans['in-law'].fillna(False)
 
 markers = fetch_markers(engine, year)
