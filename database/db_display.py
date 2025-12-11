@@ -26,3 +26,11 @@ def fetch_member_information(engine:Engine, cut_date=date.today()) -> DataFrame:
     ORDER BY full_name
     ;'''
     return read_sql(engine, sql)
+
+def fetch_resolution_order(engine:Engine) -> dict:
+    sql = f'''
+    SELECT ranked_order
+    FROM config.enum_definitions
+    WHERE schema_name = 'project' AND enum_name = 'resolution'
+    ;'''
+    return read_sql(engine, sql).squeeze()

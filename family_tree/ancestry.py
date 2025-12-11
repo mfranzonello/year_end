@@ -109,8 +109,9 @@ def get_tree_members(member_id:UUID, members:DataFrame, parents:DataFrame, pets:
     if not include_deceased:
         if cut_date:
             relatives['alive'] = relatives.apply(lambda x: (notna(x['death_date']) and (x['death_date'].date() >= cut_date)) or 
-                                                (isna(x['death_date']) and (x['death_date_precision']!='past')), axis=1)
-            relatives = relatives[relatives['alive']].drop(['alive'], axis=1)
+                                                (isna(x['death_date']) and (x['death_date_precision']!='past'))
+                                                 , axis=1)
+            relatives = relatives[relatives['alive']]
         else:
             relatives['alive'] = relatives.apply(lambda x: isna(x['death_date']) and
                                                  (x['death_date_precision']!='past')

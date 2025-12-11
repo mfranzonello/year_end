@@ -7,9 +7,9 @@ from database.db import get_engine
 from database.db_display import fetch_display_names, fetch_member_information
 from database.db_adobe import fetch_timeline_years, fetch_actor_spans, fetch_markers
 from database.db_family import fetch_founder, fetch_members
-from family_tree.charts import timeline_chart
+from charting.charts import timeline_chart
+from charting.general import set_sidebar, plot_altair_chart
 from family_tree.ancestry import build_tree
-from display import set_sidebar
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')
@@ -49,4 +49,4 @@ markers = fetch_markers(engine, year)
 
 # gantt chart of appearances
 chart = timeline_chart(actor_spans, markers, cloud_name=CLOUDINARY_CLOUD)
-st.altair_chart(chart, use_container_width=True) # width='stretch')
+plot_altair_chart(chart)

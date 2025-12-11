@@ -40,22 +40,65 @@ def melt_years(year_values:DataFrame) -> DataFrame:
                    json_normalize(year_values['video_status']).rename(columns=lambda x: 'q_'+x),
                    ], axis=1)
 
-def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:bool=False):
+def get_average_rating(ratings:dict) -> float:
+    if ratings is None:
+        return 0
+    else:
+        return (sum(int(k) * v for k, v in zip(ratings.keys(), ratings.values()) if int(k)>0) 
+                / sum(v for k, v in zip(ratings.keys(), ratings.values()) 
+                      if int(k)>0) if [k for k in ratings.keys() if int(k) > 0] else 0)
+
+def get_percent_hq(resolutions:dict, resolution_order:dict, hq_min:str) -> float:
+    if resolutions is None:
+        return 0
+    else:
+        return (sum(v for k, v in zip(resolutions.keys(), resolutions.values())
+                    if resolution_order[k] >= resolution_order[hq_min]) 
+                / sum(resolutions.values()))
+
+
+def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str,
+                     cap:bool=False, order:dict|None=None):
+    if quantity not in ['video_count',
+                        'video_duration',
+                        'file_size',
+                        'rating_count',
+                        'resolution_count']:
+        return alt.Chart()
+
     display_label = {'video_count': 'Videos',
                      'video_duration': 'Duration',
-                     'file_size': 'MB'}[quantity]
+                     'file_size': 'MB',
+                     'rating_count': 'stars',
+                     'resolution_count': 'HQ'}[quantity]
     adjust_thresholds = {'video_count': 50, # cap at expected videos
                          'video_duration': 30*60, # cap at half an hour
-                         'file_size': 1000, # cap at 1GB
+                         'file_size': 1000, # cap at 1GB,
                          }
 
     video_counts = folder_values.copy()
+
+    if quantity in ['rating_count', 'resolution_count']:
+        match quantity:
+            case 'rating_count':
+                new_quantity = 'stars'
+                video_counts[new_quantity] = video_counts.apply(lambda x: round(get_average_rating(x['rating_count']), 2), axis=1)
+                
+            case 'resolution_count':
+                new_quantity = 'hq_count'
+                video_counts[new_quantity] = video_counts.apply(lambda x: round(get_percent_hq(x['resolution_count'],
+                                                                                               resolution_order=order, hq_min='4k') * 100, 1), axis=1)
+
+        quantity = new_quantity
+
     video_counts.loc[:, quantity] = video_counts[quantity].fillna(0)
+
     threshold = video_counts[quantity].max()
-    adjust_threshold = adjust_thresholds[quantity]
-    if cap and adjust_threshold < threshold:
+    adjust_threshold = adjust_thresholds.get(quantity)
+    if (cap and adjust_threshold) and (adjust_threshold < threshold):
         # adjust threshold down
         threshold = adjust_threshold
+
 
     video_counts['display_name'] = (video_counts['full_name']
                                     .fillna(video_counts['folder_name'])
@@ -66,7 +109,6 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
                                                                            grayscale=x[quantity]==0
                                                                            ),
                                                    axis=1)
-    ##video_counts['image_url'] = video_counts.apply(lambda x: grayscale_zero_images(x['image_url'], x[quantity]), axis=1)
 
     order_list = (
         video_counts.sort_values(quantity, ascending=False)['display_name'].tolist()
@@ -74,30 +116,21 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
 
     video_counts[f'{quantity}_capped'] = video_counts[quantity].clip(upper=threshold)
 
-    # small nudge for placing the image past the bar tip
-    x_max =  min(video_counts[quantity].max(), threshold)
-    pad = 0.1 * x_max
-    # make sure the x-domain includes the image position
-
     # UI sizing
-    bar_height = 30                   # pixels per row (bigger = easier to read)
-    gap = 0# 5.0                      # choose a value in video_count units
-
+    bar_height = 30 
 
     base = alt.Chart(video_counts)
 
     axis = alt.Axis(
-        #labelExpr="replace(datum.label, /\\s{2,}|\\s/g, '\\n')",
         labelLimit=0,
         labelPadding=20,
         #labelFontSize=20
         )
 
     # ---------- bars ----------
-
     bars = base.mark_bar(color="steelblue", size=bar_height, clip=False).encode(
         y = alt.Y('display_name:N', title='', sort=order_list, axis=axis),
-        x = alt.X(f'{quantity}_capped:Q', title='', scale=alt.Scale(domain=[0, threshold + gap], clamp=True)),
+        x = alt.X(f'{quantity}_capped:Q', title='', scale=alt.Scale(domain=[0, threshold], clamp=True)),
         color = alt
             .when(f'datum.{quantity} > 4 * {threshold}').then(alt.value(name_to_hex('indianred')))
             .when(f'datum.{quantity} > 2 * {threshold}').then(alt.value(name_to_hex('lightskyblue')))
@@ -111,7 +144,7 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
     images = base.transform_filter(
         alt.datum.image_url != None
     ).transform_calculate(
-        value_pad = f"datum.{quantity} >= {threshold} ? {threshold} + {gap} : datum.{quantity} + {gap}"
+        value_pad = f"datum.{quantity} >= {threshold} ? {threshold} : datum.{quantity}"
     ).mark_image(width=bar_height, height=bar_height).encode(
         x = alt.X('value_pad:Q'),
         y = alt.Y('display_name:N', sort=order_list),

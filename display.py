@@ -3,6 +3,7 @@ from pathlib import Path
 import streamlit as st
 
 from database.db import get_engine
+from charting.general import set_sidebar, existing_pages
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')
@@ -14,19 +15,7 @@ CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
 
 engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
-pages = [('yir_count', 'YIR Status'),
-         ('yir_growth', 'YIR Growth'),
-         ('yir_time', 'YIR Timeline'),
-         ('family_tree', 'Family Tree')]
-existing_pages = [(page, n) for (p, n) in pages if (page := f'pages/{p}.py') and Path(page).exists()]
 
-# set up page
-def set_sidebar():
-    st.set_page_config(page_title='Franzonello Family')
-    with st.sidebar:
-        st.page_link('display.py', label='Home')
-        for page_py, page_name in existing_pages:
-            st.page_link(page_py, label=page_name)
 
 set_sidebar()
 

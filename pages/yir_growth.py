@@ -2,8 +2,8 @@ import streamlit as st
 
 from database.db import get_engine
 from database.db_project import fetch_years_summary
-from family_tree.charts import growth_charts
-from display import set_sidebar
+from charting.charts import growth_charts
+from charting.general import set_sidebar, plot_altair_chart
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')
@@ -24,4 +24,4 @@ year_values = fetch_years_summary(engine)
 charts = growth_charts(year_values)
 
 for chart in charts:
-    st.altair_chart(chart, use_container_width=True)
+    plot_altair_chart(chart)
