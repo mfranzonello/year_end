@@ -61,9 +61,11 @@ match quantity:
     case 'rating_count':
         normed = json_normalize(folder_values['rating_count']).sum().rename_axis('stars').reset_index(name='count')
         normed['stars'] = normed['stars'].astype(int)
+        rated_percent = normed[normed['stars']>0]['count'].sum() / normed['count'].sum()
+
         normed = normed[normed['stars']>0]
         average_rating = normed['stars'].mul(normed['count']).sum() / normed['count'].sum()
-        submission_string = f'**{round(average_rating, 2)} average stars** per video'
+        submission_string = f'**{round(rated_percent*100, 1)}%** rated with **{round(average_rating, 2)} average stars** per video'
     case 'resolution_count':
         normed = json_normalize(folder_values['resolution_count']).sum().rename_axis('res').reset_index(name='count')
         quality_pct = normed[normed['res'].isin(['4k', '8k'])]['count'].sum() / normed['count'].sum()
