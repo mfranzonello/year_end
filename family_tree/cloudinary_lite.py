@@ -14,24 +14,25 @@ def url_is_404(url:str) -> bool:
 
 cloudinary_domain = 'https://res.cloudinary.com'
 
-def grayscale_image(image_url:str) -> str|None:
+def border_image(image_url: str, border_color:str) -> str|None:
     if image_url:
         return image_url.replace('/upload/', '/upload/e_grayscale/')
-    
-def grayscale_zero_images(image_url:str, value:int) -> str|None:
-    if value == 0 or isnull(value):
-        return grayscale_image(image_url)
-    else:
-        return image_url
 
-def get_image_url(cloud_name:str, profile_id:str) -> str|None:
+# # def grayscale_image(image_url:str) -> str|None:
+# #     if image_url:
+# #         return image_url.replace('/upload/', '/upload/e_grayscale/')
+
+# # def grayscale_zero_images(image_url:str, value:int) -> str|None:
+# #     if value == 0 or isnull(value):
+# #         return grayscale_image(image_url)
+# #     else:
+# #         return image_url
+
+def get_image_url(cloud_name:str, profile_id:str, grayscale=False, border_color=None, border_width=5) -> str|None:
     if profile_id:
-        url = f'{cloudinary_domain}/{cloud_name}/image/upload/{profile_id}'
-
-        return url
-        ##if not url_is_404(url):
-        ##    return url
-
-    else:
-        # maybe provide default image
-        return
+        url_start = f'{cloudinary_domain}/{cloud_name}/image/upload/'
+        url_mids = [('e_grayscale', grayscale),
+                    (f'bo_{border_width}px_solid_{border_color}', border_color),
+                    ]
+                    
+        return url_start + '/'.join(m for m, b in url_mids if b) + f'/{profile_id}'

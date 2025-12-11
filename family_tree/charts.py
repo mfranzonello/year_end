@@ -5,10 +5,14 @@ import altair as alt
 from pandas import DataFrame, concat, json_normalize
 from webcolors import name_to_hex
 
-from family_tree.cloudinary_lite import grayscale_zero_images, get_image_url
+from family_tree.cloudinary_lite import get_image_url
 
 def get_color_hexes(color_names:list[str]) -> list[str]:
     return [name_to_hex(c) for c in color_names]
+
+def get_color_rgb_hex(color_name:str) -> str:
+    return name_to_hex(color_name).replace('#', 'rgb:')
+
 
 def convert_duration_time(seconds:int) -> str:
     string = []
@@ -58,8 +62,11 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str, cap:
                                     .fillna('_ROOT')
                                     )
 
-    video_counts['image_url'] = video_counts.apply(lambda x: get_image_url(cloud_name, x['member_id']), axis=1)
-    video_counts['image_url'] = video_counts.apply(lambda x: grayscale_zero_images(x['image_url'], x[quantity]), axis=1)
+    video_counts['image_url'] = video_counts.apply(lambda x: get_image_url(cloud_name, x['member_id'],
+                                                                           grayscale=x[quantity]==0
+                                                                           ),
+                                                   axis=1)
+    ##video_counts['image_url'] = video_counts.apply(lambda x: grayscale_zero_images(x['image_url'], x[quantity]), axis=1)
 
     order_list = (
         video_counts.sort_values(quantity, ascending=False)['display_name'].tolist()
@@ -212,6 +219,9 @@ def growth_charts(year_values):
                         legend=None,
                         scale=alt.Scale(domain=sort_cols, range=custom_colors)
                     ),
+                    # # tooltip=[alt.Tooltip('video_resolution:N', title='Resolution'),
+                    # #          alt.Tooltip('count:Q', title='%')
+                    # #          ]
                     order=alt.Order("sort_order:Q", sort="descending")
                 )
             ).interactive()
@@ -264,10 +274,27 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str):
     spans_sorted['sort_order'] = range(len(spans_sorted))
     spans_sorted['y_position'] = spans_sorted.apply(lambda x: str(x['member_id']) if not x['boundary'] else ('+' + str(x['clan_id'])), axis=1)
 
-    actor_labels = spans_sorted.groupby('full_name').first().reset_index()
-    actor_images = actor_labels[actor_labels['member_id'].notna()]
-    actor_images['image_url'] = actor_images.apply(lambda x: get_image_url(cloud_name, x['member_id']), axis=1)
-    actor_images['image_url'] = actor_images.apply(lambda x: grayscale_zero_images(x['image_url'], x['start_time']), axis=1)
+    appearances = (spans_sorted[spans_sorted['member_id'].notna()].groupby('member_id')
+                   .agg(min_start=('start_time', 'min'),
+                        total_spans=('start_time', 'count'),
+                        total_time=('span', 'sum')
+                        ).reset_index()
+                   .merge(spans_sorted.drop(columns=['start_time']).groupby('member_id').first().reset_index(), on='member_id')
+                   )
+
+    spans_sorted = spans_sorted.merge(appearances[['member_id', 'min_start', 'total_spans', 'total_time']], how='left', on='member_id')
+
+    blue = get_color_rgb_hex('lightblue')
+    red = get_color_rgb_hex('firebrick')
+    actor_images = appearances[appearances['member_id'].notna()]
+    actor_images['image_url'] = (actor_images
+                                 .apply(lambda x: get_image_url(cloud_name, x['member_id'],
+                                                                grayscale=not x['total_spans'],
+                                                                border_color=blue if x['total_spans'] else red,
+                                                                border_width=10,
+                                                                ),
+                                        axis=1)
+    )
 
     chart = (
         alt.Chart(spans_sorted)
@@ -362,11 +389,14 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str):
                 scale=alt.Scale(domain=x_domain),
             ),
             text="chapter_name:N",
+            tooltip=[alt.Tooltip('chapter_name:N', title='Chapter'),
+                     alt.Tooltip('start_time:Q', title='Start Time'),
+                     ]
         )
     )
     
     labels_y = (
-        alt.Chart(actor_labels)
+        alt.Chart(appearances)
         .mark_text(
             align="right",
             baseline="middle",
@@ -380,13 +410,13 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str):
             ),
             x=alt.value(0),        # or the left edge in pixels
             text="y_label:N",
+            tooltip=alt.value(None),
         )
     )
     
     labels = labels_x + labels_y
 
     images = (alt.Chart(actor_images)
-        ##chart
         .transform_filter(alt.datum.image_url != None)
         .mark_image(width=bar_height*.9, height=bar_height*.9)
         .encode(
@@ -397,9 +427,11 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str):
                 sort=alt.EncodingSortField(field="sort_order", order="ascending"),
             ),
             url = 'image_url:N',
-            tooltip = [alt.Tooltip('full_name:N', title='Name'),
-                       ##alt.Tooltip(f'{quantity}:Q', title=display_label),
-                       ]
+            tooltip=[alt.Tooltip('full_name:N', title='Name'),
+                     alt.Tooltip('min_start:Q', title='First Appearance'),
+                     alt.Tooltip('total_spans:Q', title='Total Appearances'),
+                     alt.Tooltip('total_time:Q', title='Total Screentime'),
+                     ]
         )
     )
 
