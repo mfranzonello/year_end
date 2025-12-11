@@ -70,8 +70,25 @@ def nearest_common_lineage(member_id_1:UUID, member_id_2:UUID, relation_map:dict
             'in-law': not(lin_1[best][1] and lin_2[best][1]) # related by spouse
             }
 
-def get_relatives(member_id:UUID, members:DataFrame, parents:DataFrame, pets:DataFrame, spouses:DataFrame,
-                    include_animals:bool=False, cut_date:date|None=date.today(), include_deceased=True) -> DataFrame:
+def get_all_relatives(member_id:UUID, members:DataFrame, parents:DataFrame, pets:DataFrame, spouses:DataFrame,
+                      bloodline:bool):
+    ancestors_map, descendants_map, spouses_map = create_maps(parents, pets, spouses)
+    member_ids = members['member_id'].tolist()
+    relative_ids = [(m, nca) for m in member_ids
+                    for lineage_map, d in zip([ancestors_map, descendants_map], [-1, 1])
+                    if (nca:=nearest_common_lineage(member_id, m, lineage_map, spouses_map, direction=d))]
+    if bloodline:
+        relative_ids = list(filter(lambda x: not x[1]['in-law'], relative_ids))
+    return relative_ids
+
+def list_all_relatives(engine:Engine, member_id:UUID, bloodline:bool=False) -> list[tuple[UUID, dict]]:
+    members = get_member_data(engine)
+    parents, pets, spouses = get_map_data(engine)
+    relative_ids = get_all_relatives(member_id, members, parents, pets, spouses, bloodline=bloodline)
+    return relative_ids
+
+def get_tree_members(member_id:UUID, members:DataFrame, parents:DataFrame, pets:DataFrame, spouses:DataFrame,
+                     include_animals:bool=False, cut_date:date|None=date.today(), include_deceased=True) -> DataFrame:
     ancestors, descendents = get_ancestors_and_descendants(member_id, parents, pets, spouses)
     
     relatives = (DataFrame.from_dict({**ancestors, **descendents},
@@ -90,15 +107,25 @@ def get_relatives(member_id:UUID, members:DataFrame, parents:DataFrame, pets:Dat
                                                (x['entry_date_precision']=='past'), axis=1)
         relatives = relatives[relatives['born'] & relatives['entered']].drop(['born', 'entered'], axis=1)
     if not include_deceased:
-        relatives['alive'] = relatives.apply(lambda x: (notna(x['death_date']) and (x['death_date'].date() >= cut_date)) or 
-                                            (isna(x['death_date']) and (x['death_date_precision']!='past')), axis=1)
+        if cut_date:
+            relatives['alive'] = relatives.apply(lambda x: (notna(x['death_date']) and (x['death_date'].date() >= cut_date)) or 
+                                                (isna(x['death_date']) and (x['death_date_precision']!='past')), axis=1)
+            relatives = relatives[relatives['alive']].drop(['alive'], axis=1)
+        else:
+            relatives['alive'] = relatives.apply(lambda x: isna(x['death_date']) and
+                                                 (x['death_date_precision']!='past')
+                                                 , axis=1)
         relatives = relatives[relatives['alive']].drop(['alive'], axis=1)
 
     return relatives
 
-def list_relatives(engine:Engine, founder_id:UUID, include_animals=False, cut_date:date|None=None, include_deceased=False) -> DataFrame:
+def get_units(engine:Engine, member_id:UUID) -> list[UUID]:    
+    parents, pets, spouses = get_map_data(engine)
+    ancestors, descendants = get_ancestors_and_descendants(member_id, parents, pets, spouses)
+
+def build_tree(engine:Engine, founder_id:UUID, include_animals=False, cut_date:date|None=None, include_deceased=False) -> DataFrame:
     members = get_member_data(engine)
     parents, pets, spouses = get_map_data(engine)
-    relatives = get_relatives(founder_id, members, parents, pets, spouses,
-                              include_animals=include_animals, cut_date=cut_date, include_deceased=include_deceased)
+    relatives = get_tree_members(founder_id, members, parents, pets, spouses,
+                                 include_animals=include_animals, cut_date=cut_date, include_deceased=include_deceased)
     return relatives

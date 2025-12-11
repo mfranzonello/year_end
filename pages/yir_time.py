@@ -8,7 +8,7 @@ from database.db_display import fetch_display_names, fetch_member_information
 from database.db_adobe import fetch_timeline_years, fetch_actor_spans, fetch_markers
 from database.db_family import fetch_founder, fetch_members
 from family_tree.charts import timeline_chart
-from family_tree.ancestry import list_relatives
+from family_tree.ancestry import build_tree
 from display import set_sidebar
 
 PGHOST = st.secrets['postgresql']['host']
@@ -31,8 +31,8 @@ st.title(f'Franzonello YIR {year}')
 
 cut_date = date(year + 1, 1, 1) - timedelta(days=1)
 founder_id = fetch_founder(engine)
-relatives = list_relatives(engine, founder_id,
-                           include_animals=True, cut_date=cut_date, include_deceased=False)
+relatives = build_tree(engine, founder_id,
+                       include_animals=True, cut_date=cut_date, include_deceased=False)
 relative_ids = relatives['member_id'].tolist()
 
 member_info = fetch_member_information(engine, cut_date=cut_date)
