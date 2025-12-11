@@ -48,17 +48,17 @@ def get_average_rating(ratings:dict) -> float:
                 / sum(v for k, v in zip(ratings.keys(), ratings.values()) 
                       if int(k)>0) if [k for k in ratings.keys() if int(k) > 0] else 0)
 
-def get_percent_hq(resolutions:dict, resolution_order:dict, hq_min:str) -> float:
+def get_percent_hq(resolutions:dict, resolution_order:list, hq_min:str) -> float:
     if resolutions is None:
         return 0
     else:
         return (sum(v for k, v in zip(resolutions.keys(), resolutions.values())
-                    if resolution_order[k] >= resolution_order[hq_min]) 
+                    if resolution_order.index(k) >= resolution_order.index(hq_min)) 
                 / sum(resolutions.values()))
 
 
 def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str,
-                     cap:bool=False, order:dict|None=None):
+                     cap:bool=False, order:list|None=None) -> alt.Chart:
     if quantity not in ['video_count',
                         'video_duration',
                         'file_size',
@@ -157,7 +157,7 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str,
         height=max(300, bar_height * 1.2 * len(video_counts)))
     return chart
 
-def review_pie(year_values, year, min_stars):
+def review_pie(year_values, year, min_stars) -> alt.Chart:
     statuses = year_values.query('project_year == @year')['video_status']
     if not statuses.empty:
         s = statuses.iloc[0]
@@ -190,7 +190,7 @@ def review_pie(year_values, year, min_stars):
     return chart
 
 # growth charts over years
-def growth_charts(year_values):
+def growth_charts(year_values, resolution_order:list) -> tuple[alt.Chart]:
     year_values = melt_years(year_values)
 
     charts = []
@@ -209,14 +209,17 @@ def growth_charts(year_values):
                 y_label = 'Total File Size (GB)'
             case 'video_resolution':
                 y_label = 'Video Resolution'
-                colors = {'na': 'gainsboro',
-                          'xx': 'firebrick',
-                          'vhs': 'orchid',
-                          'sd': 'lightsalmon',
-                          'hd': 'gold',
-                          'fhd': 'forestgreen',
-                          '4k': 'midnightblue',
-                          '8k': 'lightskyblue'}
+                color_names = ['gainsboro', 'firebrick', 'orchid', 'lightsalmon', 'gold',
+                               'forestgreen', 'midnightblue', 'lightskyblue']
+                colors = {k: v for k, v in zip(resolution_order, color_names)}
+                # # colors = {'na': 'gainsboro',
+                # #           'xx': 'firebrick',
+                # #           'vhs': 'orchid',
+                # #           'sd': 'lightsalmon',
+                # #           'hd': 'gold',
+                # #           'fhd': 'forestgreen',
+                # #           '4k': 'midnightblue',
+                # #           '8k': 'lightskyblue'}
                 custom_colors = get_color_hexes(colors[k] for k in colors if f'res_{k}' in year_values.columns)
                 sort_cols = [c for c in ['res_' + r for r in colors] if c in year_values.columns]
             case 'video_status':
@@ -263,7 +266,7 @@ def growth_charts(year_values):
 
     return charts
 
-def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str):
+def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str) -> alt.Chart:
     time_format = (
         "floor(datum.value/60) + ':' + "
         "(datum.value % 60 < 10 ? '0' : '') + "
