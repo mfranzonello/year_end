@@ -57,20 +57,25 @@ def get_percent_hq(resolutions:dict, resolution_order:list, hq_min:str) -> float
                 / sum(resolutions.values()))
 
 
+''' main status review charts '''
 def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str,
                      cap:bool=False, order:list|None=None) -> alt.Chart:
-    if quantity not in ['video_count',
-                        'video_duration',
-                        'file_size',
-                        'rating_count',
-                        'resolution_count']:
+
+    single_bars = ['video_count', 'video_duration', 'file_size']
+    multi_bars = ['rating_count', 'resolution_count']
+
+    if quantity in single_bars:
+        bar_type = 'single'
+    elif quantity in multi_bars:
+        bar_type = 'multi'
+    else:
         return alt.Chart()
 
     display_label = {'video_count': 'Videos',
                      'video_duration': 'Duration',
                      'file_size': 'MB',
-                     'rating_count': 'stars',
-                     'resolution_count': 'HQ'}[quantity]
+                     'rating_count': 'Stars',
+                     'resolution_count': 'Resolution'}[quantity]
     adjust_thresholds = {'video_count': 50, # cap at expected videos
                          'video_duration': 30*60, # cap at half an hour
                          'file_size': 1000, # cap at 1GB,
@@ -78,27 +83,31 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str,
 
     video_counts = folder_values.copy()
 
-    if quantity in ['rating_count', 'resolution_count']:
-        match quantity:
-            case 'rating_count':
-                new_quantity = 'stars'
-                video_counts[new_quantity] = video_counts.apply(lambda x: round(get_average_rating(x['rating_count']), 2), axis=1)
+    match bar_type:
+        case 'single':
+            sort_quantity = quantity
+
+        case 'multi':
+            match quantity:
+                case 'rating_count':
+                    new_quantity = 'stars'
+                    video_counts[new_quantity] = video_counts.apply(lambda x: round(get_average_rating(x['rating_count']), 2), axis=1)
                 
-            case 'resolution_count':
-                new_quantity = 'hq_count'
-                video_counts[new_quantity] = video_counts.apply(lambda x: round(get_percent_hq(x['resolution_count'],
+                case 'resolution_count':
+                    new_quantity = 'hq_count'
+                    video_counts[new_quantity] = video_counts.apply(lambda x: round(get_percent_hq(x['resolution_count'],
                                                                                                resolution_order=order, hq_min='4k') * 100, 1), axis=1)
+            sort_quantity = new_quantity
 
-        quantity = new_quantity
+    ##print(f'\n\n\n\n\n{sort_quantity=}\n\n\n\n\n')
 
-    video_counts.loc[:, quantity] = video_counts[quantity].fillna(0)
+    video_counts.loc[:, sort_quantity] = video_counts[sort_quantity].fillna(0)
 
-    threshold = video_counts[quantity].max()
+    threshold = video_counts[sort_quantity].max()
     adjust_threshold = adjust_thresholds.get(quantity)
     if (cap and adjust_threshold) and (adjust_threshold < threshold):
         # adjust threshold down
         threshold = adjust_threshold
-
 
     video_counts['display_name'] = (video_counts['full_name']
                                     .fillna(video_counts['folder_name'])
@@ -106,57 +115,103 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str,
                                     )
 
     video_counts['image_url'] = video_counts.apply(lambda x: get_image_url(cloud_name, x['member_id'],
-                                                                           grayscale=x[quantity]==0
+                                                                           grayscale=x[sort_quantity]==0
                                                                            ),
                                                    axis=1)
 
     order_list = (
-        video_counts.sort_values(quantity, ascending=False)['display_name'].tolist()
+        video_counts.sort_values(sort_quantity, ascending=False)['display_name'].tolist()
     )
-
-    video_counts[f'{quantity}_capped'] = video_counts[quantity].clip(upper=threshold)
+    video_counts[f'{quantity}_capped'] = video_counts[sort_quantity].clip(upper=threshold)
 
     # UI sizing
     bar_height = 30 
 
-    base = alt.Chart(video_counts)
+    # bars
+    match bar_type:
+        case 'single':
+            y_axis = alt.Axis(labelLimit=0, labelPadding=20) #labelFontSize=20
+            base = alt.Chart(video_counts)
+            bars = base.mark_bar(size=bar_height, clip=False).encode(
+                y = alt.Y('display_name:N', title='', sort=order_list, axis=y_axis),
+                x = alt.X(f'{quantity}_capped:Q', title='', scale=alt.Scale(domain=[0, threshold], clamp=True)),
+                color = alt
+                    .when(f'datum.{quantity} > 4 * {threshold}').then(alt.value(name_to_hex('indianred')))
+                    .when(f'datum.{quantity} > 2 * {threshold}').then(alt.value(name_to_hex('lightskyblue')))
+                    .when(f'datum.{quantity} > 1 * {threshold}').then(alt.value(name_to_hex('steelblue')))
+                    .otherwise(alt.value(name_to_hex('teal'))),
+                tooltip = [alt.Tooltip('display_name:N', title='Name'),
+                           alt.Tooltip(f'{quantity}:Q', title=display_label)]
+                )
 
-    axis = alt.Axis(
-        labelLimit=0,
-        labelPadding=20,
-        #labelFontSize=20
-        )
+        case 'multi':    
+            keep_cols = ['member_id', 'image_url', 'display_name', quantity]
+            video_counts_2 = (video_counts[keep_cols].join(json_normalize(video_counts[quantity]))
+                            .melt(id_vars=keep_cols, var_name=new_quantity, value_name='count')
+                            .dropna(subset=['count'])
+            )
 
-    # ---------- bars ----------
-    bars = base.mark_bar(color="steelblue", size=bar_height, clip=False).encode(
-        y = alt.Y('display_name:N', title='', sort=order_list, axis=axis),
-        x = alt.X(f'{quantity}_capped:Q', title='', scale=alt.Scale(domain=[0, threshold], clamp=True)),
-        color = alt
-            .when(f'datum.{quantity} > 4 * {threshold}').then(alt.value(name_to_hex('indianred')))
-            .when(f'datum.{quantity} > 2 * {threshold}').then(alt.value(name_to_hex('lightskyblue')))
-            .when(f'datum.{quantity} > 1 * {threshold}').then(alt.value(name_to_hex('steelblue')))
-            .otherwise(alt.value(name_to_hex('teal'))),
-        tooltip = [alt.Tooltip('display_name:N', title='Name'),
-                   alt.Tooltip(f'{quantity}:Q', title=display_label)]
-        )
+            match quantity:
+                case 'rating_count':
+                    sort_cols = [str(i) for i in range(5 + 1)]
+                    custom_colors = get_color_hexes(['gainsboro', 'firebrick', 'gold', 'forestgreen', 'midnightblue', 'lightskyblue'])
+                case 'resolution_count':
+                    sort_cols = order
+                    custom_colors = get_color_hexes(['gainsboro', 'orchid', 'firebrick', 'lightsalmon', 'gold', 'forestgreen', 'midnightblue', 'lightskyblue'])
 
-    # ---------- images at end of bars ----------
-    images = base.transform_filter(
-        alt.datum.image_url != None
-    ).transform_calculate(
-        value_pad = f"datum.{quantity} >= {threshold} ? {threshold} : datum.{quantity}"
-    ).mark_image(width=bar_height, height=bar_height).encode(
-        x = alt.X('value_pad:Q'),
-        y = alt.Y('display_name:N', sort=order_list),
-        url = 'image_url:N',
-        tooltip = [alt.Tooltip('display_name:N', title='Name'),
-                   alt.Tooltip(f'{quantity}:Q', title=display_label)]
-    )
+            y_axis = alt.Axis(labelLimit=0, offset=bar_height * 1)
+            base = alt.Chart(video_counts_2)
+            bars = base.mark_bar(size=bar_height, clip=False).encode(
+                y = alt.Y('display_name:N', title='', sort=order_list, axis=y_axis),
+                x = alt.X(f'count:Q', title='', stack='normalize'),
+                color=alt.Color(
+                    f'{new_quantity}:N',
+                    sort=sort_cols,
+                    legend=None,
+                    scale=alt.Scale(domain=sort_cols, range=custom_colors)
+                ),
+                tooltip = [alt.Tooltip('display_name:N', title='Name'),
+                           alt.Tooltip(f'{new_quantity}:N', title=display_label),
+                           alt.Tooltip('count:Q', title='Count')]
+                )
+
+    # images at end of bars
+    match bar_type:
+        case 'single':
+            images = base.transform_filter(
+                alt.datum.image_url != None
+            ).transform_calculate(
+                value_pad = f"datum.{sort_quantity} >= {threshold} ? {threshold} : datum.{sort_quantity}"
+            ).mark_image(width=bar_height, height=bar_height).encode(
+                x = alt.X('value_pad:Q'),
+                y = alt.Y('display_name:N', sort=order_list),
+                url = 'image_url:N',
+                tooltip = [alt.Tooltip('display_name:N', title='Name'),
+                           alt.Tooltip(f'{quantity}:Q', title=display_label)]
+            )
+
+        case 'multi':
+            images = (
+                base.transform_filter(alt.datum.image_url != None)
+                .mark_image(width=bar_height, height=bar_height)
+                .encode(
+                    x=alt.value(0),
+                    xOffset=alt.value(-bar_height * 0.75),
+                    y = alt.Y('display_name:N', sort=order_list),
+                    url = 'image_url:N',
+                    tooltip = [alt.Tooltip('display_name:N', title='Name'),
+                                alt.Tooltip(f'{quantity}:Q', title=display_label)]
+                )
+            )
 
     chart = (bars + images).properties(
-        height=max(300, bar_height * 1.2 * len(video_counts)))
+        height= bar_height * 1.2 * len(video_counts)
+    )
+
     return chart
 
+
+''' pie chart for review status '''
 def review_pie(year_values, year, min_stars) -> alt.Chart:
     statuses = year_values.query('project_year == @year')['video_status']
     if not statuses.empty:
@@ -180,16 +235,16 @@ def review_pie(year_values, year, min_stars) -> alt.Chart:
         radius=alt.Radius('count').scale(type='sqrt', zero=False, rangeMin=min(20, max(0, min(no, lo, hi, go)**0.5 - 1))),
         color=alt.Color('category:N',
                         scale=alt.Scale(domain=review_df['category'].tolist(),
-                                        range=custom_colors))#.legend(None)
+                                        range=custom_colors))
         )
     pie = base.mark_arc()
-    ##text = base.mark_text(radius=140, size=20).encode(text = 'category:N')
     
     chart = pie
 
     return chart
 
-# growth charts over years
+
+''' growth charts over years '''
 def growth_charts(year_values, resolution_order:list) -> tuple[alt.Chart]:
     year_values = melt_years(year_values)
 
@@ -212,14 +267,6 @@ def growth_charts(year_values, resolution_order:list) -> tuple[alt.Chart]:
                 color_names = ['gainsboro', 'firebrick', 'orchid', 'lightsalmon', 'gold',
                                'forestgreen', 'midnightblue', 'lightskyblue']
                 colors = {k: v for k, v in zip(resolution_order, color_names)}
-                # # colors = {'na': 'gainsboro',
-                # #           'xx': 'firebrick',
-                # #           'vhs': 'orchid',
-                # #           'sd': 'lightsalmon',
-                # #           'hd': 'gold',
-                # #           'fhd': 'forestgreen',
-                # #           '4k': 'midnightblue',
-                # #           '8k': 'lightskyblue'}
                 custom_colors = get_color_hexes(colors[k] for k in colors if f'res_{k}' in year_values.columns)
                 sort_cols = [c for c in ['res_' + r for r in colors] if c in year_values.columns]
             case 'video_status':
@@ -266,6 +313,8 @@ def growth_charts(year_values, resolution_order:list) -> tuple[alt.Chart]:
 
     return charts
 
+
+''' actor appearances '''
 def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str) -> alt.Chart:
     time_format = (
         "floor(datum.value/60) + ':' + "
