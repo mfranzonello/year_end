@@ -99,8 +99,6 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str,
                                                                                                resolution_order=order, hq_min='4k') * 100, 1), axis=1)
             sort_quantity = new_quantity
 
-    ##print(f'\n\n\n\n\n{sort_quantity=}\n\n\n\n\n')
-
     video_counts.loc[:, sort_quantity] = video_counts[sort_quantity].fillna(0)
 
     threshold = video_counts[sort_quantity].max()
