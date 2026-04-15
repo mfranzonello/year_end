@@ -21,10 +21,18 @@ _XMP_END = b"</x:xmpmeta>"
 def is_examinable(file_path:Path, local_only:bool=False) -> bool:
     return (file_type(file_path) == 'VIDEO') and (not local_only or is_file_available(file_path))
 
-def _find_xmp_bytes_fallback(path: Path, tail_bytes: int = 5000) -> bytes|None:
+def _find_xmp_bytes_fallback(path: Path, tail_bytes: int = 8000) -> bytes|None: #5000
     """Search the last N bytes of the file for XMP metadata."""
+    prefix = path.name[0:4]
     file_size = path.stat().st_size
-    start_pos = max(file_size - tail_bytes, 0)
+
+    match prefix:
+        case 'MVI_':
+            start_pos = 0
+        case 'DJI_':
+            start_pos = max(0, file_size - tail_bytes * 2**6)
+        case _:
+            start_pos = max(0, file_size - tail_bytes * 2**1)
 
     with path.open("rb") as f:
         f.seek(start_pos)
@@ -87,7 +95,7 @@ def get_video_rating(file_path:Path, local_only:bool=True) -> int|None:
 
         return rating
 
-def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, str]:
+def get_resolution(width:int, height:int) -> str:
     no_res = 'xx'
     resolution_ranges = [((320, 240), 'vhs'), # VHS - 480x320
                          ((720, 480), 'sd'), # DVD / SD - 720x480
@@ -95,6 +103,21 @@ def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, s
                          ((1920, 1080), 'fhd'), # full-HD blu-ray - 1920x1080
                          ((3840, 2160), '4k'), # ultra blu-ray - 3840x2160
                          ((7680, 4320), '8k')] # 7680 x 4320
+
+    if min(width, height) == 0 or None in (width, height):
+        resolution = no_res
+
+    else:
+        for (h_dim, v_dim), res in resolution_ranges[::-1]:
+            if (max(width, height) >= h_dim) or (min(width, height) >= v_dim):
+                resolution = res
+                break
+            resolution = res
+
+    return resolution
+
+def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, str]:
+    no_res = 'xx'
 
     if is_examinable(file_path, local_only): ## avoids downloading from interweb
         # get duration
@@ -116,16 +139,10 @@ def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, s
             w = v.get(CAP_PROP_FRAME_WIDTH)
             h = v.get(CAP_PROP_FRAME_HEIGHT)
 
-            if min(w, h) == 0 or None in (w, h):
-                resolution = no_res
-                print(f'{file_path} corrupted [cv2 - no pixels]')
+            resolution = get_resolution(int(w), int(h))
 
-            else:
-                for (h_dim, v_dim), res in resolution_ranges[::-1]:
-                    if (max(w, h) >= h_dim) or (min(w, h) >= v_dim):
-                        resolution = res
-                        break
-                    resolution = res
+            if resolution == no_res:
+                print(f'{file_path} corrupted [cv2 - no resolution]')
 
         v.release()
         

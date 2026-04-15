@@ -83,3 +83,37 @@ def fetch_compilation(engine:Engine, year:int) -> DataFrame:
     WHERE project_year = {year}
     ;'''
     return read_sql(engine, sql)
+
+def fetch_music(engine:Engine, year:int, review_type:str) -> DataFrame:
+    sql = f'''
+    SELECT track_id, review_id, project_year,
+    track_title, artist_name, track_duration, track_url,
+    review_id, main_track, lyrics_url
+    FROM publishing.music JOIN publishing.reviews USING (review_id)
+    WHERE project_year = {year} AND review_type = '{review_type}'
+    ;'''
+    return read_sql(engine, sql)
+
+def update_projects(engine:Engine, df:DataFrame):
+    val_cols = []
+    values, params = build_values(df, val_cols)
+    sql = f'''
+    INSERT INTO publishing.reviews
+    (review_type,
+    project_year,
+    video_theme,
+    video_duration,
+    video_resolution)
+    
+    VALUES {values}
+    ON CONFLICT (review_type, project_year)
+    DO UPDATE
+    SET
+      video_theme      = COALESCE(review.video_theme,      EXCLUDED.video_theme),
+      video_duration   = COALESCE(review.video_duration,   EXCLUDED.video_duration),
+      video_resolution = COALESCE(review.video_resolution, EXCLUDED.video_resolution)
+    WHERE
+      (review.video_theme      IS NULL AND EXCLUDED.video_theme      IS NOT NULL)
+      OR (review.video_duration   IS NULL AND EXCLUDED.video_duration   IS NOT NULL)
+      OR (review.video_resolution IS NULL AND EXCLUDED.video_resolution IS NOT NULL);
+    ;'''

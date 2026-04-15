@@ -8,9 +8,10 @@ from common.structure import ONE_DRIVE_FOLDER, GOOGLE_DRIVE_FOLDER, ADOBE_FOLDER
 from common.secret import secrets
 from common.console import SplitConsole
 from database.db import get_engine
+from repositories.iterate import get_media_locations
 from repositories.migrate import dedupe_one_drive, copy_from_gdrive
 from repositories.ingest import copy_from_web
-from repositories.inspect import get_media_locations, summarize_folders, update_database_images, purge_stale_content
+from repositories.inspect import summarize_folders, update_database_images, purge_stale_content
 
 PGSECRETS = secrets['postgresql']['host']
 PGHOST = secrets['postgresql']['host']
@@ -30,16 +31,10 @@ ui = SplitConsole()
 def set_up_engine():
     return get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
-def set_up_media_locations():
-    engine = set_up_engine()
-    media_locations = get_media_locations(engine)
-    engine.dispose()
-    return media_locations
-
-def scan_folders(media_locations:DataFrame, dry_run:bool=True):
+def scan_folders(media_locations:list[tuple], dry_run:bool=True):
     engine = set_up_engine()
 
-    for _, (media_type, supfolder_name) in media_locations.iterrows():
+    for media_type, supfolder_name in media_locations:
         if (GOOGLE_DRIVE_FOLDER / supfolder_name).exists():
             missing_targets = copy_from_gdrive(ONE_DRIVE_FOLDER / supfolder_name, GOOGLE_DRIVE_FOLDER / supfolder_name,
                                                QUARANTINE_FOLDER, QUARANTINE, ui, dry_run)
@@ -51,9 +46,9 @@ def scan_folders(media_locations:DataFrame, dry_run:bool=True):
 
     engine.dispose()
 
-def dedupe_folders(media_locations, dry_run:bool=True):
+def dedupe_folders(media_locations:list[tuple], dry_run:bool=True):
     engine = set_up_engine()
-    for _, (media_type, supfolder_name) in media_locations.iterrows():
+    for media_type, supfolder_name in media_locations:
         dedupe_one_drive(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type,
                          QUARANTINE_FOLDER / supfolder_name / QUARANTINE, dry_run)
     engine.dispose()
@@ -63,16 +58,16 @@ def harvest_albums(google:bool, icloud:bool, headless:bool=True):
     copy_from_web(engine, ONE_DRIVE_FOLDER, google=google, icloud=icloud, headless=headless)
     engine.dispose()
 
-def purge_database(media_locations:DataFrame, dry_run:bool=True):
+def purge_database(media_locations:list[tuple], dry_run:bool=True):
     engine = set_up_engine()
-    for _, (media_type, supfolder_name) in media_locations.iterrows():
+    for media_type, supfolder_name in media_locations:
         purge_stale_content(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type, dry_run)
     engine.dispose()
 
-def update_database(media_locations:DataFrame, dry_run:bool=True):
+def update_database(media_locations:list[tuple], dry_run:bool=True):
     engine = set_up_engine()
 
-    for _, (media_type, supfolder_name) in media_locations.iterrows():
+    for media_type, supfolder_name in media_locations:
         summarize_folders(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type, ADOBE_FOLDER, YIR_REVIEWS, ui, dry_run=dry_run)
     engine.dispose()
 
@@ -110,7 +105,9 @@ def main():
 
     ui.add_update(f'Running with args: {args}')
 
-    media_locations = set_up_media_locations()
+    engine = set_up_engine()
+    media_locations = get_media_locations(engine)
+    engine.dispose()
 
     if args.gphotos or args.iphotos:
         harvest_albums(args.gphotos, args.iphotos, args.headless)

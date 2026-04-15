@@ -7,6 +7,9 @@ opencv-python==4.12.0.88
 cloudinary==1.44.1
 graphviz==0.21
 hachoir=3.1.3
+PyVimeo==1.1.2
+pytubefix==10.3.6
+
 
 # module only needed for Windows shortcuts
 pywin32==311; platform_system == "Windows"

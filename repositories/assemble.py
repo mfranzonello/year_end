@@ -10,8 +10,8 @@ from database.db_adobe import fetch_member_labels, fetch_color_labels, update_ap
 from adobe.premiere import convert_to_xml, extract_included_video_paths, open_project, find_videos_bin, create_person_bins, \
     import_videos, set_family_color_labels, create_label_presets, get_sequence_maps, get_actors_in_project, get_chapter_markers
 
-def get_usable_videos(engine:Engine, year:int, min_stars:int):
-    files_df = fetch_files(engine, year)
+def get_usable_videos(engine:Engine, year:int, media_type:str, min_stars:int):
+    files_df = fetch_files(engine, year, media_type)
     usable_videos = files_df.query('video_rating >= @min_stars')
     return usable_videos
 
@@ -29,7 +29,7 @@ def ensure_premiere(engine:Engine, year:int, adobe_folder:Path, yir_reviews:str,
 
         return project_id
 
-def import_and_label(engine:Engine, project_id:int, year:int, min_stars:int, one_drive_folder:Path,
+def import_and_label(engine:Engine, project_id:int, year:int, min_stars:int, one_drive_folder:Path, media_type:str,
                      ui:SplitConsole, dry_run=True):
     
     ui.set_status('Finding Videos bin')
@@ -37,6 +37,11 @@ def import_and_label(engine:Engine, project_id:int, year:int, min_stars:int, one
 
     ui.set_status('Creating person bins...')
     one_drive_year_folder = one_drive_folder / f'{year}'
+
+    if not one_drive_year_folder.exists():
+        ui.add_update(f'Nothing found in {one_drive_folder} for year {year}')
+        return
+
     person_folders = get_person_folders(one_drive_year_folder)
     person_names = get_person_names(one_drive_year_folder)
     create_person_bins(videos_bin, person_names)
@@ -49,7 +54,7 @@ def import_and_label(engine:Engine, project_id:int, year:int, min_stars:int, one
     # # included_video_paths = [resolve_relative_path(project_folder, p) for p in included_videos]
 
     # pull from DB
-    usable_videos = get_usable_videos(engine, year, min_stars)
+    usable_videos = get_usable_videos(engine, year, media_type, min_stars)
 
     for person_folder in person_folders:
         person_name = get_person_name(person_folder)
@@ -85,11 +90,11 @@ def get_actors_and_chapters(engine:Engine, project_id:int, project_year:int):
         sequence_map_by_name, sequence_map_by_node = get_sequence_maps(project_id)
 
         actor_timestamps = get_actors_in_project(project_id, timeline_name, sequence_map_by_name, sequence_map_by_node,
-                                                 banned_bins=banned_bins)
+                                                    banned_bins=banned_bins)
 
         actor_times_df = (DataFrame(actor_timestamps).explode('actor_uuid', ignore_index=True)
-                          .rename(columns={'actor_uuid': 'member_id'})
-                          .drop_duplicates())
+                            .rename(columns={'actor_uuid': 'member_id'})
+                            .drop_duplicates())
         actor_times_df['project_year'] = project_year
         update_appearances(engine, actor_times_df)
         
@@ -97,5 +102,3 @@ def get_actors_and_chapters(engine:Engine, project_id:int, project_year:int):
         chapter_markers_df = DataFrame(chapter_timestamps, columns=['chapter_name', 'start_time'])
         chapter_markers_df['project_year'] = project_year
         update_chapters(engine, chapter_markers_df)
-
-        

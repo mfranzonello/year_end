@@ -136,22 +136,36 @@ def set_family_color_labels(videos_bin, label_map):
                     if ITEM_TYPES[c_item.type] == 'CLIP':
                         set_color_label(c_item, family_color_label)
 
-def check_video_in_bin(videos_bin, video_path:Path):
-    return videos_bin.findItemsMatchingMediaPath(str(video_path), ignoreSubclips=1).length > 0
+def get_videos_in_bin(videos_bin):  ## won't search sub bins
+    return [Path(x.getMediaPath()) for x in videos_bin.children if (x.type == 1) and not x.isSequence()]
+
+##def check_video_in_bin(videos_bin, video_path:Path):
+##    return videos_bin.findItemsMatchingMediaPath(str(video_path), ignoreSubclips=1).length > 0
 
 def import_videos(project_id, videos_bin, person_name:str, import_file_list:list[Path], ui:SplitConsole, dry_run=True):
     import_success = False
 
     person_bin = find_person_bin(videos_bin, person_name)
+    
+    # all videos currently in bin
+    current_videos = get_videos_in_bin(person_bin)
 
     # videos that should be in this bin
-    importable_videos = [p for p in import_file_list if not check_video_in_bin(videos_bin, p)]
+    importable_videos = [p for p in import_file_list if not p in current_videos]
     # videos that already exist in this bin
-    existing_videos = [p for p in import_file_list if check_video_in_bin(person_bin, p)]
-    # videos that already exist in another bin
-    movable_videos = [p for p in existing_videos if not check_video_in_bin(person_bin, p)]
+    existing_videos = [p for p in import_file_list if p in current_videos]
+    ## need new way to get movable items
+    movable_videos = []
 
-    skipped_imports = len(existing_videos) - (len(importable_videos) + len(movable_videos))
+    skipped_imports = len(existing_videos) - len(importable_videos)
+
+    # # # videos that should be in this bin
+    # # importable_videos = [p for p in import_file_list if not check_video_in_bin(videos_bin, p)]
+    # # # videos that already exist in this bin
+    # # existing_videos = [p for p in import_file_list if check_video_in_bin(person_bin, p)]
+    # # # videos that already exist in another bin
+    # # movable_videos = [p for p in existing_videos if not check_video_in_bin(person_bin, p)]
+    # # skipped_imports = len(existing_videos) - (len(importable_videos) + len(movable_videos))
 
     if skipped_imports > 0:
         v_s = 's' if skipped_imports != 1 else ''
