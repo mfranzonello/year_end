@@ -143,7 +143,21 @@ text-track API can create chapters: it explicitly supports caption/subtitle
 tracks but not chapter tracks. Keep manual chapter entry as the safe baseline
 until a separate supported API capability is verified against the account.
 
-### 3a. Submission scoring and participation insights
+### 3a. Interactive video playback
+
+Explore an interactive playback experience alongside the conventional finished
+YIR. Potential experiences include selecting among multiple edits of a video or
+choosing an interaction that directs playback to a different clip. The existing
+`playback` package, which currently reads Vimeo information, is the natural
+home for this capability and future Vimeo publishing/update work.
+
+This is an exploratory product track, not a replacement for the canonical
+linear YIR or an automatic extension of the Vimeo upload workflow. Before
+implementation, define the intended viewer experience, clip/branch data model,
+hosting/player capability, transition behavior, and any viewing analytics with
+appropriate privacy boundaries.
+
+### 3b. Submission scoring and participation insights
 
 Design a configurable submission-scoring system that can consider the number
 of submitted files, submission timing, and media quality. The intended outcome
