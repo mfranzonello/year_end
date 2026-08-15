@@ -62,6 +62,13 @@ workflow after collection—not forcing every contributor to change how they
 share media. Text-message media remains a deliberately discouraged source when
 its delivery path degrades quality.
 
+Plan a per-year participant-selection step before provisioning folders or
+sending reminders. It should use prior-year folders, relationship data, and
+recent participation as reviewable candidates, while retaining the project
+editor's explicit decision about who is included this year. This avoids
+hardcoding personal categories and prevents one-time collaborators from being
+automatically provisioned or contacted in later projects.
+
 Future email and archive-recovery work should begin with discovery rather than
 automatic ingestion: identify video attachments and relevant file-sharing links
 with their sender and date, especially for gaps in the early archive. A

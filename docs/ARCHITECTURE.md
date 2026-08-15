@@ -277,11 +277,6 @@ is not sufficient protection.
 
 ## Questions for review
 
-- Which Neon views are contractual interfaces for the application and must be
-  documented before database modernization?
-- Which entities distinguish family members, friends, contributors, and
-  tree-visible members today? The tree filters by membership/relationship data,
-  but the intended product rule should be named explicitly.
 - Should provider token storage remain strictly local for desktop OAuth, with a
   distinct credential strategy for hosted automation?
 

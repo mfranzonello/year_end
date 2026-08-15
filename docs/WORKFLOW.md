@@ -54,10 +54,21 @@ relationships, household membership, profile images, and contact/sharing
 information current. Births, adoptions, marriages, and other changes can alter
 both the family-tree presentation and the fairness checks used in the YIR.
 
+Tree and editorial scope are dynamic: the configured founder anchors the family
+relationship traversal, and people outside that relationship may be included
+when their actual project appearances warrant it. This should not require a
+permanent label such as "friend" or "contributor" on every person.
+
 For a new year, create the project records and required OneDrive/Google Drive
 folders, obtain their provider sharing links, and send those links to the
 appropriate participants. The annual kickoff and follow-up messages should be
 drafted and reviewed before group delivery.
+
+Folder creation and reminders need a separate yearly participant plan. A prior
+year's folders and contributors are useful candidates for that plan, not an
+automatic template: a guest contributor who participated once should not
+receive a new folder or reminder until the project editor intentionally includes
+them for the new year.
 
 ### 2. Collect media from where contributors already are
 

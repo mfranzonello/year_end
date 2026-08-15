@@ -76,6 +76,10 @@
 - Keep family-tree membership distinct from broader people or contributor data;
   a person in the database must not appear in the tree unless intentionally
   included.
+- Do not impose a permanent family/friend/contributor classification merely to
+  drive a yearly workflow. Preserve founder-relative and appearance-derived
+  scope; model folder provision and reminder eligibility as explicit,
+  project-specific decisions or configuration.
 - Prefer actionable errors and structured outcomes over silent fallbacks.
 
 ## Git workflow
