@@ -147,8 +147,9 @@ until a separate supported API capability is verified against the account.
 
 Design a configurable submission-scoring system that can consider the number
 of submitted files, submission timing, and media quality. The intended outcome
-is transparent participation insight in Streamlit pages and graphs, not an
-opaque ranking mechanism.
+is friendly competition that motivates family members to submit more material,
+submit earlier, and improve media quality. Streamlit should present explainable
+scores, progress, and leaderboards rather than an opaque ranking mechanism.
 
 Begin with a versioned YAML scoring definition for weights and rules, then
 decide whether the score can be derived live from submission data or needs an
