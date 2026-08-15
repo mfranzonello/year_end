@@ -62,6 +62,14 @@ workflow after collection—not forcing every contributor to change how they
 share media. Text-message media remains a deliberately discouraged source when
 its delivery path degrades quality.
 
+Future email and archive-recovery work should begin with discovery rather than
+automatic ingestion: identify video attachments and relevant file-sharing links
+with their sender and date, especially for gaps in the early archive. A
+reviewed trusted-contributor model can then allow selected senders to be
+collected automatically, while unknown senders and ambiguous messages remain
+for review. This should support both the current YIR cycle and recovery of
+historical material without treating the inbox as an unrestricted media source.
+
 Open design questions:
 
 - How to transfer large media files between Google Drive and OneDrive without
