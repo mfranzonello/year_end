@@ -152,10 +152,14 @@ choosing an interaction that directs playback to a different clip. The existing
 home for this capability and future Vimeo publishing/update work.
 
 This is an exploratory product track, not a replacement for the canonical
-linear YIR or an automatic extension of the Vimeo upload workflow. Before
-implementation, define the intended viewer experience, clip/branch data model,
-hosting/player capability, transition behavior, and any viewing analytics with
-appropriate privacy boundaries.
+linear YIR or an automatic extension of the Vimeo upload workflow. Design it
+as a generic player that can load any project year marked as interactive. The
+database should provide a provider-neutral, project-year-level capability and
+reference to the interaction definition; it must not infer interactivity from a
+Vimeo record, filename, or hardcoded year. Before implementation, define the
+intended viewer experience, clip/branch data model, hosting/player capability,
+transition behavior, and any viewing analytics with appropriate privacy
+boundaries.
 
 ### 3b. Submission scoring and participation insights
 
