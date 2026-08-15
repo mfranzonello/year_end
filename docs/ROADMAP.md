@@ -156,10 +156,12 @@ linear YIR or an automatic extension of the Vimeo upload workflow. Design it
 as a generic player that can load any project year marked as interactive. The
 database should provide a provider-neutral, project-year-level capability and
 reference to the interaction definition; it must not infer interactivity from a
-Vimeo record, filename, or hardcoded year. Before implementation, define the
-intended viewer experience, clip/branch data model, hosting/player capability,
-transition behavior, and any viewing analytics with appropriate privacy
-boundaries.
+Vimeo record, filename, or hardcoded year. Vimeo's interactive-video offering
+is not currently a viable dependency at the required pricing tier, so plan to
+build the interaction/player layer independently while keeping any Vimeo use
+optional. Before implementation, define the intended viewer experience,
+clip/branch data model, hosting/player capability, transition behavior, and any
+viewing analytics with appropriate privacy boundaries.
 
 ### 3b. Submission scoring and participation insights
 
