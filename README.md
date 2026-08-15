@@ -1,0 +1,133 @@
+# Year End
+
+Year End is a family media workflow for building annual Year in Review (YIR)
+videos. It organizes submissions from multiple sources, records media and
+editorial information in Postgres, helps balance representation across a large
+family, and presents progress through Streamlit dashboards.
+
+The same relationship data also powers an in-progress family-tree experience.
+The tree belongs here because it is not only a visual project: family and
+household relationships help plan a fair, balanced Year in Review.
+
+## What it does today
+
+- Reconciles local, synchronized Google Drive and OneDrive media folders.
+- Finds likely duplicate media and moves it to a quarantine location.
+- Records folders, files, ratings, dates, durations, resolutions, and usage in
+  Neon Postgres.
+- Extracts local media metadata with XMP, Hachoir, and OpenCV.
+- Supports local Adobe Bridge and Premiere workflows for reviewing, importing,
+  labeling, and measuring appearances in a review project.
+- Provides Streamlit dashboards for submission status, growth, and timeline
+  representation.
+- Traverses family relationships and contains an experimental Graphviz tree
+  renderer.
+- Includes authenticated, read-first Microsoft Graph/OneDrive and Google Drive
+  API clients.
+
+## Project direction
+
+The current media path is largely local-first: cloud folders are synchronized
+to disk, then inspected and moved locally. The project is moving toward
+cloud-first operations where possible, while keeping Adobe Bridge/Premiere and
+file-level media inspection local when they require installed desktop software
+or local media files.
+
+Near-term work includes cloud-native folder operations, friend/family
+onboarding, Streamlit/Vimeo improvements, and family-tree refinement. See the
+[roadmap](docs/ROADMAP.md) and [architecture guide](docs/ARCHITECTURE.md) for
+the fuller picture.
+
+## Requirements
+
+- Python 3.14 (the current project runtime).
+- A Neon Postgres database with the expected family and project schemas.
+- Local secrets and configuration for whichever capabilities you run.
+- For local media workflows: synchronized storage folders and, where needed,
+  Google Drive, browsers, and Adobe applications.
+
+`requirements.txt` is deliberately the minimal dependency set for the Streamlit
+application. `requirements_full.txt` adds local media, desktop, ingestion, and
+integration dependencies.
+
+## Setup
+
+Create and activate a virtual environment, then choose the appropriate
+dependency set:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+
+# Streamlit/dashboard environment
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+# Local media and desktop workflow environment
+.\.venv\Scripts\python.exe -m pip install -r requirements_full.txt
+```
+
+Create local secret files from your own credentials; do not commit them:
+
+- `.secrets/secrets.toml` for the local CLI and expanded integrations.
+- `.streamlit/secrets.toml` for the narrower Streamlit deployment environment.
+
+The checked-in TOML files under `config/` describe non-secret endpoints,
+locations, and provider settings. Adapt them for your own environment rather
+than hardcoding paths or URLs in Python.
+
+## Running the project
+
+Start the dashboard:
+
+```powershell
+.\.venv\Scripts\streamlit.exe run display.py
+```
+
+Inspect the media CLI options:
+
+```powershell
+.\.venv\Scripts\python.exe main.py --help
+```
+
+The media CLI defaults to a dry run. Use `--apply` only after reviewing the
+planned work:
+
+```powershell
+.\.venv\Scripts\python.exe main.py --gdrive --dry-run
+.\.venv\Scripts\python.exe main.py --gdrive --apply
+```
+
+Run the local OAuth connectivity checks (they are read-only after sign-in):
+
+```powershell
+.\.venv\Scripts\python.exe -m tests.integration.check_onedrive --login
+.\.venv\Scripts\python.exe -m tests.integration.check_google_drive --login
+```
+
+## Repository map
+
+| Path | Purpose |
+| --- | --- |
+| `main.py` | Local media ingestion, reconciliation, inspection, and cleanup CLI. |
+| `compile.py` | Local Premiere/audio workflow CLI. |
+| `display.py`, `pages/`, `charting/` | Streamlit dashboard application. |
+| `database/` | SQLAlchemy/Postgres access grouped by project domain. |
+| `repositories/` | Media and database workflow orchestration. |
+| `integrations/` | Provider-specific OAuth and API clients. |
+| `family_tree/` | Relationship traversal, image support, and tree rendering. |
+| `adobe/` | Local Bridge, Premiere, and audio helpers. |
+| `scraping/` | Browser-driven shared-album ingestion. |
+| `tests/` | Reusable manual and automated checks. |
+
+## Data and privacy
+
+This repository is designed around private family data. Keep credentials,
+tokens, media, contact information, and database exports out of Git. Neon is
+the authoritative record; future family-facing applications should use a
+scoped, authenticated API rather than direct database access or duplicated
+data.
+
+## Contributing and project conventions
+
+See [AGENTS.md](AGENTS.md) for the repository’s development, testing, privacy,
+database, and Git conventions.
