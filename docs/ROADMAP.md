@@ -121,6 +121,19 @@ scraping and Adobe work. GitHub Actions may expose reviewed manual controls via
 workflow inputs, but should not become a substitute for an authenticated admin
 application.
 
+### Cross-cutting: identity and permissions
+
+Introduce authentication before making Streamlit pages available to people
+outside the project editor. Start with a small role-based model:
+
+- **Reader:** view-only access to specifically approved Streamlit pages.
+- **Administrator:** access to all approved pages and guarded editing actions.
+
+Administrators are an explicit allowlist, initially containing only the project
+owner. Future relatives may be added deliberately, with permissions refined as
+their real workflows require. The authorization check must be enforced on the
+server-side action/API, not solely by the interface.
+
 ### 4. Family tree presentation
 
 Finish the separate family-tree experience using the existing database. It is

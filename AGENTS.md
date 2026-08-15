@@ -25,6 +25,10 @@
 - Administrative GUI actions are limited to an explicit administrator allowlist,
   currently containing only the project owner. Do not introduce family-facing
   write access or generalized roles unless explicitly requested.
+- Treat authentication and authorization as distinct concerns. The initial
+  authorization model has read-only access to explicitly approved Streamlit
+  pages and administrator access to all pages plus guarded edits; refine this
+  only for concrete future use cases.
 - Neon is the authoritative family record. Other applications should consume
   deliberately scoped APIs rather than direct database access or duplicate data.
 

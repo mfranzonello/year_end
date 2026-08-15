@@ -237,6 +237,22 @@ static front end, but it would need to call a separate authenticated API; it
 must never connect directly to Neon or expose provider credentials in browser
 code.
 
+## Identity and permissions
+
+Authentication establishes who is using a hosted surface; authorization decides
+what that person can see or change. The initial model is intentionally small:
+
+| Permission tier | Access |
+| --- | --- |
+| Reader | View only the Streamlit pages explicitly approved for that audience. No database, storage, or workflow writes. |
+| Administrator | View all approved pages and perform guarded administrative actions. Administrators are an explicit allowlist, currently containing only the project owner. |
+
+This is the beginning of role-based access control, not a commitment to a broad
+enterprise IAM system. New roles or granular permissions should be added only
+when a concrete trusted-user workflow requires them. Every server-side write
+must independently enforce the same authorization policy; hiding a UI control
+is not sufficient protection.
+
 ## Questions for review
 
 - Which Neon views are contractual interfaces for the application and must be
