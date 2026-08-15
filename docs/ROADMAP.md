@@ -43,6 +43,25 @@ Current integrations to build on:
 - Google Drive: authenticated and able to inspect the drive.
 - Neon Postgres: project database.
 
+Media intake must meet contributors where they already work; a single required
+upload path would exclude useful family material. Support and gradually improve
+adapters for:
+
+- OneDrive and Google Drive shared files and folders.
+- Email attachments, including inbox discovery, review, and download into the
+  normal ingestion flow.
+- Google Photos and iCloud Photos, which currently require trusted local,
+  browser-driven collection because their supported APIs do not cover this
+  workflow.
+- Reviewed external sources, such as YouTube and news sites where family may
+  appear. Investigate configurable monitoring and extraction where licensing,
+  site terms, and technical access allow it.
+
+The long-term goal is a consistent review, metadata, deduplication, and storage
+workflow after collection—not forcing every contributor to change how they
+share media. Text-message media remains a deliberately discouraged source when
+its delivery path degrades quality.
+
 Open design questions:
 
 - How to transfer large media files between Google Drive and OneDrive without
@@ -50,6 +69,8 @@ Open design questions:
 - Which metadata can be gathered remotely, and when a local download is needed
   for OpenCV or other file-level inspection.
 - Which cloud runtime will run scheduled or on-demand operations.
+- How a cloud orchestrator can queue and track browser-based local ingestion
+  work without moving personal browser profiles or credentials into the cloud.
 
 ### 2. Friend and family onboarding
 
