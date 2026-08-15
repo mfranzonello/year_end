@@ -89,12 +89,13 @@ The flow should eventually collect person details, accept or select a profile
 picture, store the appropriate database records, and place the asset in the
 right cloud location.
 
-This should be an authenticated administrative GUI restricted to the project
-owner. It must use a server-side API or equivalent write boundary rather than
-exposing direct Neon or cloud-provider credentials in a browser. A restricted
-Streamlit area is the likely first implementation; a GitHub Pages front end is
-possible only with a separate authenticated API behind it. Family-facing write
-access is out of scope unless explicitly added later.
+This should be an authenticated administrative GUI restricted to an explicit
+administrator allowlist, initially containing only the project owner. It must
+use a server-side API or equivalent write boundary rather than exposing direct
+Neon or cloud-provider credentials in a browser. A restricted Streamlit area is
+the likely first implementation; a GitHub Pages front end is possible only with
+a separate authenticated API behind it. Family-facing write access is out of
+scope unless explicitly added later.
 
 ### 3. Streamlit and Vimeo
 
