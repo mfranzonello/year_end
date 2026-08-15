@@ -6,6 +6,9 @@ Year End manages family media submitted for annual and occasional long-form
 reviews, records the media and editorial state in Neon Postgres, produces
 Streamlit dashboards, and supports relationship-aware family-tree work.
 
+For the human and recurring production process that this code supports, see the
+[operational workflow](WORKFLOW.md).
+
 The repository currently combines cloud-backed storage with local filesystem
 and Adobe workflows. The intended direction is cloud-first for storage and
 database operations; Adobe Bridge and Premiere remain local-only.
@@ -232,9 +235,6 @@ expansion area.
 
 ## Follow-up observations
 
-- `integrations/google_drive/auth.py` and `client.py` currently include
-  `from __future__ import annotations`; remove it in a future focused cleanup to
-  match `AGENTS.md`.
 - Several existing modules lack the module/function documentation standard now
   recorded in `AGENTS.md`. Improve documentation incrementally as those modules
   are changed rather than performing a mechanical rewrite.
