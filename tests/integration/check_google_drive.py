@@ -1,7 +1,5 @@
 """Authenticate to Google Drive and list root-level items without making changes."""
 
-from __future__ import annotations
-
 import argparse
 
 from integrations.google_drive.auth import GoogleAuthError

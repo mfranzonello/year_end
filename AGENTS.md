@@ -8,8 +8,8 @@
   techniques so the author can understand and maintain the code.
 - Follow the existing folder structure. Put new modules in the appropriate
   functional package; do not create a generic catch-all folder.
-- Production scripts must be reusable. `test.py` is the exception for temporary
-  local experiments.
+- Production scripts must be reusable. Reusable checks and test scripts belong
+  under `tests/`; `test.py` is the exception for temporary local experiments.
 
 ## Configuration, privacy, and external systems
 
@@ -50,6 +50,11 @@
   OS-specific dependencies or behavior.
 - Pin dependencies and minimize additions. Install project dependencies only in
   virtual environments, never in the global interpreter.
+- Whenever code adds an external dependency, update the appropriate requirements
+  file in the same change. `requirements.txt` is strictly the minimal set needed
+  by the deployed Streamlit app; dependencies used only by local, integration,
+  ingestion, media, or other non-Streamlit code belong in `requirements_full.txt`.
+  Python standard-library imports need no requirements entry.
 
 ## Quality and edge cases
 

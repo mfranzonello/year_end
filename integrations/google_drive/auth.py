@@ -1,7 +1,5 @@
 """OAuth 2.0 with PKCE for the project's local Google Drive client."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path

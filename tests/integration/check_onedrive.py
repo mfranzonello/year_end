@@ -1,7 +1,5 @@
 """Authenticate with Microsoft Graph and inspect the OneDrive root without making changes."""
 
-from __future__ import annotations
-
 import argparse
 
 from integrations.onedrive.auth import MicrosoftAuthError

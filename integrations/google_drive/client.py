@@ -1,7 +1,5 @@
 """Read-first Google Drive API client."""
 
-from __future__ import annotations
-
 from typing import Any
 from urllib.error import HTTPError
 from urllib.parse import urlencode

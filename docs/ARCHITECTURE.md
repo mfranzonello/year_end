@@ -18,7 +18,7 @@ database operations; Adobe Bridge and Premiere remain local-only.
 | Premiere/audio CLI | `compile.py` | Prepare review projects, import rated clips, set labels, record appearances/chapters, and obtain music/captions. | Local-only; depends on Adobe/Premiere and local files. |
 | Streamlit app | `display.py`, `pages/` | Family-facing dashboard home, YIR status, growth, and appearance timeline. | Cloud-capable. |
 | Tree exploration | `tree.py` | Current developer script for inspecting relationships and experimenting with Graphviz output. | Local/developer tool. |
-| Provider checks | `onedrive_check.py`, `google_drive_check.py` | Explicit OAuth and read-only connectivity checks. | Local OAuth bootstrap. |
+| Provider checks | `tests/integration/check_onedrive.py`, `tests/integration/check_google_drive.py` | Explicit OAuth and read-only connectivity checks. | Local OAuth bootstrap. |
 | Local scratch | `test.py` | Ignored, disposable database checks. | Local only. |
 
 ## High-level data flow
@@ -127,6 +127,8 @@ Both integrations use credentials from the local secrets mechanism and store
 renewable local tokens under `.secrets/auths/tokens/<provider>/token.json`.
 The existing clients are intentionally read-first; write/move/delete operations
 remain future work and must use the external-action safeguards in `AGENTS.md`.
+They currently use only the Python standard library and therefore add no
+requirements-file dependency.
 
 ### `scraping/`
 
@@ -191,6 +193,9 @@ expansion area.
 - `requirements.txt` is the Streamlit/cloud baseline.
 - `requirements_full.txt` includes the local media, desktop, and scraping
   dependencies in addition to the baseline.
+- `tests/integration/` contains reusable, manual OAuth connectivity checks. Run
+  them as modules (for example, `python -m tests.integration.check_onedrive`)
+  so the repository root remains importable.
 - The standard project runtime is the Python 3.14 `.venv`. The requirements file
   retains a distutils compatibility shim for Pymiere on Python 3.12+.
 
