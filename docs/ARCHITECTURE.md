@@ -231,9 +231,10 @@ forcing every operation into one hosted application:
 
 An administrative GUI for actions such as adding a person or changing a profile
 photo needs an authenticated server-side write boundary. It may begin as a
-role-restricted Streamlit area. A GitHub Pages site could later provide a static
-front end, but it would need to call a separate authenticated API; it must never
-connect directly to Neon or expose provider credentials in browser code.
+single-administrator Streamlit area, restricted to the project owner. A GitHub
+Pages site could later provide a static front end, but it would need to call a
+separate authenticated API; it must never connect directly to Neon or expose
+provider credentials in browser code.
 
 ## Questions for review
 

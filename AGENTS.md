@@ -22,6 +22,8 @@
 - Group email or broadcast messages require a draft and explicit user approval
   before sending. Routine personalized operational messages may be automated
   only after their trigger, recipients, and wording are agreed.
+- Administrative GUI actions are single-administrator only. Do not introduce
+  family-facing write access or generalized roles unless explicitly requested.
 - Neon is the authoritative family record. Other applications should consume
   deliberately scoped APIs rather than direct database access or duplicate data.
 
