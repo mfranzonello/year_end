@@ -165,6 +165,21 @@ cannot be met. Before implementation, define the intended viewer experience,
 clip/branch data model, hosting/player capability, transition behavior, and any
 viewing analytics with appropriate privacy boundaries.
 
+The first designs cover two related, but materially different, experiences:
+
+- **Whole-video variants:** choose or randomly deliver one complete version of
+  a project-year video. Variants may differ primarily in their opening or
+  closing while the main content remains shared.
+- **Branching narrative:** let a viewer's choices control movement through one
+  timeline or a sequence of partial clips, with defined paths and transitions.
+
+Begin with shared project-year discovery, asset references, access control, and
+analytics only where they genuinely apply to both. The playback strategies may
+be separate modules if that is clearer than one overly abstract player. Model
+the interaction type as extensible data/configuration rather than a closed
+application-level list, so later formats can be added without rewriting the
+selection logic.
+
 ### 3b. Submission scoring and participation insights
 
 Design a configurable submission-scoring system that can consider the number
