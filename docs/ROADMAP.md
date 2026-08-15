@@ -180,6 +180,13 @@ the interaction type as extensible data/configuration rather than a closed
 application-level list, so later formats can be added without rewriting the
 selection logic.
 
+Open architecture decision: a whole-video variant could eventually be expressed
+as a limited-branch path through a shared timeline, reducing duplicated media.
+That may be worth pursuing if the authoring and hosting costs are justified, but
+it is equally valid to preserve separate variant and branching paths. Do not
+commit to a future Clue-style-to-Bandersnatch-style migration until a concrete
+use case establishes the tradeoff.
+
 ### 3b. Submission scoring and participation insights
 
 Design a configurable submission-scoring system that can consider the number
