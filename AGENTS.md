@@ -46,7 +46,9 @@
 - Treat free-form database `notes` fields as maintainer-only annotations. Do not
   use them for relational logic, automation decisions, public/family-facing
   output, or general application views; expose them only in intentionally
-  private debugging/maintenance surfaces.
+  private debugging/maintenance surfaces. A `notes` column must be safely
+  droppable without breaking database/application behavior; flag any observed
+  dependency on one for explicit redesign.
 - Before any schema migration or destructive database change, identify affected
   tables, views, queries, and integrations; provide an impact check, validation,
   and rollback plan.
