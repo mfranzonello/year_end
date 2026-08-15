@@ -105,6 +105,30 @@ product/UI focused rather than a local-to-cloud migration.
 Potential areas include clearer dashboard outputs, better navigation and
 presentation, and more complete Vimeo metadata or publishing workflows.
 
+The Vimeo publishing workflow should be explicit and revision-safe:
+
+- Create the yearly placeholder video at the appropriate point in the cycle,
+  persist its Vimeo identity, and preserve its stable viewer link through later
+  updates.
+- Set the title from a configurable yearly pattern; keep descriptions editable
+  because their content varies by year.
+- Apply the intended initial privacy setting, and support a deliberate change
+  when publication is approved.
+- Treat a configured OneDrive `current version` location as the promotion
+  signal for upload/update. Local Premiere exports elsewhere remain review or
+  test artifacts and must not trigger a Vimeo update.
+- Monitor the promoted location, validate that a complete export is ready, and
+  show a preview/approval step before replacing the Vimeo video.
+- Upload the yearly caption file after converting the locally produced SRT to
+  the format required by the Vimeo API, and activate it only after verification.
+- Preserve/update the publication record and collect Vimeo viewing statistics.
+
+Chapter markers already defined in Premiere should be carried forward as far as
+Vimeo's supported interfaces permit. Do not assume the documented Vimeo
+text-track API can create chapters: it explicitly supports caption/subtitle
+tracks but not chapter tracks. Keep manual chapter entry as the safe baseline
+until a separate supported API capability is verified against the account.
+
 ### Cross-cutting: workflow automation and operations UI
 
 The current CLI and `common.console` status output remain necessary for running

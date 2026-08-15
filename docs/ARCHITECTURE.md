@@ -173,7 +173,9 @@ Relationship traversal and rendering work built on the same Neon family data.
 
 `vimeo.py` fetches the authenticated user's Vimeo videos and derives publishing
 statistics for review folders. It is a narrow initial integration and a planned
-expansion area.
+expansion area. The target workflow is a deliberate promotion from a configured
+OneDrive "current version" location to one stable Vimeo video, not automatic
+publication of every local Premiere export.
 
 ## Current media lifecycle
 
@@ -260,8 +262,6 @@ is not sufficient protection.
 - Which entities distinguish family members, friends, contributors, and
   tree-visible members today? The tree filters by membership/relationship data,
   but the intended product rule should be named explicitly.
-- Which Vimeo operations are already used outside `playback/vimeo.py`, and which
-  future actions are desired (inventory, upload, folders, publishing, stats)?
 - Should provider token storage remain strictly local for desktop OAuth, with a
   distinct credential strategy for hosted automation?
 
