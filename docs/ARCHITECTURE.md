@@ -20,7 +20,7 @@ database operations; Adobe Bridge and Premiere remain local-only.
 | Media lifecycle CLI | `main.py` | Copy, inspect, deduplicate, purge, and summarize submitted media; update profile images. | Primarily local today. |
 | Premiere/audio CLI | `compile.py` | Prepare review projects, import rated clips, set labels, record appearances/chapters, and obtain music/captions. | Local-only; depends on Adobe/Premiere and local files. |
 | Streamlit app | `display.py`, `pages/` | Family-facing dashboard home, YIR status, growth, and appearance timeline. | Cloud-capable. |
-| Tree exploration | `tree.py` | Current developer script for inspecting relationships and experimenting with Graphviz output. | Local/developer tool. |
+| Tree exploration | `tree.py` | Exploratory developer script for inspecting relationships and resolving Graphviz layout issues; not a long-term CLI. | Local/developer tool. |
 | Provider checks | `tests/integration/check_onedrive.py`, `tests/integration/check_google_drive.py` | Explicit OAuth and read-only connectivity checks. | Local OAuth bootstrap. |
 | Local scratch | `test.py` | Ignored, disposable database checks. | Local only. |
 
@@ -162,7 +162,8 @@ Relationship traversal and rendering work built on the same Neon family data.
   configured founder, and filters tree membership by animal, date, entry, and
   deceased status.
 - `tree_maker.py` is the experimental Graphviz renderer for the desired visual
-  family-tree layout.
+  family-tree layout. Its relationship traversal is a foundation for the future
+  Streamlit explorer; visual legibility is the principal remaining issue.
 - `cloudinary_lite.py` constructs public profile-image URLs for dashboards and
   tree output.
 - `cloudinary_heavy.py` uses Cloudinary management APIs to create or update
@@ -224,8 +225,6 @@ expansion area.
 - Which entities distinguish family members, friends, contributors, and
   tree-visible members today? The tree filters by membership/relationship data,
   but the intended product rule should be named explicitly.
-- Is `tree.py` intended to become a maintained CLI, or remain an exploratory
-  developer script while the Streamlit family-tree page is built?
 - Which Vimeo operations are already used outside `playback/vimeo.py`, and which
   future actions are desired (inventory, upload, folders, publishing, stats)?
 - What is the intended cloud execution surface: Streamlit only, GitHub Actions,

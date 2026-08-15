@@ -112,8 +112,12 @@ Finish the separate family-tree experience using the existing database. It is
 not part of the media or folder workflow, but it can reuse the people and
 relationship data already stored in Neon.
 
-Focus on the desired visual style and resolve the remaining rendering/data
-issues.
+The intended maintained surface is a Streamlit page where a user can select any
+person from the `persons` table and explore their parents, spouses, children,
+pets, and other relevant relationships. Existing traversal methods and the
+`tree.py` developer script are exploratory foundations, not a long-term CLI.
+Focus on the desired visual style, readability at family scale, and remaining
+rendering/data issues.
 
 ### 5. Database modernization
 
