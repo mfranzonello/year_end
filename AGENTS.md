@@ -104,3 +104,7 @@
 - The agent stages and commits intentional changes.
 - Do not push, create a pull request, or otherwise publish externally unless
   the user explicitly requests it.
+- When asked to resync after user-authored changes, inspect the working tree,
+  relevant Git history, requirements files, and current database schema before
+  editing documentation. Do not overwrite or reinterpret user changes whose
+  purpose is unclear; ask a focused question instead.

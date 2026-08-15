@@ -37,7 +37,9 @@ Near-term work includes cloud-native folder operations, friend/family
 onboarding, Streamlit/Vimeo improvements, and family-tree refinement. See the
 [operational workflow](docs/WORKFLOW.md), [roadmap](docs/ROADMAP.md),
 [architecture guide](docs/ARCHITECTURE.md), and [schema guide](docs/SCHEMA.md)
-for the fuller picture.
+for the fuller picture. See the [maintenance guide](docs/MAINTENANCE.md) for
+the lightweight process used when owner-authored code or schema changes need to
+be reconciled.
 
 ## Requirements
 
