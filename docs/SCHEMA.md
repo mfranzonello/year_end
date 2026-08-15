@@ -52,6 +52,15 @@ use the appropriate `tree` view/membership rules.
 
 ## `public`: people and direct relationships
 
+### Maintainer notes
+
+Free-form `notes` columns in family/core data are maintenance annotations: they
+explain historical decisions, anomalies, or follow-up work to the project
+maintainer. They are not business data. Application queries, derived views,
+automation, and family-facing outputs must not rely on or display them; the
+only permitted exposure is an intentionally private `_debugging` or maintenance
+surface.
+
 ### `persons`
 
 Core person identity record.

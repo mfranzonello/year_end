@@ -43,6 +43,10 @@
   materialized views or stale, disconnected calculation tables.
 - Use `NULL`/`None` for missing data instead of empty-string or zero sentinels,
   unless an actual value is required.
+- Treat free-form database `notes` fields as maintainer-only annotations. Do not
+  use them for relational logic, automation decisions, public/family-facing
+  output, or general application views; expose them only in intentionally
+  private debugging/maintenance surfaces.
 - Before any schema migration or destructive database change, identify affected
   tables, views, queries, and integrations; provide an impact check, validation,
   and rollback plan.
