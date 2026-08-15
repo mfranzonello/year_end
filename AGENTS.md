@@ -15,6 +15,10 @@
 
 - Do not hardcode family-specific names, database names, paths, credentials, or
   mutable URLs. Use the existing configuration and secrets mechanisms.
+- Keep persistent database models provider-neutral when the underlying concept
+  is portable. Model the current canonical repository through relationships and
+  configuration, not vendor-branded column names, unless an attribute truly
+  exists only for that vendor.
 - Never print, commit, or place secrets or private family/contact information in
   logs, examples, generated documentation, or test fixtures.
 - Treat cloud storage, email, and database writes as external actions. Inspect
