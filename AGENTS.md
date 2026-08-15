@@ -19,6 +19,9 @@
   logs, examples, generated documentation, or test fixtures.
 - Treat cloud storage, email, and database writes as external actions. Inspect
   safely first; use dry runs or previews where possible.
+- Do not treat a GitHub Actions secret as a mutable token database. Hosted OAuth
+  tokens need a deliberately chosen, renewable secret-storage design with
+  rotation, revocation, and least-privilege access controls.
 - Group email or broadcast messages require a draft and explicit user approval
   before sending. Routine personalized operational messages may be automated
   only after their trigger, recipients, and wording are agreed.

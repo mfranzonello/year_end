@@ -135,6 +135,10 @@ remain future work and must use the external-action safeguards in `AGENTS.md`.
 They currently use only the Python standard library and therefore add no
 requirements-file dependency.
 
+Local token caching is a desktop-development mechanism, not the final hosted
+credential model. GitHub Actions will require a separately designed renewable
+token store before it performs provider writes or scheduled work.
+
 ### `scraping/`
 
 Browser-driven import of shared Google Photos and iCloud albums. `main.py`
@@ -238,6 +242,22 @@ containing only the project owner. A GitHub Pages site could later provide a
 static front end, but it would need to call a separate authenticated API; it
 must never connect directly to Neon or expose provider credentials in browser
 code.
+
+### Hosted provider credentials
+
+GitHub environment secrets can bootstrap values such as OAuth client IDs,
+client secrets, and a manually authorized refresh token, but they are not a
+durable mutable token store. A workflow run can refresh an access token in
+memory; it cannot safely rely on silently replacing a rotating refresh token in
+GitHub secrets.
+
+The target model is a managed secret store chosen with the hosted runtime. A
+GitHub Actions workflow authenticates to it with tightly scoped GitHub OIDC,
+reads the provider token record, refreshes it as needed, and atomically stores
+the resulting renewable state. The design needs explicit provider scopes,
+encryption, access policy, rotation/revocation, auditability, reauthorization,
+and a failure path that asks the project owner to reconnect rather than leaking
+or improvising credentials.
 
 ## Identity and permissions
 
