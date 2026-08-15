@@ -68,6 +68,15 @@ product/UI focused rather than a local-to-cloud migration.
 Potential areas include clearer dashboard outputs, better navigation and
 presentation, and more complete Vimeo metadata or publishing workflows.
 
+### Cross-cutting: workflow automation and operations UI
+
+The current CLI and `common.console` status output remain necessary for running
+the local workflow. Over time, reduce the need for manual CLI operation by
+turning safe, repeatable steps into automation and exposing appropriate status,
+review, and action controls through a GUI. This may extend Streamlit or use a
+separate operational interface; the design should distinguish work that can run
+automatically from external or destructive actions that still require review.
+
 ### 4. Family tree presentation
 
 Finish the separate family-tree experience using the existing database. It is
