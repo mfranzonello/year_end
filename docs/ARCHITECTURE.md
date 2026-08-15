@@ -83,7 +83,9 @@ Database access is organized by domain over a shared SQLAlchemy/psycopg engine.
 
 The code refers to schemas including `project`, `config`, `ingestion`, `tree`,
 `publishing`, and `nello`. Actual table/view definitions live in Neon rather
-than this repository, so schema changes require an explicit impact audit.
+than this repository. See [the schema guide](SCHEMA.md) for the documented
+application-facing inventory; schema changes still require an explicit impact
+audit.
 
 ### `repositories/`
 

@@ -35,8 +35,8 @@ or local media files.
 
 Near-term work includes cloud-native folder operations, friend/family
 onboarding, Streamlit/Vimeo improvements, and family-tree refinement. See the
-[roadmap](docs/ROADMAP.md) and [architecture guide](docs/ARCHITECTURE.md) for
-the fuller picture.
+[roadmap](docs/ROADMAP.md), [architecture guide](docs/ARCHITECTURE.md), and
+[schema guide](docs/SCHEMA.md) for the fuller picture.
 
 ## Requirements
 
