@@ -168,6 +168,12 @@ changing the `nello.founder` configuration.
 
 ## `project`: media and Year-in-Review state
 
+`project` describes the canonical OneDrive media library only. Google Drive,
+Google Photos, iCloud, email, and other sources feed material into that library
+but are not alternate project-file inventories; their source metadata belongs
+in ingestion-oriented structures. Project folder summaries, duplicate analysis,
+and editorial views rely on this single-repository boundary.
+
 ### `folders`
 
 Represents a project-year media folder.
@@ -186,6 +192,11 @@ subject, not necessarily the literal uploader. For example, an animal-linked
 folder can hold scenes filmed by a person but organized separately so those
 clips do not inflate that person's general submission count.
 
+For cloud-native operation, add the canonical OneDrive item identity to the
+folder record (at minimum an opaque item ID, plus a drive/repository identifier
+where more than one drive is possible). This is the durable lookup key for
+inventory and moves; it is not inferred from a path or share URL.
+
 ### `files`
 
 Represents a discovered media file within a project folder.
@@ -199,17 +210,21 @@ Represents a discovered media file within a project folder.
 identity is `(folder_id, file_name, subfolder_name)`, with nulls treated as
 equal. Ratings are constrained to 0 through 5.
 
+When individual cloud-file operations are introduced, store the corresponding
+canonical OneDrive item ID here as well. It lets the system inspect, move, or
+create a share link for a known file without repeatedly searching the drive by
+name/path.
+
 ### Supporting tables and views
 
 - `sources`: named non-person/animal submission sources.
 - `shares`: maps a folder to an `ingestion.repositories` provider record and a
   share URL; it is the likely persistence point for the future OneDrive sharing
-  link workflow. Evolve it, or replace it with a clearly named provider-location
-  table, to retain opaque provider identifiers (for example drive/repository and
-  item IDs) as well as share URLs. Keep `project.folders` as the logical folder
-  identity: one logical folder can have multiple provider locations during a
-  Google Drive-to-OneDrive migration, so a OneDrive-specific column there would
-  be too narrow.
+  link workflow. Keep it as a share-pointer/capability record, not the primary
+  item-location record: sharing links can be revoked, recreated, or vary by
+  audience. Consider extending it to represent the appropriate folder/file
+  target and sharing metadata while canonical OneDrive IDs live on the project
+  folder/file records.
 - `appearances` and `chapters`: Premiere-derived editorial output.
 - `duplicates` and `duplicates_summary`: duplicate-detection views.
 - `folders_summary` and `years_summary`: dashboard-facing aggregate views.
