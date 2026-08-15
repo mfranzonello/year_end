@@ -143,6 +143,21 @@ text-track API can create chapters: it explicitly supports caption/subtitle
 tracks but not chapter tracks. Keep manual chapter entry as the safe baseline
 until a separate supported API capability is verified against the account.
 
+### 3a. Submission scoring and participation insights
+
+Design a configurable submission-scoring system that can consider the number
+of submitted files, submission timing, and media quality. The intended outcome
+is transparent participation insight in Streamlit pages and graphs, not an
+opaque ranking mechanism.
+
+Begin with a versioned YAML scoring definition for weights and rules, then
+decide whether the score can be derived live from submission data or needs an
+explicitly versioned score-run snapshot for performance/audit reasons. Do not
+create a disconnected score table that silently becomes stale when source files,
+ratings, or dates change. If persisted runs are needed, record the run time,
+rule/configuration version, source scope, and resulting score together so the
+dashboard can distinguish current calculation from historical results.
+
 ### Cross-cutting: workflow automation and operations UI
 
 The current CLI and `common.console` status output remain necessary for running
