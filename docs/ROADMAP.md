@@ -210,6 +210,19 @@ Start with read-only/cloud-safe operations and promote each provider to hosted
 writes only after its credentials, refresh behavior, and failure handling have
 been tested end to end.
 
+### Cross-cutting: configuration and source-of-truth review
+
+Review the current division of settings between YAML/TOML configuration and
+database-backed configuration. For each setting, decide whether it is:
+
+- versioned deployment/application configuration best kept in a repository file;
+- mutable operational/reference data best maintained in the database; or
+- versioned file configuration that should seed a queryable database table.
+
+When a file seeds a table, define a one-way source of truth, stable keys,
+validation, and version/checksum tracking. Do not introduce undirected two-way
+synchronization that leaves configuration drift or unclear precedence.
+
 ### 4. Family tree presentation
 
 Finish the separate family-tree experience using the existing database. It is
