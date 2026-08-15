@@ -87,10 +87,23 @@ Marriage record with `marriage_id`, `husband_id`, `wife_id`, `wedding_date`,
 and `wedding_date_precision`. The current schema encodes spouse roles in column
 names and has a primary key on `marriage_id`.
 
-This is a known database-modernization candidate. A future participant/junction
-model may represent spouses, same-sex marriages, divorce, remarriage, and
-relationship history more directly. Do not alter it without a migration plan
-for the `tree.marrieds` view and every dependent consumer.
+This is a known database-modernization candidate. A future model could use a
+`unions` record (`union_id`, type, start/end dates, and date precision) with a
+`union_participants` junction table linking exactly two `person_id` values to
+each union. That makes partner order/sex irrelevant, supports a broader set of
+pair relationships, and makes a marriage-only spouse view a simple derived
+interface.
+
+The junction table needs a composite primary key on `(union_id, person_id)` to
+prevent duplicate participants. The "exactly two" cardinality is a cross-row
+rule and cannot be safely expressed with a normal `CHECK`; enforce it with a
+deferred constraint trigger that validates affected unions at transaction
+commit, including a newly created union with zero participants. Creation and
+migration must insert the union and both participants in one transaction.
+
+Do not alter the existing model without a migration plan for the
+`tree.marrieds` view and every dependent consumer, a parallel derived-view
+comparison, and validation of the end-date/relationship-type semantics.
 
 ### `animals` and `pets`
 
