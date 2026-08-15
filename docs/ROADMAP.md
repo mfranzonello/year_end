@@ -89,6 +89,13 @@ The flow should eventually collect person details, accept or select a profile
 picture, store the appropriate database records, and place the asset in the
 right cloud location.
 
+This should be an authenticated administrative GUI, initially suitable for the
+project editor and later capable of role-based family access. It must use a
+server-side API or equivalent write boundary rather than exposing direct Neon
+or cloud-provider credentials in a browser. A role-restricted Streamlit area is
+the likely first implementation; a GitHub Pages front end is possible only with
+a separate authenticated API behind it.
+
 ### 3. Streamlit and Vimeo
 
 Improve the Streamlit experience and extend Vimeo integration. This work is
@@ -105,6 +112,13 @@ turning safe, repeatable steps into automation and exposing appropriate status,
 review, and action controls through a GUI. This may extend Streamlit or use a
 separate operational interface; the design should distinguish work that can run
 automatically from external or destructive actions that still require review.
+
+Execution model: use GitHub Actions for scheduled/manual cloud-native ingestion,
+cleanup, and reporting; use Streamlit for family-facing visualization and
+eventual authenticated administration; retain a local worker for browser-profile
+scraping and Adobe work. GitHub Actions may expose reviewed manual controls via
+workflow inputs, but should not become a substitute for an authenticated admin
+application.
 
 ### 4. Family tree presentation
 

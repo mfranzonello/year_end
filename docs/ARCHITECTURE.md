@@ -19,7 +19,7 @@ database operations; Adobe Bridge and Premiere remain local-only.
 | --- | --- | --- | --- |
 | Media lifecycle CLI | `main.py` | Copy, inspect, deduplicate, purge, and summarize submitted media; update profile images. | Primarily local today. |
 | Premiere/audio CLI | `compile.py` | Prepare review projects, import rated clips, set labels, record appearances/chapters, and obtain music/captions. | Local-only; depends on Adobe/Premiere and local files. |
-| Streamlit app | `display.py`, `pages/` | Family-facing dashboard home, YIR status, growth, and appearance timeline. | Cloud-capable. |
+| Streamlit app | `display.py`, `pages/` | Family-facing dashboard home, YIR status, growth, timeline, and the future relationship explorer. | Cloud-capable; authentication is a future requirement. |
 | Tree exploration | `tree.py` | Exploratory developer script for inspecting relationships and resolving Graphviz layout issues; not a long-term CLI. | Local/developer tool. |
 | Provider checks | `tests/integration/check_onedrive.py`, `tests/integration/check_google_drive.py` | Explicit OAuth and read-only connectivity checks. | Local OAuth bootstrap. |
 | Local scratch | `test.py` | Ignored, disposable database checks. | Local only. |
@@ -218,6 +218,23 @@ expansion area.
 | Adobe Bridge/Premiere | Local desktop applications | Keep local-only. |
 | Streamlit dashboards | Streamlit + Neon + Cloudinary | Cloud-capable; improve UX and Vimeo integration. |
 
+## Intended execution surfaces
+
+The target architecture combines three complementary surfaces rather than
+forcing every operation into one hosted application:
+
+| Surface | Intended use | Boundary |
+| --- | --- | --- |
+| Authenticated Streamlit | Family-facing data visualizations, including the family tree, and a possible first administrative UI. | Read access and administrative roles must be distinct before broader family access. |
+| GitHub Actions | Scheduled or manually triggered cloud-native ingestion, cleanup, inventory, and reporting jobs. | Jobs use repository/environment secrets and must not attempt local browser-profile or Adobe work. `workflow_dispatch` can provide controlled manual inputs. |
+| Local worker | Selenium/browser-profile collection and Adobe Bridge/Premiere operations. | A cloud service may queue or report this work, but cannot migrate the trusted local profiles or desktop applications. |
+
+An administrative GUI for actions such as adding a person or changing a profile
+photo needs an authenticated server-side write boundary. It may begin as a
+role-restricted Streamlit area. A GitHub Pages site could later provide a static
+front end, but it would need to call a separate authenticated API; it must never
+connect directly to Neon or expose provider credentials in browser code.
+
 ## Questions for review
 
 - Which Neon views are contractual interfaces for the application and must be
@@ -227,8 +244,6 @@ expansion area.
   but the intended product rule should be named explicitly.
 - Which Vimeo operations are already used outside `playback/vimeo.py`, and which
   future actions are desired (inventory, upload, folders, publishing, stats)?
-- What is the intended cloud execution surface: Streamlit only, GitHub Actions,
-  another hosted worker, or a combination?
 - Should provider token storage remain strictly local for desktop OAuth, with a
   distinct credential strategy for hosted automation?
 
