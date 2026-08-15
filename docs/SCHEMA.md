@@ -137,7 +137,10 @@ a semantic question for a later review, not a reason to change its cardinality.
 
 ### Other `public` objects
 
-- `friendships` records person-to-person friendship relationships.
+- `friendships` records person-to-person friendship relationships. It currently
+  contains zero rows. Its nullable ordered pair is a less normalized predecessor
+  of the proposed `unions`/`union_participants` model; if pairwise friendship
+  becomes a union type, retire it only after a full database dependency audit.
 - `display_names` is the display-facing view used by dashboards and profile
   image workflows.
 - `founder_id`, `generation_to_text`, and `suffix_to_text` are helper
@@ -158,6 +161,11 @@ a semantic question for a later review, not a reason to change its cardinality.
 These views are part of the effective application contract. Before changing
 core relationship tables, inspect their definitions and consumers.
 
+The current `tree` view definitions have no direct reference to the configured
+founder. Founder selection remains outside this schema, allowing tree structure
+to remain relationship-agnostic; trace indirect helper/view dependencies before
+changing the `nello.founder` configuration.
+
 ## `project`: media and Year-in-Review state
 
 ### `folders`
@@ -172,6 +180,11 @@ Represents a project-year media folder.
 The database allows at most one non-null value among `person_id`, `animal_id`,
 and `source_id`. `(project_year, media_type, folder_name)` is unique with nulls
 treated as equal. `media_type` references `config.media`.
+
+The optional person/animal/source link identifies the folder's project/editorial
+subject, not necessarily the literal uploader. For example, an animal-linked
+folder can hold scenes filmed by a person but organized separately so those
+clips do not inflate that person's general submission count.
 
 ### `files`
 
@@ -191,7 +204,12 @@ equal. Ratings are constrained to 0 through 5.
 - `sources`: named non-person/animal submission sources.
 - `shares`: maps a folder to an `ingestion.repositories` provider record and a
   share URL; it is the likely persistence point for the future OneDrive sharing
-  link workflow.
+  link workflow. Evolve it, or replace it with a clearly named provider-location
+  table, to retain opaque provider identifiers (for example drive/repository and
+  item IDs) as well as share URLs. Keep `project.folders` as the logical folder
+  identity: one logical folder can have multiple provider locations during a
+  Google Drive-to-OneDrive migration, so a OneDrive-specific column there would
+  be too narrow.
 - `appearances` and `chapters`: Premiere-derived editorial output.
 - `duplicates` and `duplicates_summary`: duplicate-detection views.
 - `folders_summary` and `years_summary`: dashboard-facing aggregate views.
@@ -207,9 +225,15 @@ equal. Ratings are constrained to 0 through 5.
 - `scrape_sources`, `browsers`, and `browser_profiles`: local scraping
   configuration.
 
-The contact model is intentionally small today. Future email, address, phone,
-and family-reference work should be designed as a coherent contact model rather
-than accumulating unrelated fields without relationship rules.
+The contact model is intentionally small today. A current phone number can be a
+simple nullable contact field if one current value per person remains the
+product rule. Historical addresses are better represented by an address record
+plus a person/address relationship with optional date range, rather than JSONB,
+if mapping or residence-history queries are desired. Historical email addresses
+need a distinct decision: retain the current reachable email as contact data,
+but preserve past inbox sender addresses in a separate archive/source identity
+model if email discovery needs to recognize them. Do not silently promote every
+historical sender address into a current contact method.
 
 ## `config`: reference and workflow settings
 
