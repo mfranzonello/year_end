@@ -151,13 +151,17 @@ is friendly competition that motivates family members to submit more material,
 submit earlier, and improve media quality. Streamlit should present explainable
 scores, progress, and leaderboards rather than an opaque ranking mechanism.
 
-Begin with a versioned YAML scoring definition for weights and rules, then
-decide whether the score can be derived live from submission data or needs an
-explicitly versioned score-run snapshot for performance/audit reasons. Do not
-create a disconnected score table that silently becomes stale when source files,
-ratings, or dates change. If persisted runs are needed, record the run time,
-rule/configuration version, source scope, and resulting score together so the
-dashboard can distinguish current calculation from historical results.
+Prefer a database-backed, live-derived score view so scores stay current as
+files, dates, and ratings change. Model adjustable weights as effective-from
+**project-year** configuration, not calendar-date configuration, and preserve
+past rule versions so historical projects retain their original scoring basis.
+
+Keep the underlying scoring metrics/rules stable across years wherever possible.
+When a material rule change is genuinely needed, introduce an explicit rule-set
+version and map project years to it; do not quietly rewrite historical scoring
+logic or create a disconnected score table that becomes stale. The scoring view
+may use well-contained SQL expressions for its known metrics, while the rule
+set and weights remain data/configuration rather than hardcoded family values.
 
 ### Cross-cutting: workflow automation and operations UI
 
