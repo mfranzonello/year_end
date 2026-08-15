@@ -79,7 +79,23 @@ not an endorsement of their suitability for future family modeling.
 
 Relationship table with `child_id`, `parent_id`, and `relation_type`. Current
 relation types are `biological`, `adoptive`, and `step`; the default is
-`biological`.
+`biological`. Semantically, this is already the appropriate many-to-many
+junction: a person may have multiple recorded parents and may parent multiple
+people.
+
+The current schema inspection exposes only the relation-type `CHECK`, not a
+declared composite primary/unique key or foreign keys. A focused integrity
+hardening should add uniqueness for `(child_id, parent_id)`, foreign keys to
+`persons`, and a self-parent guard. Confirm deletion behavior before selecting
+foreign-key actions.
+
+Do not impose a blanket maximum of two rows per child by default. Biological,
+adoptive, and step relationships can legitimately coexist, and a hard limit
+would make the stored record less truthful. If a future tree visualization
+needs to show only two primary parent edges, model that as an explicit display
+selection/rule rather than discarding additional relationship data. A deferred
+trigger could enforce a maximum of two only if that restricted data policy is
+deliberately chosen.
 
 ### `marriages`
 
@@ -109,7 +125,15 @@ comparison, and validation of the end-date/relationship-type semantics.
 
 `animals` holds animal identity records. `pets` connects `pet_id` to `owner_id`
 and stores `relation_type`, `gotcha_date`, and date precision. Current pet
-relation types are `adoptive` and `shared`.
+relation types are `adoptive` and `shared`. It already supports multiple owners
+per animal and multiple animals per person, so it needs no structural redesign.
+
+As with `parents`, the current inspection exposes only its `CHECK` constraints,
+not a declared composite primary/unique key or foreign keys. A focused
+integrity hardening should add uniqueness for `(pet_id, owner_id)` and foreign
+keys to `animals` and `persons`, after confirming deletion behavior. Whether a
+`gotcha_date` belongs to the animal itself or an owner-specific relationship is
+a semantic question for a later review, not a reason to change its cardinality.
 
 ### Other `public` objects
 
