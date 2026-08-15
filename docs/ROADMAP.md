@@ -69,6 +69,13 @@ editor's explicit decision about who is included this year. This avoids
 hardcoding personal categories and prevents one-time collaborators from being
 automatically provisioned or contacted in later projects.
 
+The future administrative GUI should support this selection directly: prefill
+from the prior year's submitters, let the project editor deselect inactive
+contributors, and add relevant people from the database. Generate new folder
+display names from configurable templates, but retain database year/member keys
+as the source of truth so historical names, nicknames, and intentionally
+cross-year event labels remain valid.
+
 Future email and archive-recovery work should begin with discovery rather than
 automatic ingestion: identify video attachments and relevant file-sharing links
 with their sender and date, especially for gaps in the early archive. A

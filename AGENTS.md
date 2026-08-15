@@ -80,6 +80,10 @@
   drive a yearly workflow. Preserve founder-relative and appearance-derived
   scope; model folder provision and reminder eligibility as explicit,
   project-specific decisions or configuration.
+- Treat project folder names as configurable display/presentation values. Use
+  the database project year and member identity as the authoritative linkage;
+  never infer identity or eligibility from legacy names, nicknames, or year text
+  embedded in a folder name.
 - Prefer actionable errors and structured outcomes over silent fallbacks.
 
 ## Git workflow

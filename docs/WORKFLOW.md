@@ -70,6 +70,14 @@ automatic template: a guest contributor who participated once should not
 receive a new folder or reminder until the project editor intentionally includes
 them for the new year.
 
+The planned administrative GUI should present the prior year's submitters as a
+starting list, allow the editor to uncheck anyone not expected to contribute,
+and allow inclusion of appropriate people from the database who were not
+previously selected. Family relationship alone does not imply that a person
+should receive a folder in every project.
+
+The current presentation convention for a new participant folder is `YIR Clips / [Year] / [Person Name] [Year]`. Repeating the year makes the folder clear to contributors who see it outside its parent tree and avoids confusion with a prior-year folder. This is a convention, not an identity rule: historical folders may use names alone, nicknames, or a media/event year different from the project year. The database's `project_year` and `member_id` relationship is authoritative.
+
 ### 2. Collect media from where contributors already are
 
 Contributors use different paths. The project should accommodate those paths,
