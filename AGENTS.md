@@ -1,0 +1,70 @@
+# Year End agent guide
+
+## Collaboration approach
+
+- Preserve the author's style and build incrementally. Prefer understandable,
+  focused changes over broad rewrites.
+- Suggest improvements when they add clear value, but explain unfamiliar
+  techniques so the author can understand and maintain the code.
+- Follow the existing folder structure. Put new modules in the appropriate
+  functional package; do not create a generic catch-all folder.
+- Production scripts must be reusable. `test.py` is the exception for temporary
+  local experiments.
+
+## Configuration, privacy, and external systems
+
+- Do not hardcode family-specific names, database names, paths, credentials, or
+  mutable URLs. Use the existing configuration and secrets mechanisms.
+- Never print, commit, or place secrets or private family/contact information in
+  logs, examples, generated documentation, or test fixtures.
+- Treat cloud storage, email, and database writes as external actions. Inspect
+  safely first; use dry runs or previews where possible.
+- Group email or broadcast messages require a draft and explicit user approval
+  before sending. Routine personalized operational messages may be automated
+  only after their trigger, recipients, and wording are agreed.
+- Neon is the authoritative family record. Other applications should consume
+  deliberately scoped APIs rather than direct database access or duplicate data.
+
+## Database conventions
+
+- Match the project's existing database-access style unless a specific
+  improvement is discussed.
+- Preserve relational links and live derivation. Prefer views and queries to
+  materialized views or stale, disconnected calculation tables.
+- Use `NULL`/`None` for missing data instead of empty-string or zero sentinels,
+  unless an actual value is required.
+- Before any schema migration or destructive database change, identify affected
+  tables, views, queries, and integrations; provide an impact check, validation,
+  and rollback plan.
+- Avoid closed-world SQL logic (for example `CASE WHEN` branches) where new
+  types or states are likely. Model extensible concepts in the data instead.
+
+## Python and code style
+
+- List comprehensions are welcome; use explicit or nested loops when clearer.
+- Prefer `match`/`case` to long `if`/`elif` chains when it fits the domain.
+- Do not add `from __future__ import annotations`.
+- Add a module docstring explaining purpose and responsibility. Add concise
+  docstrings to functions and useful type hints, without commenting every line.
+- Preserve intended Windows and macOS compatibility. Call out new
+  OS-specific dependencies or behavior.
+- Pin dependencies and minimize additions. Install project dependencies only in
+  virtual environments, never in the global interpreter.
+
+## Quality and edge cases
+
+- Choose tests proportionate to risk, run relevant checks before handoff, and
+  report what was verified.
+- For new features and changes, consider invalid input, missing data, duplicate
+  records, corrupt or unsupported media, permission boundaries, and downstream
+  view/integration effects.
+- Keep family-tree membership distinct from broader people or contributor data;
+  a person in the database must not appear in the tree unless intentionally
+  included.
+- Prefer actionable errors and structured outcomes over silent fallbacks.
+
+## Git workflow
+
+- The agent stages and commits intentional changes.
+- Do not push, create a pull request, or otherwise publish externally unless
+  the user explicitly requests it.

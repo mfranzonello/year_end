@@ -1,7 +1,7 @@
 [azure]
 redirect_uri = "http://localhost:5000/authorize/azure/callback"
 tenant_id = "35def8fb-9e1f-49bf-8066-da907d23cf45"
-scope = ["User.Read", "Files.ReadWrite"]
+scope = ["User.Read", "Files.ReadWrite", "offline_access"]
 yir_folder_path = "videos/yir clips"
 
 [gphotos]
