@@ -19,6 +19,9 @@
   is portable. Model the current canonical repository through relationships and
   configuration, not vendor-branded column names, unless an attribute truly
   exists only for that vendor.
+- Prefer generic, portable database table and column names. A provider-specific
+  schema is appropriate only for concepts that genuinely belong to that product
+  and cannot be expressed as a shared domain model.
 - Never print, commit, or place secrets or private family/contact information in
   logs, examples, generated documentation, or test fixtures.
 - Treat cloud storage, email, and database writes as external actions. Inspect
