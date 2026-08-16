@@ -127,10 +127,15 @@ and client modules.
 - `onedrive/` performs delegated Microsoft OAuth, refreshes cached tokens, and
   makes read-first Microsoft Graph calls. It can inspect the current drive and
   resolve a sharing URL to a canonical item.
-- `google_drive/` performs desktop OAuth with PKCE, refreshes cached tokens, and
-  lists root-level Drive items through Drive API v3.
+- `google/` owns the shared desktop OAuth-with-PKCE implementation and reuses
+  one Google OAuth client registration while keeping service scopes and token
+  caches separate.
+- `google_drive/` uses the shared Google authentication flow to inspect and
+  share Drive folders through Drive API v3.
+- `gmail/` uses a separate send-only token cache to construct and explicitly
+  send Gmail messages. Its authorization check never sends a message.
 
-Both integrations use credentials from the local secrets mechanism and store
+The integrations use credentials from the local secrets mechanism and store
 renewable local tokens under `.secrets/auths/tokens/<provider>/token.json`.
 The existing clients are intentionally read-first; write/move/delete operations
 remain future work and must use the external-action safeguards in `AGENTS.md`.
