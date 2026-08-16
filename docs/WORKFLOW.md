@@ -78,6 +78,22 @@ should receive a folder in every project.
 
 The current presentation convention for a new participant folder is `YIR Clips / [Year] / [Person Name] [Year]`. Repeating the year makes the folder clear to contributors who see it outside its parent tree and avoids confusion with a prior-year folder. This is a convention, not an identity rule: historical folders may use names alone, nicknames, or a media/event year different from the project year. The database's `project_year` and `member_id` relationship is authoritative.
 
+Cloud folder reconciliation is year-scoped and inspects only immediate children
+of each configured media/year folder. A dry run discovers provider IDs without
+changing permissions or the database. Applying the operation ensures an
+anyone-with-link view permission and stores the provider location and share URL:
+
+```powershell
+python main.py --onedrive-shares --year 2026 --dry-run
+python main.py --onedrive-shares --year 2026 --apply
+python main.py --google-drive-shares --year 2026 --dry-run
+```
+
+Google Drive reconciliation does not require a locally mounted Google Drive.
+Provider project roots use the existing `local_storage` folder names in
+`config/drives.toml`; for OneDrive this resolves to
+`Videos / YIR Clips / [Project Year]`.
+
 ### 2. Collect media from where contributors already are
 
 Contributors use different paths. The project should accommodate those paths,

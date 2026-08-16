@@ -1,6 +1,8 @@
+from uuid import uuid4
+
 from numpy import median
-from sqlalchemy import Engine
-from pandas import DataFrame
+from sqlalchemy import Engine, text
+from pandas import DataFrame, read_sql_query
 
 from database.db import read_sql, execute_sql, build_values
 
@@ -176,3 +178,124 @@ def fetch_media_types(engine:Engine) -> DataFrame:
     ORDER BY medium_id
     ;'''
     return read_sql(engine, sql)
+
+def fetch_project_folders(engine: Engine, project_year: int, media_type: str) -> DataFrame:
+    """Return project folders that need repository-location reconciliation."""
+    sql = '''
+    SELECT folder_id, folder_name, project_year, media_type
+    FROM project.folders
+    WHERE project_year = :project_year
+      AND media_type = :media_type
+      AND folder_name IS NOT NULL
+    ORDER BY folder_name
+    ;'''
+    with engine.begin() as conn:
+        return read_sql_query(
+            text(sql),
+            conn,
+            params={"project_year": project_year, "media_type": media_type},
+        )
+
+def update_folder_locations_and_shares(
+    engine: Engine,
+    folders: DataFrame,
+    repository_name: str,
+    is_canonical: bool,
+) -> None:
+    """Persist provider folder IDs and their active share URLs."""
+    if folders.empty:
+        return
+
+    rows = folders.to_dict(orient="records")
+    with engine.begin() as conn:
+        repository_id = conn.execute(
+            text('''
+            SELECT repository_id
+            FROM ingestion.repositories
+            WHERE repository_name = :repository_name
+            ;'''),
+            {"repository_name": repository_name},
+        ).scalar_one()
+
+        for row in rows:
+            existing_locations = conn.execute(
+                text('''
+                SELECT folder_location_id
+                FROM project.folder_locations
+                WHERE folder_id = :folder_id
+                  AND repository_id = :repository_id
+                ;'''),
+                {"folder_id": row["folder_id"], "repository_id": repository_id},
+            ).scalars().all()
+            if len(existing_locations) > 1:
+                raise ValueError(
+                    "A project folder has multiple locations in the same repository"
+                )
+
+            if existing_locations:
+                location_id = conn.execute(
+                    text('''
+                    UPDATE project.folder_locations
+                    SET repository_item_id = :repository_item_id,
+                        is_canonical = :is_canonical
+                    WHERE folder_location_id = :folder_location_id
+                    RETURNING folder_location_id
+                    ;'''),
+                    {
+                        "folder_location_id": existing_locations[0],
+                        "repository_item_id": row["repository_item_id"],
+                        "is_canonical": is_canonical,
+                    },
+                ).scalar_one()
+            else:
+                location_id = conn.execute(
+                    text('''
+                INSERT INTO project.folder_locations (
+                    folder_location_id, folder_id, repository_id,
+                    repository_item_id, is_canonical
+                )
+                VALUES (
+                    :folder_location_id, :folder_id, :repository_id,
+                    :repository_item_id, :is_canonical
+                )
+                ON CONFLICT (repository_id, repository_item_id) DO UPDATE
+                SET folder_id = EXCLUDED.folder_id,
+                    is_canonical = EXCLUDED.is_canonical
+                RETURNING folder_location_id
+                ;'''),
+                    {
+                        "folder_location_id": uuid4(),
+                        "folder_id": row["folder_id"],
+                        "repository_id": repository_id,
+                        "repository_item_id": row["repository_item_id"],
+                        "is_canonical": is_canonical,
+                    },
+                ).scalar_one()
+            conn.execute(
+                text('''
+                UPDATE project.shares
+                SET is_active = false,
+                    last_verified_at = CURRENT_TIMESTAMP
+                WHERE folder_location_id = :folder_location_id
+                  AND share_url <> :share_url
+                  AND is_active = true
+                ;'''),
+                {"folder_location_id": location_id, "share_url": row["share_url"]},
+            )
+            conn.execute(
+                text('''
+                INSERT INTO project.shares (
+                    folder_location_id, share_url, is_active,
+                    expires_at, last_verified_at
+                )
+                VALUES (
+                    :folder_location_id, :share_url, true,
+                    NULL, CURRENT_TIMESTAMP
+                )
+                ON CONFLICT (folder_location_id, share_url) DO UPDATE
+                SET is_active = true,
+                    expires_at = NULL,
+                    last_verified_at = CURRENT_TIMESTAMP
+                ;'''),
+                {"folder_location_id": location_id, "share_url": row["share_url"]},
+            )

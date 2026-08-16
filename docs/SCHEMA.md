@@ -192,11 +192,13 @@ subject, not necessarily the literal uploader. For example, an animal-linked
 folder can hold scenes filmed by a person but organized separately so those
 clips do not inflate that person's general submission count.
 
-For cloud-native operation, add a provider-neutral canonical storage identity
-to the folder record: an opaque provider item ID plus a repository/drive
-relationship. OneDrive is the current canonical repository, but those names
-must not be baked into the data model. This is the durable lookup key for
-inventory and moves; it is not inferred from a path or share URL.
+Provider storage identities are normalized through `folder_locations`, rather
+than stored as vendor-branded columns on the folder. A location links a folder
+to an `ingestion.repositories` record, stores the provider's opaque
+`repository_item_id`, and records whether that location is canonical. OneDrive
+is currently canonical; Google Drive is a source location. The provider item ID
+is the durable lookup key for inventory and moves and is not inferred from a
+path or share URL.
 
 ### `files`
 
@@ -234,13 +236,13 @@ repeatedly searching storage by name/path.
 ### Supporting tables and views
 
 - `sources`: named non-person/animal submission sources.
-- `shares`: maps a folder to an `ingestion.repositories` provider record and a
-  share URL; it is the likely persistence point for the future OneDrive sharing
-  link workflow. Keep it as a share-pointer/capability record, not the primary
-  item-location record: sharing links can be revoked, recreated, or vary by
-  audience. Consider extending it to represent the appropriate folder/file
-  target and sharing metadata while canonical provider IDs live on the project
-  folder/file records.
+- `folder_locations`: maps a project folder to an `ingestion.repositories`
+  provider, its opaque `repository_item_id`, and `is_canonical`. Provider item
+  IDs are unique within a repository.
+- `shares`: maps a folder location to a share URL and tracks `is_active`,
+  optional `expires_at`, and `last_verified_at`. It remains a share capability,
+  not the primary item identity: links can be revoked or recreated while the
+  provider item ID remains stable.
 - `appearances` and `chapters`: Premiere-derived editorial output.
 - `duplicates` and `duplicates_summary`: duplicate-detection views.
 - `folders_summary` and `years_summary`: dashboard-facing aggregate views.
@@ -315,7 +317,7 @@ historical sender address into a current contact method.
   progress?
 - What are the intended semantics and lifecycle of `ingestion.contacts` and its
   `repository_ids` JSONB column?
-- Are `project.shares` URLs intended to be canonical provider links, upload
-  links, or both? What uniqueness/lifecycle rule should they follow?
+- Should `project.folder_locations` enforce one current location per folder and
+  repository, or deliberately retain multiple historical locations?
 - Which relationship events beyond marriage should the future model capture,
   such as separation/divorce, remarriage, and partnership dates?

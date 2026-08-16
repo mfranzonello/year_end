@@ -117,6 +117,33 @@ def find_folder_id(folder_path: str) -> str:
     return parent_id
 
 
+def list_child_folders(folder_id: str) -> list[dict[str, Any]]:
+    """Return all immediate child folders of a Google Drive folder."""
+    if not folder_id.strip():
+        raise ValueError("folder_id must not be empty")
+
+    access_token = get_access_token("google_drive")
+    escaped_parent = _escape_query_value(folder_id)
+    params = {
+        "q": (
+            f"'{escaped_parent}' in parents and mimeType = '{FOLDER_MIME_TYPE}' "
+            "and trashed = false"
+        ),
+        "pageSize": "1000",
+        "orderBy": "name",
+        "fields": "files(id,name,mimeType,webViewLink),nextPageToken",
+        "spaces": "drive",
+    }
+    folders = []
+    while True:
+        response = _get("/files", params, access_token=access_token)
+        folders.extend(response.get("files", []))
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            return folders
+        params = {**params, "pageToken": page_token}
+
+
 def get_or_create_share_link(folder_id: str) -> str:
     """Ensure a folder has an anyone-with-link reader permission and return its URL."""
     if not folder_id.strip():
@@ -140,7 +167,10 @@ def get_or_create_share_link(folder_id: str) -> str:
         {"fields": "permissions(id,type,role)", "pageSize": "100"},
         access_token=access_token,
     )
-    if not any(permission.get("type") == "anyone" for permission in permissions.get("permissions", [])):
+    if not any(
+        permission.get("type") == "anyone" and permission.get("role") == "reader"
+        for permission in permissions.get("permissions", [])
+    ):
         _post(
             f"/files/{encoded_id}/permissions",
             {"fields": "id,type,role"},

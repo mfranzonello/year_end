@@ -18,6 +18,66 @@ from database.db_project import (
     )
 from database.db_display import fetch_display_names
 from family_tree.cloudinary_heavy import configure_cloud, fill_in_temp_pictures
+from integrations.microsoft.onedrive.client import (
+    GraphRequestError,
+    find_folder_id as find_onedrive_folder_id,
+    get_or_create_share_link as get_or_create_onedrive_share_link,
+    list_child_folders as list_onedrive_child_folders,
+)
+from database.db_project import fetch_project_folders, update_folder_locations_and_shares
+
+
+def inspect_onedrive_folder_shares(
+    engine: Engine,
+    project_root: str,
+    media_type: str,
+    supfolder_name: str,
+    project_year: int,
+    ui: SplitConsole,
+    dry_run: bool = True,
+) -> DataFrame:
+    """Match canonical OneDrive folders to project records and ensure shares."""
+    project_folders = fetch_project_folders(engine, project_year, media_type)
+    if project_folders.empty:
+        return DataFrame()
+
+    year_path = "/".join((project_root.strip("/\\"), supfolder_name, str(project_year)))
+    try:
+        year_folder_id = find_onedrive_folder_id(year_path)
+    except GraphRequestError as error:
+        if "HTTP 404" not in str(error):
+            raise
+        ui.add_update(
+            f"OneDrive {project_year} {media_type}: configured year folder does not exist."
+        )
+        return DataFrame()
+    cloud_folders = list_onedrive_child_folders(year_folder_id)
+    cloud_by_name = {folder.get("name"): folder for folder in cloud_folders}
+    if len(cloud_by_name) != len(cloud_folders):
+        raise ValueError("The OneDrive year folder contains duplicate top-level folder names")
+
+    matched = []
+    for row in project_folders.to_dict(orient="records"):
+        cloud_folder = cloud_by_name.get(row["folder_name"])
+        if cloud_folder is None:
+            continue
+        item_id = cloud_folder.get("id")
+        if not isinstance(item_id, str) or not item_id:
+            continue
+        matched.append({
+            **row,
+            "repository_item_id": item_id,
+            "share_url": None if dry_run else get_or_create_onedrive_share_link(item_id),
+        })
+
+    results = DataFrame(matched)
+    ui.add_update(
+        f"OneDrive {project_year} {media_type}: matched {len(results)} of "
+        f"{len(project_folders)} database folders."
+    )
+    if not dry_run:
+        update_folder_locations_and_shares(engine, results, "OneDrive", is_canonical=True)
+    return results
 
 def get_child_from_relative(parent_folder:Path, full_path:Path) -> Path:
     return parent_folder / full_path.relative_to(parent_folder).parents[-2]

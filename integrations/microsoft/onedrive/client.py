@@ -21,8 +21,15 @@ def _graph_url() -> str:
 
 
 def _get(path: str, *, access_token: str) -> dict[str, Any]:
+    return _get_url(f"{_graph_url()}{path}", access_token=access_token)
+
+
+def _get_url(url: str, *, access_token: str) -> dict[str, Any]:
+    """GET a configured Graph URL, including an API-provided next page."""
+    if not url.startswith(f"{_graph_url()}/"):
+        raise GraphRequestError("Microsoft Graph returned an unexpected pagination URL")
     request = Request(
-        f"{_graph_url()}{path}",
+        url,
         headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
     )
     try:
@@ -88,6 +95,26 @@ def find_folder_id(folder_path: str) -> str:
     return item_id
 
 
+def list_child_folders(folder_id: str) -> list[dict[str, Any]]:
+    """Return the immediate child folders of a OneDrive folder."""
+    if not folder_id.strip():
+        raise ValueError("folder_id must not be empty")
+
+    access_token = get_access_token("onedrive")
+    encoded_id = quote(folder_id, safe="")
+    response = _get(
+        f"/me/drive/items/{encoded_id}/children?$select=id,name,webUrl,folder&$top=999",
+        access_token=access_token,
+    )
+    children = []
+    while True:
+        children.extend(child for child in response.get("value", []) if "folder" in child)
+        next_url = response.get("@odata.nextLink")
+        if not next_url:
+            return children
+        response = _get_url(next_url, access_token=access_token)
+
+
 def get_or_create_share_link(
     folder_id: str,
     *,
@@ -109,8 +136,14 @@ def get_or_create_share_link(
         access_token=access_token,
     )
     for permission in permissions.get("value", []):
-        web_url = permission.get("link", {}).get("webUrl")
-        if isinstance(web_url, str) and web_url:
+        link = permission.get("link", {})
+        web_url = link.get("webUrl")
+        if (
+            link.get("type") == link_type
+            and link.get("scope") == scope
+            and isinstance(web_url, str)
+            and web_url
+        ):
             return web_url
 
     permission = _post(

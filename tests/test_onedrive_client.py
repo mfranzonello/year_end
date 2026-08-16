@@ -3,7 +3,10 @@
 from unittest import TestCase
 from unittest.mock import patch
 
-from integrations.microsoft.onedrive.client import GraphRequestError, find_folder_id, get_or_create_share_link
+from integrations.microsoft.onedrive.client import (
+    GraphRequestError, find_folder_id, get_or_create_share_link,
+    list_child_folders,
+)
 
 
 class FindFolderIdTests(TestCase):
@@ -62,3 +65,27 @@ class GetOrCreateShareLinkTests(TestCase):
     def test_rejects_a_create_response_without_a_url(self, _graph_get, _graph_post, _get_token):
         with self.assertRaisesRegex(GraphRequestError, "without returning a URL"):
             get_or_create_share_link("folder-id")
+
+
+class ListChildFoldersTests(TestCase):
+    @patch("integrations.microsoft.onedrive.client.get_access_token", return_value="token")
+    @patch("integrations.microsoft.onedrive.client._get_url")
+    @patch("integrations.microsoft.onedrive.client._get")
+    def test_returns_folders_from_all_pages(self, graph_get, graph_get_url, _get_token):
+        graph_get.return_value = {
+            "value": [
+                {"id": "first", "name": "First", "folder": {}},
+                {"id": "file", "name": "video.mp4", "file": {}},
+            ],
+            "@odata.nextLink": "https://graph.microsoft.com/v1.0/next",
+        }
+        graph_get_url.return_value = {
+            "value": [{"id": "second", "name": "Second", "folder": {}}]
+        }
+
+        result = list_child_folders("year-id")
+
+        self.assertEqual([folder["id"] for folder in result], ["first", "second"])
+        graph_get_url.assert_called_once_with(
+            "https://graph.microsoft.com/v1.0/next", access_token="token"
+        )

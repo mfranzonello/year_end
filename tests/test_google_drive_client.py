@@ -8,6 +8,7 @@ from integrations.google.google_drive.client import (
     GoogleDriveRequestError,
     find_folder_id,
     get_or_create_share_link,
+    list_child_folders,
 )
 
 
@@ -86,3 +87,18 @@ class GetOrCreateShareLinkTests(TestCase):
 
         with self.assertRaisesRegex(GoogleDriveRequestError, "not a folder"):
             get_or_create_share_link("file-id")
+
+
+class ListChildFoldersTests(TestCase):
+    @patch("integrations.google.google_drive.client.get_access_token", return_value="token")
+    @patch("integrations.google.google_drive.client._get")
+    def test_returns_all_pages_of_immediate_folders(self, drive_get, _get_token):
+        drive_get.side_effect = [
+            {"files": [{"id": "first", "name": "First"}], "nextPageToken": "next"},
+            {"files": [{"id": "second", "name": "Second"}]},
+        ]
+
+        result = list_child_folders("year-id")
+
+        self.assertEqual([folder["id"] for folder in result], ["first", "second"])
+        self.assertEqual(drive_get.call_args_list[1].args[1]["pageToken"], "next")
