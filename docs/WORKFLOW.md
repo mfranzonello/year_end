@@ -54,6 +54,13 @@ relationships, household membership, profile images, and contact/sharing
 information current. Births, adoptions, marriages, and other changes can alter
 both the family-tree presentation and the fairness checks used in the YIR.
 
+The shared family calendar can be reconciled from the same authoritative
+person and marriage records. Birthday and anniversary series created by this
+project carry private ownership metadata; reconciliation must not infer
+ownership from event titles or modify unrelated events entered by family
+members. Applying a sync may create or update owned series, while stale owned
+series are reported for review rather than automatically deleted.
+
 Tree and editorial scope are dynamic: the configured founder anchors the family
 relationship traversal, and people outside that relationship may be included
 when their actual project appearances warrant it. This should not require a

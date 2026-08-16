@@ -20,6 +20,7 @@ from common.config import read_toml
 TOKEN_CACHES = {
     "google_drive": Path(".secrets/auths/tokens/gdrive/token.json"),
     "gmail": Path(".secrets/auths/tokens/gmail/token.json"),
+    "google_calendar": Path(".secrets/auths/tokens/google_calendar/token.json"),
 }
 
 

@@ -28,3 +28,9 @@ api = "https://gmail.googleapis.com/gmail/v1"
 
 [gmail.oauth]
 scopes = ["https://www.googleapis.com/auth/gmail.send"]
+
+[google_calendar.urls]
+api = "https://www.googleapis.com/calendar/v3"
+
+[google_calendar.oauth]
+scopes = ["https://www.googleapis.com/auth/calendar.events"]

@@ -117,6 +117,7 @@ Run the local OAuth connectivity checks (they are read-only after sign-in):
 ```powershell
 .\.venv\Scripts\python.exe -m tests.integration.check_onedrive --login
 .\.venv\Scripts\python.exe -m tests.integration.check_google_drive --login
+.\.venv\Scripts\python.exe -m tests.integration.check_google_calendar --login
 ```
 
 ## Repository map
