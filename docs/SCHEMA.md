@@ -211,6 +211,21 @@ Represents a discovered media file within a project folder.
 identity is `(folder_id, file_name, subfolder_name)`, with nulls treated as
 equal. Ratings are constrained to 0 through 5.
 
+Numeric media metadata uses the following application-level units. These units
+are not encoded in the current database column names or types, so consumers
+must preserve them explicitly:
+
+| Field | Stored unit or representation | Producing code |
+| --- | --- | --- |
+| `file_size` | Mebibytes (MiB), rounded to one decimal place (`bytes / 1024^2`) | `repositories/inspect.py` |
+| `video_duration` | Whole seconds | `repositories/inspect.py`, via `adobe/bridge.py` |
+| `video_resolution` | Text resolution category such as the value returned by `adobe.bridge.get_resolution`; not a pixel count | `repositories/inspect.py`, via `adobe/bridge.py` |
+| `video_rating` | Integer rating from 0 through 5 | `repositories/inspect.py` |
+
+Aggregate `file_size` values in `folders_summary` and `years_summary` retain
+MiB. Divide them by 1024 for GiB; labels using decimal MB/GB terminology are
+display shorthand and should not be used to infer a different stored unit.
+
 When individual cloud-file operations are introduced, store the corresponding
 provider-neutral canonical item ID and repository relationship here as well. It
 lets the system inspect, move, or create a share link for a known file without
@@ -230,6 +245,10 @@ repeatedly searching storage by name/path.
 - `duplicates` and `duplicates_summary`: duplicate-detection views.
 - `folders_summary` and `years_summary`: dashboard-facing aggregate views.
 - `appearance_spans`: timeline-facing appearance view.
+
+Premiere-derived time positions in `appearances` and `chapters` are stored in
+seconds. Duration aggregates exposed by the project summary views likewise
+retain seconds unless a consuming query or display converts them.
 
 ## `ingestion`: submission and contact metadata
 
@@ -261,8 +280,10 @@ historical sender address into a current contact method.
 ## `publishing` and `nello`
 
 - `publishing.reviews`: year/decade review identity and publishing metadata,
-  including theme, duration, resolution, cloud URL, and public date.
-- `publishing.music`: music associated with reviews.
+  including theme, duration, resolution, cloud URL, and public date. Review
+  duration is stored in seconds.
+- `publishing.music`: music associated with reviews. Track duration is stored
+  in seconds.
 - `nello.founder`: configured root/founder for family-tree traversal.
 
 ## Application consumers
