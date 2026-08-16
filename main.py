@@ -32,6 +32,10 @@ def set_up_engine():
     return get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 def scan_folders(media_locations:list[tuple], dry_run:bool=True):
+    if GOOGLE_DRIVE_FOLDER is None:
+        ui.add_update('Google Drive is not mounted; skipping Google Drive copy inspection.')
+        return
+
     engine = set_up_engine()
 
     for media_type, supfolder_name in media_locations:
@@ -64,11 +68,27 @@ def purge_database(media_locations:list[tuple], dry_run:bool=True):
         purge_stale_content(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type, dry_run)
     engine.dispose()
 
-def update_database(media_locations:list[tuple], dry_run:bool=True):
+def update_database(
+    media_locations: list[tuple],
+    dry_run: bool = True,
+    project_year: int | None = None,
+    folders_only: bool = False,
+):
+    """Inspect configured media locations and update their database records."""
     engine = set_up_engine()
 
     for media_type, supfolder_name in media_locations:
-        summarize_folders(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type, ADOBE_FOLDER, YIR_REVIEWS, ui, dry_run=dry_run)
+        summarize_folders(
+            engine,
+            ONE_DRIVE_FOLDER / supfolder_name,
+            media_type,
+            ADOBE_FOLDER,
+            YIR_REVIEWS,
+            ui,
+            dry_run=dry_run,
+            project_year=project_year,
+            folders_only=folders_only,
+        )
     engine.dispose()
 
 def update_images(dry_run:bool=True):
@@ -93,6 +113,8 @@ def main():
     ap.add_argument('--iphotos', nargs='?', type=bool, const=True, default=False, help='Copy new files from iCloud Photos to OneDrive.')
     ap.add_argument('--gdrive', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Drive to OneDrive.')
     ap.add_argument('--pictures', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
+    ap.add_argument('--inspect-only', action='store_true', help='Only discover top-level participant folders and update their database records.')
+    ap.add_argument('--year', type=int, help='Limit --inspect-only processing to one project year.')
 
     ap.add_argument('--stars', type=int, default=MIN_STARS, help='Minimum star rating to use in project.')
 
@@ -101,6 +123,10 @@ def main():
     group.add_argument("--dry-run", action="store_true", help="Do not copy or download; show what would happen.")
     
     args = ap.parse_args()
+    if args.year and not args.inspect_only:
+        ap.error('--year requires --inspect-only so purge and deduplication cannot run outside the selected scope.')
+    if args.inspect_only and args.no_dbupdate:
+        ap.error('--inspect-only cannot be combined with --no-dbupdate.')
     dry_run = not args.apply  # default to dry-run unless --apply
 
     ui.add_update(f'Running with args: {args}')
@@ -115,7 +141,9 @@ def main():
     if args.gdrive:
         scan_folders(media_locations, dry_run=dry_run)
 
-    if not args.no_dbupdate:
+    if args.inspect_only:
+        update_database(media_locations, dry_run=dry_run, project_year=args.year, folders_only=True)
+    elif not args.no_dbupdate:
         purge_database(media_locations, dry_run=dry_run)
         update_database(media_locations, dry_run=dry_run)
         dedupe_folders(media_locations, dry_run=dry_run)

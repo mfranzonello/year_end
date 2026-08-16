@@ -16,7 +16,7 @@ if system_name == 'windows':
     import pythoncom
     from win32com.shell import shell
 
-REQUIRED_PATH = Path(GOOGLE_DRIVE_FOLDER)
+REQUIRED_PATH = Path(GOOGLE_DRIVE_FOLDER) if GOOGLE_DRIVE_FOLDER else None
 WAIT_UP = 120 # seconds to wait for drive to reappear
 POLL = 3 # seconds between checks
 
@@ -168,7 +168,11 @@ def close_exe(exe):
             pass
 
 def mount_g_drive():
-    if Path(GOOGLE_DRIVE_FOLDER).exists():
+    if GOOGLE_DRIVE_FOLDER is None:
+        print('[gd] Google Drive mount was not detected.')
+        return False
+
+    if GOOGLE_DRIVE_FOLDER.exists():
         started = True
 
     else:
@@ -192,7 +196,7 @@ def mount_g_drive():
             # Wait for the mount to come back
             deadline = time() + WAIT_UP
             while time() < deadline:
-                if Path(GOOGLE_DRIVE_FOLDER).exists():
+                if GOOGLE_DRIVE_FOLDER.exists():
                     print('[gd] Google Drive is back.')
                     return True
                 sleep(POLL)

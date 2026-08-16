@@ -57,7 +57,11 @@ google_drive_base = detect_gdrive_base()
 
 ONE_DRIVE_ROOT = one_drive_base
 ONE_DRIVE_FOLDER = one_drive_base / _drives['local_storage']['onedrive']['videos']
-GOOGLE_DRIVE_FOLDER = google_drive_base / _drives['local_storage']['google_drive']['videos']
+GOOGLE_DRIVE_FOLDER = (
+    google_drive_base / _drives['local_storage']['google_drive']['videos']
+    if google_drive_base
+    else None
+)
 ADOBE_FOLDER = one_drive_base / _drives['local_storage']['adobe']['projects']
 COMMON_FOLDER = ADOBE_FOLDER / _drives['local_storage']['adobe']['common']
 

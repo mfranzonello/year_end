@@ -1,3 +1,5 @@
+"""Inspect project media folders and reconcile their metadata with the database."""
+
 from pathlib import Path
 
 from pandas import DataFrame, concat
@@ -134,15 +136,27 @@ def compare_used(files_df:Path, parent_folder:Path, year:int, full_paths:list[Pa
  
     return files_used_df
     
-def summarize_folders(engine:Engine, one_drive_folder:Path, media_type:str, review_folder:Path, review_string:str,
-                      ui:SplitConsole, dry_run:bool=False):
+def summarize_folders(
+    engine: Engine,
+    one_drive_folder: Path,
+    media_type: str,
+    review_folder: Path,
+    review_string: str,
+    ui: SplitConsole,
+    dry_run: bool = False,
+    project_year: int | None = None,
+    folders_only: bool = False,
+):
+    """Inspect top-level project folders and their media, optionally for one year."""
     files = []
     files_used = []
     folders = []
 
-    previously_scanned = fetch_files_scanned(engine, media_type)
+    previously_scanned = DataFrame() if folders_only else fetch_files_scanned(engine, media_type)
 
     year_folders = get_year_folders(one_drive_folder)
+    if project_year is not None:
+        year_folders = [folder for folder in year_folders if folder.name == str(project_year)]
 
     for year_folder in sort_paths(year_folders):
         ui.add_update(f'Checking {media_type} {year_folder}')
@@ -162,7 +176,17 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, media_type:str, revi
             fo_df = DataFrame(data=[[folder_name, project_year]],
                               columns=['folder_name', 'project_year'])
 
+            if folders_only:
+                if not is_root:
+                    folders.append(fo_df)
+                continue
+
             video_files = get_videos_in_folder(person_folder, recursive=(not is_root)) # don't look recursively if at top level
+            # Participant folders are meaningful project records even before
+            # media arrives. The year root is only a record when it has media.
+            if not is_root or len(video_files):
+                folders.append(fo_df)
+
             if len(video_files):
 
                 # look at videos
@@ -176,9 +200,11 @@ def summarize_folders(engine:Engine, one_drive_folder:Path, media_type:str, revi
                 # #                                     (previously_scanned['project_year'] == project_year)]
 
                 fi_df = summarize_files(person_folder, is_root, project_year, video_files, scanned_df)
-                folders.append(fo_df)
                 if not fi_df.empty:
                     files.append(fi_df)
+
+        if folders_only:
+            continue
 
         # prepare Premiere Project
         media_files:list[Path] = []
