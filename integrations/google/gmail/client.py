@@ -1,4 +1,4 @@
-"""Minimal Gmail client for constructing and explicitly sending messages."""
+"""Gmail client for constructing and explicitly sending messages."""
 
 from email.message import EmailMessage
 from typing import Any, Iterable

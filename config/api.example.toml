@@ -1,9 +1,13 @@
-[onedrive.urls]
+[microsoft.urls]
 identity = "https://login.microsoftonline.com/common/oauth2/v2.0"
+
+[microsoft.oauth]
+redirect_uri = "http://localhost:5000/authorize/azure/callback"
+
+[onedrive.urls]
 graph = "https://graph.microsoft.com/v1.0"
 
 [onedrive.oauth]
-redirect_uri = "http://localhost:5000/authorize/azure/callback"
 scopes = ["User.Read", "Files.ReadWrite", "offline_access"]
 
 [onedrive.limits]

@@ -1,4 +1,4 @@
-"""Local OAuth support for Microsoft Graph delegated access."""
+"""Shared local OAuth support for Microsoft product integrations."""
 
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -16,7 +16,9 @@ import webbrowser
 from common.config import read_toml
 
 
-TOKEN_CACHE = Path(".secrets/auths/tokens/azure/token.json")
+TOKEN_CACHES = {
+    "onedrive": Path(".secrets/auths/tokens/azure/token.json"),
+}
 
 
 class MicrosoftAuthError(RuntimeError):
@@ -24,7 +26,7 @@ class MicrosoftAuthError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class AzureSettings:
+class MicrosoftSettings:
     client_id: str
     client_secret: str
     authorize_endpoint: str
@@ -36,28 +38,32 @@ class AzureSettings:
         return self.authorize_endpoint.rsplit("/authorize", 1)[0] + "/token"
 
 
-def load_settings() -> AzureSettings:
-    """Load the app registration values without exposing secret values."""
-    from common.secret import secrets
-    api_config = read_toml("api")["onedrive"]
+def load_settings(service: str) -> MicrosoftSettings:
+    """Load shared Microsoft credentials and product-specific scopes."""
+    if service not in TOKEN_CACHES:
+        raise ValueError(f"Unsupported Microsoft service: {service!r}")
 
-    return AzureSettings(
-        client_id=secrets["azure"]["client_id"],
-        client_secret=secrets["azure"]["client_secret"],
-        authorize_endpoint=f"{api_config['urls']['identity']}/authorize",
-        redirect_uri=api_config["oauth"]["redirect_uri"],
-        scopes=tuple(api_config["oauth"]["scopes"]),
+    from common.secret import secrets
+    api_config = read_toml("api")
+    desktop = secrets["microsoft"]["desktop"]
+
+    return MicrosoftSettings(
+        client_id=desktop["client_id"],
+        client_secret=desktop["client_secret"],
+        authorize_endpoint=f"{api_config['microsoft']['urls']['identity']}/authorize",
+        redirect_uri=api_config["microsoft"]["oauth"]["redirect_uri"],
+        scopes=tuple(api_config[service]["oauth"]["scopes"]),
     )
 
 
-def _read_cache(token_path: Path = TOKEN_CACHE) -> dict[str, Any] | None:
+def _read_cache(token_path: Path) -> dict[str, Any] | None:
     if not token_path.exists():
         return None
     with token_path.open(encoding="utf-8") as token_file:
         return json.load(token_file)
 
 
-def _write_cache(token: dict[str, Any], token_path: Path = TOKEN_CACHE) -> None:
+def _write_cache(token: dict[str, Any], token_path: Path) -> None:
     token_path.parent.mkdir(parents=True, exist_ok=True)
     with token_path.open("w", encoding="utf-8") as token_file:
         json.dump(token, token_file, indent=2)
@@ -87,7 +93,7 @@ def _post_form(url: str, form: dict[str, str]) -> dict[str, Any]:
         raise MicrosoftAuthError(f"Microsoft token request failed: {error}") from error
 
 
-def _refresh_token(settings: AzureSettings, cached_token: dict[str, Any]) -> dict[str, Any] | None:
+def _refresh_token(settings: MicrosoftSettings, cached_token: dict[str, Any]) -> dict[str, Any] | None:
     refresh_token = cached_token.get("refresh_token")
     if not refresh_token:
         return None
@@ -163,16 +169,22 @@ def _wait_for_callback(redirect_uri: str, expected_state: str) -> str:
     return result["code"]
 
 
-def get_access_token(*, force_login: bool = False, token_path: Path = TOKEN_CACHE) -> str:
-    """Return a delegated Graph token, refreshing or opening a browser sign-in as needed."""
-    settings = load_settings()
-    cached_token = _read_cache(token_path)
+def get_access_token(
+    service: str,
+    *,
+    force_login: bool = False,
+    token_path: Path | None = None,
+) -> str:
+    """Return a separately cached delegated token for a Microsoft product."""
+    settings = load_settings(service)
+    cache_path = token_path or TOKEN_CACHES[service]
+    cached_token = _read_cache(cache_path)
     if cached_token and not force_login and cached_token.get("expires_at", 0) > time.time() + 60:
         return cached_token["access_token"]
     if cached_token and not force_login:
         refreshed_token = _refresh_token(settings, cached_token)
         if refreshed_token:
-            _write_cache(refreshed_token, token_path)
+            _write_cache(refreshed_token, cache_path)
             return refreshed_token["access_token"]
 
     state = secure_secrets.token_urlsafe(32)
@@ -199,5 +211,5 @@ def get_access_token(*, force_login: bool = False, token_path: Path = TOKEN_CACH
     if "access_token" not in token:
         raise MicrosoftAuthError(token.get("error_description", "Microsoft did not issue an access token."))
     token["expires_at"] = int(time.time()) + int(token.get("expires_in", 0))
-    _write_cache(token, token_path)
+    _write_cache(token, cache_path)
     return token["access_token"]

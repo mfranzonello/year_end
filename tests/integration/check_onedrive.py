@@ -2,8 +2,8 @@
 
 import argparse
 
-from integrations.onedrive.auth import MicrosoftAuthError
-from integrations.onedrive.client import GraphRequestError, inspect_my_drive
+from integrations.microsoft.auth import MicrosoftAuthError
+from integrations.microsoft.onedrive.client import GraphRequestError, inspect_my_drive
 
 
 def main() -> None:

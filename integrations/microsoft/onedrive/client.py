@@ -8,7 +8,7 @@ import base64
 import json
 
 from common.config import read_toml
-from integrations.onedrive.auth import MicrosoftAuthError, get_access_token
+from integrations.microsoft.auth import MicrosoftAuthError, get_access_token
 
 
 class GraphRequestError(RuntimeError):
@@ -59,7 +59,7 @@ def _post(path: str, payload: dict[str, Any], *, access_token: str) -> dict[str,
 
 def inspect_my_drive(*, force_login: bool = False) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Return root metadata and the first page of root items without changing OneDrive."""
-    access_token = get_access_token(force_login=force_login)
+    access_token = get_access_token("onedrive", force_login=force_login)
     root = _get("/me/drive/root?$select=id,name,webUrl,folder", access_token=access_token)
     children = _get(
         "/me/drive/root/children?$select=id,name,webUrl,size,folder,file,lastModifiedDateTime&$top=200",
@@ -75,7 +75,7 @@ def find_folder_id(folder_path: str) -> str:
         raise ValueError("folder_path must identify a folder below the OneDrive root")
 
     encoded_path = quote(normalized_path.replace("\\", "/"), safe="/")
-    access_token = get_access_token()
+    access_token = get_access_token("onedrive")
     item = _get(
         f"/me/drive/root:/{encoded_path}?$select=id,name,folder",
         access_token=access_token,
@@ -102,7 +102,7 @@ def get_or_create_share_link(
     if not folder_id.strip():
         raise ValueError("folder_id must not be empty")
 
-    access_token = get_access_token()
+    access_token = get_access_token("onedrive")
     encoded_id = quote(folder_id, safe="")
     permissions = _get(
         f"/me/drive/items/{encoded_id}/permissions?$select=link",
@@ -132,7 +132,7 @@ def encode_sharing_url(sharing_url: str) -> str:
 
 def resolve_shared_folder(sharing_url: str) -> dict[str, Any]:
     """Resolve a shared OneDrive URL to its canonical drive item (read-only)."""
-    access_token = get_access_token()
+    access_token = get_access_token("onedrive")
     sharing_token = quote(encode_sharing_url(sharing_url), safe="!")
     return _get(
         f"/shares/{sharing_token}/driveItem?$expand=children($select=id,name,webUrl,size,folder,file)",

@@ -121,19 +121,17 @@ Local-only media and desktop application helpers.
 
 ### `integrations/`
 
-Provider-specific API packages. Each integration owns its own authentication
-and client modules.
+Provider-first API packages own shared authentication, with product clients
+nested beneath the identity provider.
 
-- `onedrive/` performs delegated Microsoft OAuth, refreshes cached tokens, and
-  makes read-first Microsoft Graph calls. It can inspect the current drive and
-  resolve a sharing URL to a canonical item.
-- `google/` owns the shared desktop OAuth-with-PKCE implementation and reuses
-  one Google OAuth client registration while keeping service scopes and token
-  caches separate.
-- `google_drive/` uses the shared Google authentication flow to inspect and
-  share Drive folders through Drive API v3.
-- `gmail/` uses a separate send-only token cache to construct and explicitly
-  send Gmail messages. Its authorization check never sends a message.
+- `google/` owns desktop OAuth with PKCE and reuses one Google OAuth client
+  registration while keeping product scopes and token caches separate.
+  `google/google_drive/` inspects and shares Drive folders, while
+  `google/gmail/` constructs and explicitly sends messages using a send-only
+  token. Its authorization check never sends a message.
+- `microsoft/` owns delegated Microsoft OAuth and token refresh.
+  `microsoft/onedrive/` inspects and shares OneDrive folders through Microsoft
+  Graph. Future Microsoft product clients can select their own scopes and cache.
 
 The integrations use credentials from the local secrets mechanism and store
 renewable local tokens under `.secrets/auths/tokens/<provider>/token.json`.

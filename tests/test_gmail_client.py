@@ -6,7 +6,7 @@ from unittest import TestCase
 from unittest.mock import patch
 import base64
 
-from integrations.gmail.client import build_message, send_message
+from integrations.google.gmail.client import build_message, send_message
 
 
 class BuildMessageTests(TestCase):
@@ -25,8 +25,8 @@ class BuildMessageTests(TestCase):
 
 
 class SendMessageTests(TestCase):
-    @patch("integrations.gmail.client.get_access_token", return_value="gmail-token")
-    @patch("integrations.gmail.client._post", return_value={"id": "message-id"})
+    @patch("integrations.google.gmail.client.get_access_token", return_value="gmail-token")
+    @patch("integrations.google.gmail.client._post", return_value={"id": "message-id"})
     def test_sends_through_the_authenticated_users_mailbox(self, gmail_post, _get_token):
         result = send_message("recipient@example.com", "Subject", "Body")
 

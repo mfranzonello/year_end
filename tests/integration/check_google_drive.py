@@ -3,7 +3,7 @@
 import argparse
 
 from integrations.google.auth import GoogleAuthError
-from integrations.google_drive.client import GoogleDriveRequestError, list_root_items
+from integrations.google.google_drive.client import GoogleDriveRequestError, list_root_items
 
 
 def main() -> None:

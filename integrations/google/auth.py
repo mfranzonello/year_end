@@ -43,7 +43,7 @@ def load_settings(service: str) -> GoogleSettings:
 
     from common.secret import secrets
 
-    desktop = secrets["gdrive"]["desktop"]
+    desktop = secrets["google"]["desktop"]
     api_config = read_toml("api")
     return GoogleSettings(
         client_id=desktop["client_id"],

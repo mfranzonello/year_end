@@ -1,4 +1,4 @@
-"""Read-first Google Drive API client."""
+"""Google Drive API client for folder lookup and sharing."""
 
 from typing import Any
 from urllib.error import HTTPError
