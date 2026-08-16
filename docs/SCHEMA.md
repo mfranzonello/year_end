@@ -258,15 +258,23 @@ Premiere-derived time positions in `appearances` and `chapters` are stored in
 seconds. Duration aggregates exposed by the project summary views likewise
 retain seconds unless a consuming query or display converts them.
 
-## `ingestion`: submission and contact metadata
+## `ingestion`: submission metadata
 
 - `repositories`: storage/provider repositories.
-- `contacts`: optional `person_id`, `email_address`, and `repository_ids` JSONB
-  data. It currently references `public.persons`.
 - `shared_albums` and `shared_album_details`: shared-source data used by the
   Selenium ingestion workflow.
 - `scrape_sources`, `browsers`, and `browser_profiles`: local scraping
   configuration.
+
+## `messaging`: contacts and message preparation
+
+- `contacts`: optional `person_id`, `email_address`, and `repository_ids` JSONB
+  data. It references `public.persons`.
+- `no_contacts`: person/year suppression records used to remove people from a
+  project's otherwise folder-derived recipient set.
+- `templates`: an initial project-year message-template scaffold. Its content,
+  versioning, and message-purpose fields still need to be designed before the
+  drafting workflow depends on it.
 
 The contact model is intentionally small today. A current phone number can be a
 simple nullable contact field if one current value per person remains the
@@ -303,7 +311,7 @@ historical sender address into a current contact method.
 | `scraping/`, `repositories/ingest.py` | `ingestion` source and album views |
 | Streamlit `pages/` | `project` summary/appearance views, `tree` views, `public.display_names`, and `config` enums |
 | `family_tree/` | `public` relationship tables plus `tree` membership/household/spouse views |
-| Future onboarding/reference API | `public`, `tree`, and an evolved contact model; must use scoped access controls |
+| Future onboarding/reference API | `public`, `tree`, and `messaging`; must use scoped access controls |
 
 ## Documentation and migration rules
 
@@ -321,7 +329,7 @@ historical sender address into a current contact method.
   and `member_id` on `project.folders`?
 - Which `tree` views should be considered stable interfaces versus work in
   progress?
-- What are the intended semantics and lifecycle of `ingestion.contacts` and its
+- What are the intended semantics and lifecycle of `messaging.contacts` and its
   `repository_ids` JSONB column?
 - Should `project.folder_locations` enforce one current location per folder and
   repository, or deliberately retain multiple historical locations?

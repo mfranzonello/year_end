@@ -62,6 +62,10 @@
 - Before any schema migration or destructive database change, identify affected
   tables, views, queries, and integrations; provide an impact check, validation,
   and rollback plan.
+- The agent may add or remove non-constraint convenience indexes after checking
+  actual query shapes, plans, and index usage. Discuss indexes that enforce a
+  primary key, uniqueness, exclusion, or another data-integrity constraint with
+  the project owner before changing them.
 - Avoid closed-world SQL logic (for example `CASE WHEN` branches) where new
   types or states are likely. Model extensible concepts in the data instead.
 
