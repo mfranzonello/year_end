@@ -187,6 +187,9 @@ The database allows at most one non-null value among `person_id`, `animal_id`,
 and `source_id`. `(project_year, media_type, folder_name)` is unique with nulls
 treated as equal. `media_type` references `config.media`.
 
+`member_id` is generated as `COALESCE(person_id, animal_id, source_id)`; clients
+set the appropriate typed owner column and must not assign `member_id` directly.
+
 The optional person/animal/source link identifies the folder's project/editorial
 subject, not necessarily the literal uploader. For example, an animal-linked
 folder can hold scenes filmed by a person but organized separately so those
@@ -242,7 +245,10 @@ repeatedly searching storage by name/path.
 - `shares`: maps a folder location to a share URL and tracks `is_active`,
   optional `expires_at`, and `last_verified_at`. It remains a share capability,
   not the primary item identity: links can be revoked or recreated while the
-  provider item ID remains stable.
+  provider item ID remains stable. Current-year contribution links are
+  upload-capable: anonymous `edit` links in OneDrive and `anyone`/`writer`
+  permissions in Google Drive. Historical reconciliation never creates or
+  upgrades a missing permission.
 - `appearances` and `chapters`: Premiere-derived editorial output.
 - `duplicates` and `duplicates_summary`: duplicate-detection views.
 - `folders_summary` and `years_summary`: dashboard-facing aggregate views.

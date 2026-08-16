@@ -58,10 +58,10 @@ class GetOrCreateShareLinkTests(TestCase):
     @patch("integrations.google.google_drive.client.get_access_token", return_value="token")
     @patch("integrations.google.google_drive.client._post")
     @patch("integrations.google.google_drive.client._get")
-    def test_returns_an_existing_anyone_link_without_creating_permission(self, drive_get, drive_post, _get_token):
+    def test_returns_an_existing_writer_link_without_creating_permission(self, drive_get, drive_post, _get_token):
         drive_get.side_effect = [
             {"id": "folder-id", "mimeType": FOLDER_MIME_TYPE, "webViewLink": "https://existing"},
-            {"permissions": [{"id": "permission-id", "type": "anyone", "role": "reader"}]},
+            {"permissions": [{"id": "permission-id", "type": "anyone", "role": "writer"}]},
         ]
 
         result = get_or_create_share_link("folder-id")
@@ -72,7 +72,7 @@ class GetOrCreateShareLinkTests(TestCase):
     @patch("integrations.google.google_drive.client.get_access_token", return_value="token")
     @patch("integrations.google.google_drive.client._post", return_value={"id": "permission-id"})
     @patch("integrations.google.google_drive.client._get")
-    def test_creates_an_anyone_reader_permission_when_missing(self, drive_get, drive_post, _get_token):
+    def test_creates_an_anyone_writer_permission_when_missing(self, drive_get, drive_post, _get_token):
         drive_get.side_effect = [
             {"id": "folder/id", "mimeType": FOLDER_MIME_TYPE, "webViewLink": "https://created"},
             {"permissions": [{"id": "owner-id", "type": "user", "role": "owner"}]},
@@ -84,7 +84,30 @@ class GetOrCreateShareLinkTests(TestCase):
         drive_post.assert_called_once_with(
             "/files/folder%2Fid/permissions",
             {"fields": "id,type,role"},
-            {"type": "anyone", "role": "reader"},
+            {"type": "anyone", "role": "writer"},
+            access_token="token",
+        )
+
+    @patch("integrations.google.google_drive.client.get_access_token", return_value="token")
+    @patch("integrations.google.google_drive.client._patch", return_value={"role": "writer"})
+    @patch("integrations.google.google_drive.client._post")
+    @patch("integrations.google.google_drive.client._get")
+    def test_upgrades_an_existing_reader_permission(
+        self, drive_get, drive_post, drive_patch, _get_token
+    ):
+        drive_get.side_effect = [
+            {"id": "folder/id", "mimeType": FOLDER_MIME_TYPE, "webViewLink": "https://updated"},
+            {"permissions": [{"id": "permission/id", "type": "anyone", "role": "reader"}]},
+        ]
+
+        result = get_or_create_share_link("folder/id")
+
+        self.assertEqual(result, "https://updated")
+        drive_post.assert_not_called()
+        drive_patch.assert_called_once_with(
+            "/files/folder%2Fid/permissions/permission%2Fid",
+            {"fields": "id,type,role"},
+            {"role": "writer"},
             access_token="token",
         )
 

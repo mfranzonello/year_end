@@ -65,6 +65,34 @@ def _post(
         raise GoogleDriveRequestError(f"Google Drive API request failed: {error}") from error
 
 
+def _patch(
+    path: str,
+    params: dict[str, str],
+    payload: dict[str, Any],
+    *,
+    access_token: str,
+) -> dict[str, Any]:
+    """PATCH a JSON payload to Google Drive and return its response."""
+    request = Request(
+        f"{_api_url()}{path}?{urlencode(params)}",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+        method="PATCH",
+    )
+    try:
+        with urlopen(request, timeout=30) as response:
+            return json.load(response)
+    except HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise GoogleDriveRequestError(f"Google Drive API returned HTTP {error.code}: {body}") from error
+    except Exception as error:
+        raise GoogleDriveRequestError(f"Google Drive API request failed: {error}") from error
+
+
 def _escape_query_value(value: str) -> str:
     """Escape a string literal for the Google Drive ``q`` query language."""
     return value.replace("\\", "\\\\").replace("'", "\\'")
@@ -144,8 +172,8 @@ def list_child_folders(folder_id: str) -> list[dict[str, Any]]:
         params = {**params, "pageToken": page_token}
 
 
-def _get_share_details(folder_id: str, access_token: str) -> tuple[str, bool]:
-    """Return a folder web URL and whether its public reader permission exists."""
+def _get_share_details(folder_id: str, access_token: str) -> tuple[str, dict[str, Any] | None]:
+    """Return a folder web URL and its public permission, when one exists."""
     if not folder_id.strip():
         raise ValueError("folder_id must not be empty")
 
@@ -166,33 +194,46 @@ def _get_share_details(folder_id: str, access_token: str) -> tuple[str, bool]:
         {"fields": "permissions(id,type,role)", "pageSize": "100"},
         access_token=access_token,
     )
-    has_public_reader = any(
-        permission.get("type") == "anyone" and permission.get("role") == "reader"
-        for permission in permissions.get("permissions", [])
+    public_permission = next(
+        (
+            permission
+            for permission in permissions.get("permissions", [])
+            if permission.get("type") == "anyone"
+        ),
+        None,
     )
-    return web_url, has_public_reader
+    return web_url, public_permission
 
 
 def get_share_link(folder_id: str) -> str | None:
-    """Return an existing anyone-with-link reader URL without creating one."""
-    web_url, has_public_reader = _get_share_details(
+    """Return an existing anyone-with-link writer URL without creating one."""
+    web_url, public_permission = _get_share_details(
         folder_id, get_access_token("google_drive")
     )
-    return web_url if has_public_reader else None
+    return web_url if public_permission and public_permission.get("role") == "writer" else None
 
 
 def get_or_create_share_link(folder_id: str) -> str:
-    """Ensure a folder has an anyone-with-link reader permission and return its URL."""
+    """Ensure a folder has an anyone-with-link writer permission and return its URL."""
     access_token = get_access_token("google_drive")
-    web_url, has_public_reader = _get_share_details(folder_id, access_token)
-    if has_public_reader:
+    web_url, public_permission = _get_share_details(folder_id, access_token)
+    if public_permission and public_permission.get("role") == "writer":
         return web_url
 
     encoded_id = quote(folder_id, safe="")
-    _post(
-        f"/files/{encoded_id}/permissions",
-        {"fields": "id,type,role"},
-        {"type": "anyone", "role": "reader"},
-        access_token=access_token,
-    )
+    permission_id = public_permission.get("id") if public_permission else None
+    if permission_id:
+        _patch(
+            f"/files/{encoded_id}/permissions/{quote(permission_id, safe='')}",
+            {"fields": "id,type,role"},
+            {"role": "writer"},
+            access_token=access_token,
+        )
+    else:
+        _post(
+            f"/files/{encoded_id}/permissions",
+            {"fields": "id,type,role"},
+            {"type": "anyone", "role": "writer"},
+            access_token=access_token,
+        )
     return web_url

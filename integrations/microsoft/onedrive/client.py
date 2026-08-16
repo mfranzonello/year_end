@@ -119,7 +119,7 @@ def list_child_folders(folder_id: str) -> list[dict[str, Any]]:
 def get_share_link(
     folder_id: str,
     *,
-    link_type: str = "view",
+    link_type: str = "edit",
     scope: str = "anonymous",
 ) -> str | None:
     """Return a matching existing folder share URL without creating one."""
@@ -129,14 +129,15 @@ def get_share_link(
     access_token = get_access_token("onedrive")
     encoded_id = quote(folder_id, safe="")
     permissions = _get(
-        f"/me/drive/items/{encoded_id}/permissions?$select=link",
+        f"/me/drive/items/{encoded_id}/permissions?$select=link,inheritedFrom",
         access_token=access_token,
     )
     for permission in permissions.get("value", []):
         link = permission.get("link", {})
         web_url = link.get("webUrl")
         if (
-            link.get("type") == link_type
+            not permission.get("inheritedFrom")
+            and link.get("type") == link_type
             and link.get("scope") == scope
             and isinstance(web_url, str)
             and web_url
@@ -148,7 +149,7 @@ def get_share_link(
 def get_or_create_share_link(
     folder_id: str,
     *,
-    link_type: str = "view",
+    link_type: str = "edit",
     scope: str = "anonymous",
 ) -> str:
     """Return a matching folder share URL, creating it when absent."""

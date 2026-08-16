@@ -37,11 +37,21 @@ class GetOrCreateShareLinkTests(TestCase):
         self.assertIsNone(get_share_link("folder-id"))
 
     @patch("integrations.microsoft.onedrive.client.get_access_token", return_value="token")
+    @patch("integrations.microsoft.onedrive.client._get")
+    def test_get_only_ignores_an_inherited_edit_link(self, graph_get, _get_token):
+        graph_get.return_value = {"value": [{
+            "inheritedFrom": {"id": "parent-id"},
+            "link": {"type": "edit", "scope": "anonymous", "webUrl": "https://parent"},
+        }]}
+
+        self.assertIsNone(get_share_link("folder-id"))
+
+    @patch("integrations.microsoft.onedrive.client.get_access_token", return_value="token")
     @patch("integrations.microsoft.onedrive.client._post")
     @patch("integrations.microsoft.onedrive.client._get")
     def test_returns_an_existing_link_without_creating_one(self, graph_get, graph_post, _get_token):
         graph_get.return_value = {
-            "value": [{"link": {"type": "view", "scope": "anonymous", "webUrl": "https://existing"}}]
+            "value": [{"link": {"type": "edit", "scope": "anonymous", "webUrl": "https://existing"}}]
         }
 
         result = get_or_create_share_link("folder-id")
@@ -52,7 +62,7 @@ class GetOrCreateShareLinkTests(TestCase):
     @patch("integrations.microsoft.onedrive.client.get_access_token", return_value="token")
     @patch("integrations.microsoft.onedrive.client._post")
     @patch("integrations.microsoft.onedrive.client._get", return_value={"value": []})
-    def test_creates_an_anonymous_view_link_when_missing(self, _graph_get, graph_post, _get_token):
+    def test_creates_an_anonymous_edit_link_when_missing(self, _graph_get, graph_post, _get_token):
         graph_post.return_value = {"link": {"webUrl": "https://created"}}
 
         result = get_or_create_share_link("folder/id")
@@ -60,7 +70,7 @@ class GetOrCreateShareLinkTests(TestCase):
         self.assertEqual(result, "https://created")
         graph_post.assert_called_once_with(
             "/me/drive/items/folder%2Fid/createLink",
-            {"type": "view", "scope": "anonymous"},
+            {"type": "edit", "scope": "anonymous"},
             access_token="token",
         )
 
