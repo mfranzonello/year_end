@@ -80,8 +80,10 @@ The current presentation convention for a new participant folder is `YIR Clips /
 
 Cloud folder reconciliation is year-scoped and inspects only immediate children
 of each configured media/year folder. A dry run discovers provider IDs without
-changing permissions or the database. Applying the operation ensures an
-anyone-with-link view permission and stores the provider location and share URL:
+changing permissions or the database. Applying the operation always stores the
+provider location. For the current calendar year it ensures an anyone-with-link
+view permission and stores the share URL; for prior years it records only a
+share permission that already exists and never creates a missing one:
 
 ```powershell
 python main.py --onedrive-shares --year 2026 --dry-run

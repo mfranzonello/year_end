@@ -116,17 +116,13 @@ def list_child_folders(folder_id: str) -> list[dict[str, Any]]:
         response = _get_url(next_url, access_token=access_token)
 
 
-def get_or_create_share_link(
+def get_share_link(
     folder_id: str,
     *,
     link_type: str = "view",
     scope: str = "anonymous",
-) -> str:
-    """Return an existing folder share URL, or create and return one.
-
-    Any existing sharing-link permission is reused. ``link_type`` and ``scope``
-    configure the new link only when the folder does not already have one.
-    """
+) -> str | None:
+    """Return a matching existing folder share URL without creating one."""
     if not folder_id.strip():
         raise ValueError("folder_id must not be empty")
 
@@ -146,7 +142,21 @@ def get_or_create_share_link(
             and web_url
         ):
             return web_url
+    return None
 
+
+def get_or_create_share_link(
+    folder_id: str,
+    *,
+    link_type: str = "view",
+    scope: str = "anonymous",
+) -> str:
+    """Return a matching folder share URL, creating it when absent."""
+    if web_url := get_share_link(folder_id, link_type=link_type, scope=scope):
+        return web_url
+
+    access_token = get_access_token("onedrive")
+    encoded_id = quote(folder_id, safe="")
     for attempt in range(3):
         try:
             permission = _post(

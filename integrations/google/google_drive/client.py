@@ -144,12 +144,11 @@ def list_child_folders(folder_id: str) -> list[dict[str, Any]]:
         params = {**params, "pageToken": page_token}
 
 
-def get_or_create_share_link(folder_id: str) -> str:
-    """Ensure a folder has an anyone-with-link reader permission and return its URL."""
+def _get_share_details(folder_id: str, access_token: str) -> tuple[str, bool]:
+    """Return a folder web URL and whether its public reader permission exists."""
     if not folder_id.strip():
         raise ValueError("folder_id must not be empty")
 
-    access_token = get_access_token("google_drive")
     encoded_id = quote(folder_id, safe="")
     folder = _get(
         f"/files/{encoded_id}",
@@ -167,14 +166,33 @@ def get_or_create_share_link(folder_id: str) -> str:
         {"fields": "permissions(id,type,role)", "pageSize": "100"},
         access_token=access_token,
     )
-    if not any(
+    has_public_reader = any(
         permission.get("type") == "anyone" and permission.get("role") == "reader"
         for permission in permissions.get("permissions", [])
-    ):
-        _post(
-            f"/files/{encoded_id}/permissions",
-            {"fields": "id,type,role"},
-            {"type": "anyone", "role": "reader"},
-            access_token=access_token,
-        )
+    )
+    return web_url, has_public_reader
+
+
+def get_share_link(folder_id: str) -> str | None:
+    """Return an existing anyone-with-link reader URL without creating one."""
+    web_url, has_public_reader = _get_share_details(
+        folder_id, get_access_token("google_drive")
+    )
+    return web_url if has_public_reader else None
+
+
+def get_or_create_share_link(folder_id: str) -> str:
+    """Ensure a folder has an anyone-with-link reader permission and return its URL."""
+    access_token = get_access_token("google_drive")
+    web_url, has_public_reader = _get_share_details(folder_id, access_token)
+    if has_public_reader:
+        return web_url
+
+    encoded_id = quote(folder_id, safe="")
+    _post(
+        f"/files/{encoded_id}/permissions",
+        {"fields": "id,type,role"},
+        {"type": "anyone", "role": "reader"},
+        access_token=access_token,
+    )
     return web_url

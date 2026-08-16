@@ -64,3 +64,33 @@ class OneDriveFolderShareInspectionTests(TestCase):
         find_year.assert_called_once_with("Videos/YIR Clips/2026")
         create_share.assert_not_called()
         update_shares.assert_not_called()
+
+    @patch("repositories.inspect.update_folder_locations_and_shares")
+    @patch("repositories.inspect.get_or_create_onedrive_share_link")
+    @patch("repositories.inspect.get_onedrive_share_link", return_value=None)
+    @patch("repositories.inspect.list_onedrive_child_folders")
+    @patch("repositories.inspect.find_onedrive_folder_id", return_value="year-id")
+    @patch("repositories.inspect.fetch_project_folders")
+    def test_historical_year_gets_without_creating_missing_shares(
+        self, fetch_folders, _find_year, list_children, get_share,
+        create_share, update_shares
+    ):
+        fetch_folders.return_value = DataFrame([{
+            "folder_id": "database-id",
+            "folder_name": "Participant 2025",
+            "project_year": 2025,
+            "media_type": "smartphone",
+        }])
+        list_children.return_value = [
+            {"id": "provider-id", "name": "Participant 2025", "folder": {}}
+        ]
+
+        result = inspect_onedrive_folder_shares(
+            Mock(), "Videos", "smartphone", "YIR Clips", 2025, Mock(),
+            dry_run=False, create_missing_shares=False,
+        )
+
+        self.assertIsNone(result.iloc[0]["share_url"])
+        get_share.assert_called_once_with("provider-id")
+        create_share.assert_not_called()
+        update_shares.assert_called_once()

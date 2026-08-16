@@ -8,6 +8,7 @@ from integrations.google.google_drive.client import (
     GoogleDriveRequestError,
     find_folder_id,
     get_or_create_share_link,
+    get_share_link,
     list_child_folders,
 )
 
@@ -44,6 +45,16 @@ class FindFolderIdTests(TestCase):
 
 
 class GetOrCreateShareLinkTests(TestCase):
+    @patch("integrations.google.google_drive.client.get_access_token", return_value="token")
+    @patch("integrations.google.google_drive.client._get")
+    def test_get_only_returns_none_without_creating_permission(self, drive_get, _get_token):
+        drive_get.side_effect = [
+            {"id": "folder-id", "mimeType": FOLDER_MIME_TYPE, "webViewLink": "https://folder"},
+            {"permissions": [{"id": "owner-id", "type": "user", "role": "owner"}]},
+        ]
+
+        self.assertIsNone(get_share_link("folder-id"))
+
     @patch("integrations.google.google_drive.client.get_access_token", return_value="token")
     @patch("integrations.google.google_drive.client._post")
     @patch("integrations.google.google_drive.client._get")

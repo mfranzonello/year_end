@@ -1,6 +1,7 @@
 '''Main script to scan for new video files, copy them, summarize ratings, and update Premiere project.'''
 
 import argparse
+from datetime import date
 
 from pandas import DataFrame
 
@@ -104,6 +105,7 @@ def sync_cloud_folder_shares(
     dry_run: bool = True,
 ):
     """Discover cloud folder IDs and optionally persist ensured share links."""
+    create_missing_shares = project_year == date.today().year
     engine = set_up_engine()
     try:
         for media_type, supfolder_name in media_locations:
@@ -116,6 +118,7 @@ def sync_cloud_folder_shares(
                     project_year,
                     ui,
                     dry_run=dry_run,
+                    create_missing_shares=create_missing_shares,
                 )
             if google_drive:
                 results = ingest_google_drive_folder_shares(
@@ -125,6 +128,7 @@ def sync_cloud_folder_shares(
                     supfolder_name,
                     project_year,
                     dry_run=dry_run,
+                    create_missing_shares=create_missing_shares,
                 )
                 expected_count = results.attrs.get("expected_count", 0)
                 if expected_count:
@@ -158,8 +162,8 @@ def main():
     ap.add_argument('--gdrive', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Drive to OneDrive.')
     ap.add_argument('--pictures', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
     ap.add_argument('--inspect-only', action='store_true', help='Only discover top-level participant folders and update their database records.')
-    ap.add_argument('--onedrive-shares', action='store_true', help='Discover OneDrive folder IDs and ensure share links with --apply.')
-    ap.add_argument('--google-drive-shares', action='store_true', help='Discover Google Drive folder IDs and ensure share links with --apply.')
+    ap.add_argument('--onedrive-shares', action='store_true', help='Reconcile OneDrive folder IDs and share links for a year.')
+    ap.add_argument('--google-drive-shares', action='store_true', help='Reconcile Google Drive folder IDs and share links for a year.')
     ap.add_argument('--year', type=int, help='Limit folder inspection or cloud sharing to one project year.')
 
     ap.add_argument('--stars', type=int, default=MIN_STARS, help='Minimum star rating to use in project.')

@@ -21,6 +21,7 @@ from family_tree.cloudinary_heavy import configure_cloud, fill_in_temp_pictures
 from integrations.microsoft.onedrive.client import (
     GraphRequestError,
     find_folder_id as find_onedrive_folder_id,
+    get_share_link as get_onedrive_share_link,
     get_or_create_share_link as get_or_create_onedrive_share_link,
     list_child_folders as list_onedrive_child_folders,
 )
@@ -35,6 +36,7 @@ def inspect_onedrive_folder_shares(
     project_year: int,
     ui: SplitConsole,
     dry_run: bool = True,
+    create_missing_shares: bool = True,
 ) -> DataFrame:
     """Match canonical OneDrive folders to project records and ensure shares."""
     project_folders = fetch_project_folders(engine, project_year, media_type)
@@ -64,10 +66,15 @@ def inspect_onedrive_folder_shares(
         item_id = cloud_folder.get("id")
         if not isinstance(item_id, str) or not item_id:
             continue
+        share_function = (
+            get_or_create_onedrive_share_link
+            if create_missing_shares
+            else get_onedrive_share_link
+        )
         matched.append({
             **row,
             "repository_item_id": item_id,
-            "share_url": None if dry_run else get_or_create_onedrive_share_link(item_id),
+            "share_url": None if dry_run else share_function(item_id),
         })
 
     results = DataFrame(matched)

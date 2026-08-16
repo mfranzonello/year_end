@@ -202,7 +202,7 @@ def update_folder_locations_and_shares(
     repository_name: str,
     is_canonical: bool,
 ) -> None:
-    """Persist provider folder IDs and their active share URLs."""
+    """Persist provider folder IDs and the verified state of their share URLs."""
     if folders.empty:
         return
 
@@ -271,6 +271,19 @@ def update_folder_locations_and_shares(
                         "is_canonical": is_canonical,
                     },
                 ).scalar_one()
+            if row["share_url"] is None:
+                conn.execute(
+                    text('''
+                    UPDATE project.shares
+                    SET is_active = false,
+                        last_verified_at = CURRENT_TIMESTAMP
+                    WHERE folder_location_id = :folder_location_id
+                      AND is_active = true
+                    ;'''),
+                    {"folder_location_id": location_id},
+                )
+                continue
+
             conn.execute(
                 text('''
                 UPDATE project.shares

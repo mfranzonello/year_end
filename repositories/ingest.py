@@ -8,6 +8,7 @@ from database.db_project import fetch_project_folders, update_folder_locations_a
 from integrations.google.google_drive.client import (
     GoogleDriveRequestError,
     find_folder_id as find_google_drive_folder_id,
+    get_share_link as get_google_drive_share_link,
     get_or_create_share_link as get_or_create_google_drive_share_link,
     list_child_folders as list_google_drive_child_folders,
 )
@@ -21,6 +22,7 @@ def ingest_google_drive_folder_shares(
     supfolder_name: str,
     project_year: int,
     dry_run: bool = True,
+    create_missing_shares: bool = True,
 ) -> DataFrame:
     """Match source Google Drive folders to project records and ensure shares."""
     project_folders = fetch_project_folders(engine, project_year, media_type)
@@ -49,10 +51,15 @@ def ingest_google_drive_folder_shares(
         item_id = cloud_folder.get("id")
         if not isinstance(item_id, str) or not item_id:
             continue
+        share_function = (
+            get_or_create_google_drive_share_link
+            if create_missing_shares
+            else get_google_drive_share_link
+        )
         matched.append({
             **row,
             "repository_item_id": item_id,
-            "share_url": None if dry_run else get_or_create_google_drive_share_link(item_id),
+            "share_url": None if dry_run else share_function(item_id),
         })
 
     results = DataFrame(matched)

@@ -4,7 +4,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from integrations.microsoft.onedrive.client import (
-    GraphRequestError, find_folder_id, get_or_create_share_link,
+    GraphRequestError, find_folder_id, get_or_create_share_link, get_share_link,
     list_child_folders,
 )
 
@@ -31,6 +31,11 @@ class FindFolderIdTests(TestCase):
 
 
 class GetOrCreateShareLinkTests(TestCase):
+    @patch("integrations.microsoft.onedrive.client.get_access_token", return_value="token")
+    @patch("integrations.microsoft.onedrive.client._get", return_value={"value": []})
+    def test_get_only_returns_none_without_creating_a_link(self, _graph_get, _get_token):
+        self.assertIsNone(get_share_link("folder-id"))
+
     @patch("integrations.microsoft.onedrive.client.get_access_token", return_value="token")
     @patch("integrations.microsoft.onedrive.client._post")
     @patch("integrations.microsoft.onedrive.client._get")
