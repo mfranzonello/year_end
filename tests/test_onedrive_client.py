@@ -66,6 +66,24 @@ class GetOrCreateShareLinkTests(TestCase):
         with self.assertRaisesRegex(GraphRequestError, "without returning a URL"):
             get_or_create_share_link("folder-id")
 
+    @patch("integrations.microsoft.onedrive.client.time.sleep")
+    @patch("integrations.microsoft.onedrive.client.get_access_token", return_value="token")
+    @patch("integrations.microsoft.onedrive.client._post")
+    @patch("integrations.microsoft.onedrive.client._get", return_value={"value": []})
+    def test_retries_a_transient_sharing_failure(
+        self, _graph_get, graph_post, _get_token, sleep
+    ):
+        graph_post.side_effect = [
+            GraphRequestError('HTTP 400: {"code":"sharingFailed"}'),
+            {"link": {"webUrl": "https://created"}},
+        ]
+
+        result = get_or_create_share_link("folder-id")
+
+        self.assertEqual(result, "https://created")
+        self.assertEqual(graph_post.call_count, 2)
+        sleep.assert_called_once_with(1)
+
 
 class ListChildFoldersTests(TestCase):
     @patch("integrations.microsoft.onedrive.client.get_access_token", return_value="token")

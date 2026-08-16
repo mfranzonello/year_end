@@ -6,6 +6,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 import base64
 import json
+import time
 
 from common.config import read_toml
 from integrations.microsoft.auth import MicrosoftAuthError, get_access_token
@@ -146,11 +147,18 @@ def get_or_create_share_link(
         ):
             return web_url
 
-    permission = _post(
-        f"/me/drive/items/{encoded_id}/createLink",
-        {"type": link_type, "scope": scope},
-        access_token=access_token,
-    )
+    for attempt in range(3):
+        try:
+            permission = _post(
+                f"/me/drive/items/{encoded_id}/createLink",
+                {"type": link_type, "scope": scope},
+                access_token=access_token,
+            )
+            break
+        except GraphRequestError as error:
+            if "sharingFailed" not in str(error) or attempt == 2:
+                raise
+            time.sleep(2 ** attempt)
     web_url = permission.get("link", {}).get("webUrl")
     if not isinstance(web_url, str) or not web_url:
         raise GraphRequestError("Microsoft Graph created a sharing permission without returning a URL")
