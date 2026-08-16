@@ -2,7 +2,7 @@
 
 import argparse
 
-from integrations.google_drive.auth import GoogleAuthError
+from integrations.google.auth import GoogleAuthError
 from integrations.google_drive.client import GoogleDriveRequestError, list_root_items
 
 

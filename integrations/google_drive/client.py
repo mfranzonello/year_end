@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 import json
 
 from common.config import read_toml
-from integrations.google_drive.auth import get_access_token
+from integrations.google.auth import get_access_token
 
 
 class GoogleDriveRequestError(RuntimeError):
@@ -78,7 +78,7 @@ def list_root_items(*, force_login: bool = False) -> list[dict[str, Any]]:
         "orderBy": "folder,name",
         "fields": "files(id,name,mimeType,webViewLink,modifiedTime,size,parents),nextPageToken",
         "spaces": "drive",
-    }, access_token=get_access_token(force_login=force_login)).get("files", [])
+    }, access_token=get_access_token("google_drive", force_login=force_login)).get("files", [])
 
 
 def find_folder_id(folder_path: str) -> str:
@@ -87,7 +87,7 @@ def find_folder_id(folder_path: str) -> str:
     if not normalized_path:
         raise ValueError("folder_path must identify a folder below the Google Drive root")
 
-    access_token = get_access_token()
+    access_token = get_access_token("google_drive")
     parent_id = "root"
     for folder_name in normalized_path.replace("\\", "/").split("/"):
         if not folder_name:
@@ -122,7 +122,7 @@ def get_or_create_share_link(folder_id: str) -> str:
     if not folder_id.strip():
         raise ValueError("folder_id must not be empty")
 
-    access_token = get_access_token()
+    access_token = get_access_token("google_drive")
     encoded_id = quote(folder_id, safe="")
     folder = _get(
         f"/files/{encoded_id}",

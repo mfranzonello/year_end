@@ -8,7 +8,7 @@ import base64
 import json
 
 from common.config import read_toml
-from integrations.gmail.auth import get_access_token
+from integrations.google.auth import get_access_token
 
 
 class GmailRequestError(RuntimeError):
@@ -53,4 +53,4 @@ def send_message(recipients: str | Iterable[str], subject: str, body: str, *, se
     """Send one explicitly supplied message as the authorized Gmail user."""
     raw_message = build_message(recipients, subject, body, sender=sender)
     return _post("/users/me/messages/send", {"raw": raw_message},
-                 access_token=get_access_token(force_login=force_login))
+                 access_token=get_access_token("gmail", force_login=force_login))

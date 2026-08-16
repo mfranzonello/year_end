@@ -31,6 +31,7 @@ class SendMessageTests(TestCase):
         result = send_message("recipient@example.com", "Subject", "Body")
 
         self.assertEqual(result, {"id": "message-id"})
+        _get_token.assert_called_once_with("gmail", force_login=False)
         path, payload = gmail_post.call_args.args
         self.assertEqual(path, "/users/me/messages/send")
         self.assertTrue(payload["raw"])
