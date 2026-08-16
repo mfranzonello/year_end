@@ -89,7 +89,12 @@ share permission that already exists and never creates a missing one:
 python main.py --onedrive-shares --year 2026 --dry-run
 python main.py --onedrive-shares --year 2026 --apply
 python main.py --google-drive-shares --year 2026 --dry-run
+python main.py --onedrive-shares --google-drive-shares --apply
 ```
+
+Omitting `--year` reconciles every year represented by a named folder in
+`project.folders`. Only the current calendar year is allowed to create missing
+share permissions.
 
 Google Drive reconciliation does not require a locally mounted Google Drive.
 Provider project roots use the existing `local_storage` folder names in

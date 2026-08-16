@@ -10,6 +10,7 @@ from common.secret import secrets
 from common.console import SplitConsole
 from common.config import read_toml
 from database.db import get_engine
+from database.db_project import fetch_project_folder_years
 from repositories.iterate import get_media_locations
 from repositories.migrate import dedupe_one_drive, copy_from_gdrive
 from repositories.ingest import copy_from_web, ingest_google_drive_folder_shares
@@ -99,43 +100,49 @@ def update_database(
 
 def sync_cloud_folder_shares(
     media_locations: list[tuple],
-    project_year: int,
+    project_year: int | None,
     onedrive: bool,
     google_drive: bool,
     dry_run: bool = True,
 ):
     """Discover cloud folder IDs and optionally persist ensured share links."""
-    create_missing_shares = project_year == date.today().year
     engine = set_up_engine()
     try:
-        for media_type, supfolder_name in media_locations:
-            if onedrive:
-                inspect_onedrive_folder_shares(
-                    engine,
-                    DRIVE_CONFIG["onedrive"]["videos"],
-                    media_type,
-                    supfolder_name,
-                    project_year,
-                    ui,
-                    dry_run=dry_run,
-                    create_missing_shares=create_missing_shares,
-                )
-            if google_drive:
-                results = ingest_google_drive_folder_shares(
-                    engine,
-                    DRIVE_CONFIG["google_drive"]["videos"],
-                    media_type,
-                    supfolder_name,
-                    project_year,
-                    dry_run=dry_run,
-                    create_missing_shares=create_missing_shares,
-                )
-                expected_count = results.attrs.get("expected_count", 0)
-                if expected_count:
-                    ui.add_update(
-                        f"Google Drive {project_year} {media_type}: matched "
-                        f"{len(results)} of {expected_count} database folders."
+        project_years = (
+            [project_year]
+            if project_year is not None
+            else fetch_project_folder_years(engine)["project_year"].tolist()
+        )
+        for selected_year in project_years:
+            create_missing_shares = selected_year == date.today().year
+            for media_type, supfolder_name in media_locations:
+                if onedrive:
+                    inspect_onedrive_folder_shares(
+                        engine,
+                        DRIVE_CONFIG["onedrive"]["videos"],
+                        media_type,
+                        supfolder_name,
+                        selected_year,
+                        ui,
+                        dry_run=dry_run,
+                        create_missing_shares=create_missing_shares,
                     )
+                if google_drive:
+                    results = ingest_google_drive_folder_shares(
+                        engine,
+                        DRIVE_CONFIG["google_drive"]["videos"],
+                        media_type,
+                        supfolder_name,
+                        selected_year,
+                        dry_run=dry_run,
+                        create_missing_shares=create_missing_shares,
+                    )
+                    expected_count = results.attrs.get("expected_count", 0)
+                    if expected_count:
+                        ui.add_update(
+                            f"Google Drive {selected_year} {media_type}: matched "
+                            f"{len(results)} of {expected_count} database folders."
+                        )
     finally:
         engine.dispose()
 
@@ -176,8 +183,6 @@ def main():
     cloud_shares = args.onedrive_shares or args.google_drive_shares
     if args.year and not (args.inspect_only or cloud_shares):
         ap.error('--year requires --inspect-only or a cloud-share option.')
-    if cloud_shares and args.year is None:
-        ap.error('--onedrive-shares and --google-drive-shares require --year.')
     if cloud_shares and args.no_dbupdate:
         ap.error('Cloud-share reconciliation cannot be combined with --no-dbupdate.')
     if args.inspect_only and args.no_dbupdate:

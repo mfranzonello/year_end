@@ -179,6 +179,16 @@ def fetch_media_types(engine:Engine) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
+def fetch_project_folder_years(engine: Engine) -> DataFrame:
+    """Return years that have named project folders to reconcile."""
+    sql = '''
+    SELECT DISTINCT project_year
+    FROM project.folders
+    WHERE folder_name IS NOT NULL
+    ORDER BY project_year ASC
+    ;'''
+    return read_sql(engine, sql)
+
 def fetch_project_folders(engine: Engine, project_year: int, media_type: str) -> DataFrame:
     """Return project folders that need repository-location reconciliation."""
     sql = '''
