@@ -11,8 +11,9 @@ from urllib.request import Request, urlopen
 import json
 import secrets as secure_secrets
 import time
-import tomllib
 import webbrowser
+
+from common.config import read_toml
 
 
 TOKEN_CACHE = Path(".secrets/auths/tokens/azure/token.json")
@@ -38,18 +39,14 @@ class AzureSettings:
 def load_settings() -> AzureSettings:
     """Load the app registration values without exposing secret values."""
     from common.secret import secrets
-    with Path("config/api.toml").open("rb") as config_file:
-        api_config = tomllib.load(config_file)
-    with Path("config/config.toml").open("rb") as config_file:
-        project_config = tomllib.load(config_file)
-    azure_config = project_config["azure"]
+    api_config = read_toml("api")["onedrive"]
 
     return AzureSettings(
         client_id=secrets["azure"]["client_id"],
         client_secret=secrets["azure"]["client_secret"],
-        authorize_endpoint=f"{api_config['azure']['urls']['login']}/authorize",
-        redirect_uri=azure_config["redirect_uri"],
-        scopes=tuple(azure_config["scope"]),
+        authorize_endpoint=f"{api_config['urls']['identity']}/authorize",
+        redirect_uri=api_config["oauth"]["redirect_uri"],
+        scopes=tuple(api_config["oauth"]["scopes"]),
     )
 
 

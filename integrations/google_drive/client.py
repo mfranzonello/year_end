@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import json
 
+from common.config import read_toml
 from integrations.google_drive.auth import get_access_token
 
 
@@ -13,9 +14,14 @@ class GoogleDriveRequestError(RuntimeError):
     """Raised when the Google Drive API rejects a request."""
 
 
+def _api_url() -> str:
+    """Return the configured Google Drive API base URL."""
+    return read_toml("api")["google_drive"]["urls"]["api"]
+
+
 def _get(path: str, params: dict[str, str], *, access_token: str) -> dict[str, Any]:
     request = Request(
-        f"https://www.googleapis.com/drive/v3{path}?{urlencode(params)}",
+        f"{_api_url()}{path}?{urlencode(params)}",
         headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
     )
     try:

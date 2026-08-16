@@ -74,9 +74,16 @@ Create local secret files from your own credentials; do not commit them:
 - `.secrets/secrets.toml` for the local CLI and expanded integrations.
 - `.streamlit/secrets.toml` for the narrower Streamlit deployment environment.
 
-The checked-in TOML files under `config/` describe non-secret endpoints,
-locations, and provider settings. Adapt them for your own environment rather
-than hardcoding paths or URLs in Python.
+Copy the checked-in local configuration templates before running local media or
+cloud-integration workflows:
+
+- `config/api.example.toml` to `config/api.toml` for provider endpoints and
+  OAuth behavior.
+- `config/drives.example.toml` to `config/drives.toml` for local storage,
+  browser, and desktop-application settings.
+
+The local configuration files are ignored. Adapt them for your environment
+rather than hardcoding paths or URLs in Python.
 
 ## Running the project
 

@@ -2,6 +2,13 @@
 .devcontainer
 .streamlit/secrets.toml
 .secrets/
+!.secrets/
+.secrets/*
+!.secrets/secrets.example.toml
+
+# Local, non-secret installation configuration; copy the tracked examples.
+/config/api.toml
+/config/drives.toml
 
 *.TMP
 /debug_*

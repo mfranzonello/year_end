@@ -15,6 +15,9 @@
 
 - Do not hardcode family-specific names, database names, paths, credentials, or
   mutable URLs. Use the existing configuration and secrets mechanisms.
+- Keep provider endpoint URLs in `config/api.toml` as their single source of
+  truth. Cloud integrations must not duplicate them in code; `config/drives.toml`
+  is reserved for local storage, desktop applications, and browser settings.
 - Keep persistent database models provider-neutral when the underlying concept
   is portable. Model the current canonical repository through relationships and
   configuration, not vendor-branded column names, unless an attribute truly

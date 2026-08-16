@@ -1,4 +1,6 @@
-# specific folder structure and file naming
+# Local storage, browser, and executable settings. Copy to drives.toml and
+# customize for the machine and project.
+
 [local_storage]
 quarantine = "Quarantine"
 
@@ -15,24 +17,18 @@ reviews = "Year End"
 project = "YIR"
 bin = "Videos"
 common = "_Common"
-label_preset = "Nello YIR"
+label_preset = "Year End"
 
 [ssd]
-name = 'Nello Drive'
-videos = 'Videos'
-
-
-# executables for Windows and Mac
-[executables]
-
-[executables.windows]
+name = "Media Drive"
+videos = "Videos"
 
 [executables.windows.google_drive]
 vendor = "Google"
 name = "Drive File Stream"
 exe = "GoogleDriveFS"
 
-[executables.windows.drobpox]
+[executables.windows.dropbox]
 vendor = "Dropbox"
 name = "Client"
 exe = "Dropbox"
@@ -52,8 +48,6 @@ vendor = "Microsoft"
 name = "Edge"
 exe = ["msedge", "msedgedriver"]
 
-[executables.macos]
-
 [executables.macos.google_drive]
 name = "GoogleDrive"
 
@@ -72,8 +66,6 @@ name = "Google Chrome"
 [executables.macos.edge]
 name = "Microsoft Edge"
 
-
-# browser user data
 [user_data]
 chrome = "Google/Chrome"
 edge = "Microsoft/Edge"

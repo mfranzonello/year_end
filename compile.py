@@ -76,7 +76,7 @@ def main():
     ui.add_update(f'Running with args: {args}')
 
     if args.audio:
-        download_path = Path(rf'C:\Users\mfran\OneDrive\Reviews\Year End {args.year}\Audio')
+        download_path = ADOBE_FOLDER / f'{YIR_REVIEWS} {args.year}' / 'Audio'
         set_up_audio(args.year, 'year', download_path, dry_run=dry_run)
 
     if args.pull or args.label or args.appear:

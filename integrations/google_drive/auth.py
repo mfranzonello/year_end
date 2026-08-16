@@ -15,10 +15,8 @@ import secrets as secure_secrets
 import time
 import webbrowser
 
+from common.config import read_toml
 
-AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
-TOKEN_URL = "https://oauth2.googleapis.com/token"
-SCOPES = ("https://www.googleapis.com/auth/drive",)
 TOKEN_CACHE = Path(".secrets/auths/tokens/gdrive/token.json")
 
 
@@ -30,6 +28,9 @@ class GoogleAuthError(RuntimeError):
 class GoogleSettings:
     client_id: str
     client_secret: str
+    authorize_endpoint: str
+    token_endpoint: str
+    scopes: tuple[str, ...]
 
 
 def load_settings() -> GoogleSettings:
@@ -37,7 +38,14 @@ def load_settings() -> GoogleSettings:
     from common.secret import secrets
 
     desktop = secrets["gdrive"]["desktop"]
-    return GoogleSettings(client_id=desktop["client_id"], client_secret=desktop["client_secret"])
+    api_config = read_toml("api")["google_drive"]
+    return GoogleSettings(
+        client_id=desktop["client_id"],
+        client_secret=desktop["client_secret"],
+        authorize_endpoint=api_config["urls"]["authorize"],
+        token_endpoint=api_config["urls"]["token"],
+        scopes=tuple(api_config["oauth"]["scopes"]),
+    )
 
 
 def _read_cache(token_path: Path = TOKEN_CACHE) -> dict[str, Any] | None:
@@ -51,9 +59,9 @@ def _write_cache(token: dict[str, Any], token_path: Path = TOKEN_CACHE) -> None:
     token_path.write_text(json.dumps(token, indent=2), encoding="utf-8")
 
 
-def _post_form(form: dict[str, str]) -> dict[str, Any]:
+def _post_form(token_endpoint: str, form: dict[str, str]) -> dict[str, Any]:
     request = Request(
-        TOKEN_URL,
+        token_endpoint,
         data=urlencode(form).encode("utf-8"),
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
@@ -132,7 +140,7 @@ def get_access_token(*, force_login: bool = False, token_path: Path = TOKEN_CACH
     if cached and not force_login and cached.get("expires_at", 0) > time.time() + 60:
         return cached["access_token"]
     if cached and not force_login and cached.get("refresh_token"):
-        refreshed = _post_form({
+        refreshed = _post_form(settings.token_endpoint, {
             "client_id": settings.client_id,
             "client_secret": settings.client_secret,
             "refresh_token": cached["refresh_token"],
@@ -155,7 +163,7 @@ def get_access_token(*, force_login: bool = False, token_path: Path = TOKEN_CACH
         "client_id": settings.client_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
-        "scope": " ".join(SCOPES),
+        "scope": " ".join(settings.scopes),
         "access_type": "offline",
         "prompt": "consent",
         "state": state,
@@ -163,8 +171,8 @@ def get_access_token(*, force_login: bool = False, token_path: Path = TOKEN_CACH
         "code_challenge_method": "S256",
     })
     print("Opening Google sign-in in your default browser. Complete sign-in within 5 minutes.")
-    code = _wait_for_callback(port, state, f"{AUTHORIZE_URL}?{query}")
-    token = _post_form({
+    code = _wait_for_callback(port, state, f"{settings.authorize_endpoint}?{query}")
+    token = _post_form(settings.token_endpoint, {
         "client_id": settings.client_id,
         "client_secret": settings.client_secret,
         "code": code,

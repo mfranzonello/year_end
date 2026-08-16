@@ -1,0 +1,18 @@
+[onedrive.urls]
+identity = "https://login.microsoftonline.com/common/oauth2/v2.0"
+graph = "https://graph.microsoft.com/v1.0"
+
+[onedrive.oauth]
+redirect_uri = "http://localhost:5000/authorize/azure/callback"
+scopes = ["User.Read", "Files.ReadWrite", "offline_access"]
+
+[onedrive.limits]
+rate = 5
+
+[google_drive.urls]
+authorize = "https://accounts.google.com/o/oauth2/v2/auth"
+token = "https://oauth2.googleapis.com/token"
+api = "https://www.googleapis.com/drive/v3"
+
+[google_drive.oauth]
+scopes = ["https://www.googleapis.com/auth/drive"]

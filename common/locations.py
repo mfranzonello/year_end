@@ -35,8 +35,8 @@ system = detect_system()
 def detect_onedrive_base() -> Path | None:
     """
     Returns the OneDrive *root* (the folder you see in Explorer/Finder), e.g.:
-      Windows (consumer): C:\\Users\\mfran\\OneDrive
-      Windows (business): C:\\Users\\mfran\\OneDrive - CompanyName
+      Windows (consumer): C:\\Users\\<username>\\OneDrive
+      Windows (business): C:\\Users\\<username>\\OneDrive - CompanyName
       macOS (personal):   ~/Library/CloudStorage/OneDrive-Personal
       macOS (business):   ~/Library/CloudStorage/OneDrive-<Tenant>
     """

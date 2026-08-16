@@ -59,8 +59,10 @@ cloud-first replacement for synchronized-folder operations.
 
 Shared system and configuration support.
 
-- `structure.py` reads TOML configuration and derives locations, app paths,
-  media constants, provider endpoints, and local token-cache paths.
+- `config.py` reads non-secret TOML configuration without triggering local
+  drive or browser discovery.
+- `structure.py` derives local locations, app paths, and media constants from
+  the local drive configuration.
 - `locations.py` detects OneDrive, mounted Google Drive, external drives,
   applications, browsers, and OS-specific paths for Windows and macOS.
 - `system.py` supplies filesystem traversal, file classification, cloud-file
@@ -143,8 +145,12 @@ token store before it performs provider writes or scheduled work.
 
 Browser-driven import of shared Google Photos and iCloud albums. `main.py`
 currently invokes this route for `--gphotos` and `--iphotos`; it uses Selenium
-and locally available browser profiles. Google Photos is not a current
-cloud-migration target.
+and locally available browser profiles. Edge is intentionally used for this
+headless automation rather than the project editor's normal Chrome browser: its
+dedicated profiles keep automated sign-in work isolated and make profile
+collisions with day-to-day browsing unlikely. Preserve that separation unless a
+replacement has an equally safe profile-isolation model. Google Photos is not a
+current cloud-migration target.
 
 ### `charting/` and `pages/`
 
@@ -198,8 +204,9 @@ publication of every local Premiere export.
 
 ## Configuration and dependency model
 
-- `config/config.toml`, `config/api.toml`, and `config/drives.toml` hold
-  non-secret, environment-aware configuration.
+- `config/api.example.toml` and `config/drives.example.toml` document the
+  required non-secret provider and local-environment configuration. Copy them
+  to the ignored `api.toml` and `drives.toml` files before local use.
 - `.secrets/secrets.toml` supports the local CLI and expanded integrations;
   `.streamlit/secrets.toml` holds the narrower Streamlit deployment set.
 - `requirements.txt` is the Streamlit/cloud baseline.

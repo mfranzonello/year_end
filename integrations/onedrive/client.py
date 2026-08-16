@@ -6,9 +6,8 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 import base64
 import json
-from pathlib import Path
-import tomllib
 
+from common.config import read_toml
 from integrations.onedrive.auth import MicrosoftAuthError, get_access_token
 
 
@@ -18,8 +17,7 @@ class GraphRequestError(RuntimeError):
 
 def _graph_url() -> str:
     """Read the Graph endpoint without loading local-drive configuration."""
-    with Path("config/api.toml").open("rb") as config_file:
-        return tomllib.load(config_file)["azure"]["urls"]["graph"]
+    return read_toml("api")["onedrive"]["urls"]["graph"]
 
 
 def _get(path: str, *, access_token: str) -> dict[str, Any]:

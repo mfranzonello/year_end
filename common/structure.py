@@ -2,19 +2,10 @@
 
 from pathlib import Path
 import json
-import tomllib
 
+from common.config import read_toml
 from common.locations import (detect_gdrive_base, detect_onedrive_base, detect_app_path, 
                               detect_external_drive, get_browser_data)
-
-_auths_folder = 'auths'
-_config_folder = 'config'
-_tokens_folder = f'{_auths_folder}/tokens'
-
-def read_toml(toml_name:str):
-    with open(f'{_config_folder}/{toml_name}.toml', 'rb') as f: # Use "rb" for binary read mode
-        struct = tomllib.load(f)
-    return struct
 
 def read_json(filepath, filename, ext='.json'):
     path = Path(filepath) / f'{filename}{ext}'
@@ -37,8 +28,6 @@ def get_scope(folder):
     if scope:
         return ', '.join(scope)
             
-_config = read_toml('config')
-_api = read_toml('api')
 _drives = read_toml('drives')
 
 # FILETYPES
@@ -82,21 +71,3 @@ LABEL_PRESET = _drives['local_storage']['adobe']['label_preset']
 
 # MAPPINGS
 ADOBE_BIN = _drives['local_storage']['adobe']['bin']
-
-
-# APIS
-AZURE_LOGIN_URL = _api['azure']['urls']['login']
-AZURE_GRAPH_URL = _api['azure']['urls']['graph']
-AZURE_TOKENS_FOLDER = f'{_tokens_folder}/azure'
-AZURE_REDIRECT_URI = _config['azure']['redirect_uri']
-AZURE_SCOPE = _config['azure']['scope']
-AZURE_TENANT_ID = _config['azure']['tenant_id']
-AZURE_YIR_FOLDER = _config['azure']['yir_folder_path']
-AZURE_RATE_LIMIT = _api['azure']['limits']['rate']
-
-GPHOTOS_AUTH_URL = _api['gphotos']['urls']['auth']
-GPHOTOS_TOKEN_URI = _api['gphotos']['urls']['token_uri']
-GPHOTOS_PROJECT_ID = _config['gphotos']['project_id']
-GPHOTOS_JS_ORIGINS = _config['gphotos']['javascript_origins']
-GPHOTOS_SCOPES = _config['gphotos']['scope']
-GPHOTOS_AUTH_PROVIDER_URL = _api['gphotos']['urls']['auth_provider_x509_cert_url']
