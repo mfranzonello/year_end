@@ -74,6 +74,11 @@ Create local secret files from your own credentials; do not commit them:
 - `.secrets/secrets.toml` for the local CLI and expanded integrations.
 - `.streamlit/secrets.toml` for the narrower Streamlit deployment environment.
 
+These files are intentionally independent: duplicate a value only where both
+execution environments require it. Do not make the local CLI secrets file
+inherit from the Streamlit file, and do not grant Streamlit credentials for
+provider-management operations it does not perform.
+
 Copy the checked-in local configuration templates before running local media or
 cloud-integration workflows:
 
