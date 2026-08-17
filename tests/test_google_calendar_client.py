@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from integrations.google.google_calendar.client import (
     create_event,
+    get_event,
     list_event_instances,
     list_managed_events,
     update_event,
@@ -61,3 +62,13 @@ class GoogleCalendarClientTests(TestCase):
         params = request.call_args.kwargs["params"]
         self.assertEqual(params["singleEvents"], "true")
         self.assertEqual(params["orderBy"], "startTime")
+
+    @patch("integrations.google.google_calendar.client.get_access_token", return_value="token")
+    @patch("integrations.google.google_calendar.client._request")
+    def test_gets_one_recurring_master(self, request, _get_token):
+        request.return_value = {"id": "master", "recurrence": ["RRULE:FREQ=YEARLY"]}
+
+        event = get_event("calendar-id", "master/id")
+
+        self.assertEqual(event["id"], "master")
+        self.assertIn("master%2Fid", request.call_args.args[1])

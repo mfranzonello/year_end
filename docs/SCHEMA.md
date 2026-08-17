@@ -280,6 +280,11 @@ retain seconds unless a consuming query or display converts them.
 - `templates`: an initial project-year message-template scaffold. Its content,
   versioning, and message-purpose fields still need to be designed before the
   drafting workflow depends on it.
+- `calendar_events`: maps exactly one `person_id` birthday or `marriage_id`
+  anniversary to one opaque recurring-master `external_event_id`. Partial
+  uniqueness rules permit at most one mapping per person or marriage, while the
+  external ID is also unique. Event titles, dates, and recurrence rules remain
+  live derivations from the family record rather than duplicated state.
 
 The contact model is intentionally small today. A current phone number can be a
 simple nullable contact field if one current value per person remains the

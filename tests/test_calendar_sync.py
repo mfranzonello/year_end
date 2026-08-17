@@ -205,14 +205,15 @@ class AdoptApprovedEventsTests(TestCase):
                 encoding="utf-8",
             )
 
-            count = adopt_approved_events(
+            results = adopt_approved_events(
                 "calendar-id",
                 (desired,),
                 report,
                 apply=True,
             )
 
-        self.assertEqual(count, 1)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].event_id, "approved-event")
         update.assert_called_once_with("calendar-id", "approved-event", desired.payload())
 
     def test_report_hides_rejected_cross_pairs_from_proposals(self):

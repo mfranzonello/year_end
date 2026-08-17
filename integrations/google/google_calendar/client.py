@@ -119,6 +119,20 @@ def list_event_instances(
         params = {**params, "pageToken": page_token}
 
 
+def get_event(calendar_id: str, event_id: str) -> dict[str, Any]:
+    """Return one recurring master or ordinary event without changing it."""
+    if not calendar_id.strip() or not event_id.strip():
+        raise ValueError("calendar_id and event_id must not be empty")
+    return _request(
+        "GET",
+        (
+            f"/calendars/{quote(calendar_id, safe='')}/events/"
+            f"{quote(event_id, safe='')}"
+        ),
+        access_token=get_access_token("google_calendar"),
+    )
+
+
 def create_event(calendar_id: str, event: dict[str, Any]) -> dict[str, Any]:
     """Create one explicitly supplied managed event."""
     if not calendar_id.strip():

@@ -18,9 +18,11 @@ from common.secret import secrets
 from database.db import get_engine
 from database.db_display import fetch_display_names
 from database.db_family import fetch_founder, fetch_marriages, fetch_persons
+from database.db_messaging import upsert_calendar_event_mappings
 from family_tree.ancestry import build_tree
 from integrations.google.google_calendar.sync import AnnualEvent, sync_annual_events
-from integrations.google.google_calendar.client import list_event_instances, update_event
+from integrations.google.google_calendar.sync import SyncResult
+from integrations.google.google_calendar.client import get_event, list_event_instances, update_event
 
 
 @dataclass(frozen=True)
@@ -396,7 +398,7 @@ def adopt_approved_events(
     report_path: Path,
     *,
     apply: bool = False,
-) -> int:
+) -> list[SyncResult]:
     """Adopt explicitly approved recurring masters from a private audit report."""
     secrets_root = Path(".secrets").resolve()
     resolved_path = report_path.resolve()
@@ -410,7 +412,7 @@ def adopt_approved_events(
     desired_by_key = {event.key: event for event in desired_events}
     approved_events: set[str] = set()
     approved_sources: set[tuple[str, str]] = set()
-    approved_count = 0
+    adopted = []
     for row in rows:
         if not isinstance(row, dict) or row.get("approved") is not True:
             continue
@@ -429,8 +431,56 @@ def adopt_approved_events(
             update_event(calendar_id, event_id, desired.payload())
         approved_sources.add(key)
         approved_events.add(event_id)
-        approved_count += 1
-    return approved_count
+        adopted.append(
+            SyncResult(key, "adopted" if apply else "adopt", event_id)
+        )
+    return adopted
+
+
+def persist_calendar_results(results: list[SyncResult]) -> int:
+    """Persist Calendar identities after successful provider operations."""
+    engine = _build_engine()
+    try:
+        return upsert_calendar_event_mappings(engine, results)
+    finally:
+        engine.dispose()
+
+
+def verify_proposed_master_dates(
+    calendar_id: str,
+    desired_events: tuple[AnnualEvent, ...],
+    report_path: Path,
+) -> dict[str, int]:
+    """Enrich proposed adoptions with master-series start-date verification."""
+    secrets_root = Path(".secrets").resolve()
+    resolved_path = report_path.resolve()
+    if secrets_root not in resolved_path.parents:
+        raise ValueError("Calendar adoption reports must be read beneath .secrets")
+    report = json.loads(resolved_path.read_text(encoding="utf-8"))
+    rows = report.get("proposed_adoptions") if isinstance(report, dict) else None
+    if not isinstance(rows, list):
+        raise ValueError("Calendar adoption report must contain proposed adoptions")
+    desired_by_key = {event.key: event for event in desired_events}
+    counts = {"matched": 0, "mismatched": 0, "invalid": 0}
+    for row in rows:
+        if not isinstance(row, dict):
+            counts["invalid"] += 1
+            continue
+        key = (row.get("source_type"), row.get("source_id"))
+        desired = desired_by_key.get(key)
+        event_id = row.get("existing_recurring_event_id")
+        if desired is None or not isinstance(event_id, str) or not event_id:
+            counts["invalid"] += 1
+            continue
+        master = get_event(calendar_id, event_id)
+        master_start = master.get("start", {}).get("date")
+        matches = master_start == desired.start_date.isoformat()
+        row["master_start_date"] = master_start
+        row["expected_start_date"] = desired.start_date.isoformat()
+        row["master_start_matches"] = matches
+        counts["matched" if matches else "mismatched"] += 1
+    resolved_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    return counts
 
 
 def _build_engine() -> Engine:
@@ -465,6 +515,11 @@ def main() -> None:
         type=Path,
         help="Adopt rows explicitly marked approved in a private audit report.",
     )
+    report_group.add_argument(
+        "--verify-report",
+        type=Path,
+        help="Verify proposed recurring-master start dates and enrich the report.",
+    )
     args = parser.parse_args()
 
     engine = _build_engine()
@@ -477,20 +532,33 @@ def main() -> None:
     if args.audit_report:
         write_private_audit_report(audit, args.audit_report)
     if args.adopt_report:
-        adopted = adopt_approved_events(
+        adoption_results = adopt_approved_events(
             calendar_id,
             plan.events,
             args.adopt_report,
             apply=args.apply,
         )
+        mapped = persist_calendar_results(adoption_results) if args.apply else 0
         mode = "Adopted" if args.apply else "Would adopt"
-        print(f"{mode} {adopted} explicitly approved recurring event(s).")
+        print(
+            f"{mode} {len(adoption_results)} explicitly approved recurring event(s); "
+            f"stored mappings: {mapped}."
+        )
+        return
+    if args.verify_report:
+        counts = verify_proposed_master_dates(
+            calendar_id,
+            plan.events,
+            args.verify_report,
+        )
+        print(f"Recurring master start-date verification: {counts}")
         return
     if args.apply and audit.recurring_date_candidates:
         raise SystemExit(
             "Apply stopped: recurring same-date events require adoption review first."
         )
     results = sync_annual_events(calendar_id, plan.events, apply=args.apply)
+    mapped = persist_calendar_results(results) if args.apply else 0
     counts = {
         action: sum(result.action == action for result in results)
         for action in sorted({result.action for result in results})
@@ -502,6 +570,7 @@ def main() -> None:
         f"desired dates with a same-kind event: {audit.date_collisions}; "
         f"desired dates with a same-kind recurring event: {audit.recurring_date_candidates}; "
         f"calendar instances inspected: {audit.calendar_instances}"
+        f"; stored mappings: {mapped}"
     )
 
 
