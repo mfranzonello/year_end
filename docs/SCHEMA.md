@@ -67,13 +67,18 @@ Core person identity record.
 
 | Column group | Fields |
 | --- | --- |
-| Identity | `person_id` (UUID primary key), `prefix`, `first_name`, `middle_names`, `last_name`, `suffix`, `nick_name` |
+| Identity | `person_id` (UUID primary key), `prefix`, `first_name`, `middle_names`, `uses_middle`, `last_name`, `suffix`, `nick_name` |
 | Personal data | `sex`, `birth_date`, `birth_date_precision`, `death_date`, `death_date_precision`, `notes` |
 
 Current database checks constrain birth precision to `day`, `month`, `year`,
 `past`, or `future`; death precision to `day`, `month`, `year`, or `past`; and
 the existing `sex` field to `m` or `f`. These are current physical constraints,
 not an endorsement of their suitability for future family modeling.
+
+When `uses_middle` is true, `public.display_names` intentionally appends only
+the first semicolon-delimited value from `middle_names` to the displayed given
+name. This is a presentation preference used by all consumers of the shared
+view, including Calendar event titles.
 
 ### `parents`
 

@@ -257,3 +257,36 @@ class AdoptApprovedEventsTests(TestCase):
             for row in report["proposed_adoptions"]
         }
         self.assertNotIn((str(PERSON_B), "person-a-event"), proposed_pairs)
+
+    def test_report_classifies_source_with_only_assigned_cross_pair_as_missing(self):
+        assigned = {
+            "source_type": "birthday",
+            "source_id": str(PERSON_A),
+            "expected_summary": "Person A's Birthday",
+            "existing_recurring_event_id": "person-a-event",
+            "existing_summary": "Person A's Birthday",
+            "recommended": True,
+            "approved": False,
+        }
+        missing_cross_pair = {
+            "source_type": "birthday",
+            "source_id": str(PERSON_B),
+            "expected_summary": "Person B's Birthday",
+            "existing_recurring_event_id": "person-a-event",
+            "existing_summary": "Person A's Birthday",
+            "recommended": False,
+            "approved": False,
+        }
+        audit = ExistingEventAudit(1, 2, 2, 1, (assigned, missing_cross_pair))
+
+        with TemporaryDirectory(dir=".secrets") as directory:
+            report_path = Path(directory) / "report.json"
+            write_private_audit_report(audit, report_path)
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(report["unresolved"], [])
+        self.assertEqual(len(report["missing_after_adoption"]), 1)
+        self.assertEqual(
+            report["missing_after_adoption"][0]["source_id"],
+            str(PERSON_B),
+        )

@@ -133,7 +133,9 @@ candidate report when reconciling an existing calendar:
 The report is deliberately restricted to the ignored `.secrets` directory.
 `proposed_adoptions` contains only one-to-one recommendations; rejected
 same-date cross-pairs are omitted, while genuinely unresolved records retain
-their alternatives under `unresolved`. Proposed rows default to
+their alternatives under `unresolved`. DB events whose same-date candidates
+are already assigned elsewhere appear under `missing_after_adoption` and are
+created in a later general sync. Proposed rows default to
 `"approved": false`; review them before changing selected rows to `true`. The
 adoption command is itself a dry run unless paired with `--apply`. Do not run
 the general apply until recurring same-date candidates have been reviewed.

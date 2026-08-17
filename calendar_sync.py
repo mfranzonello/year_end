@@ -326,18 +326,39 @@ def write_private_audit_report(audit: ExistingEventAudit, report_path: Path) -> 
 
     proposed = []
     unresolved = []
+    missing_after_adoption = []
+    recommended_event_ids = {
+        candidate["existing_recurring_event_id"]
+        for candidate in audit.candidates
+        if candidate["recommended"]
+    }
     for source_key, candidates in candidates_by_source.items():
         recommendation = next(
             (candidate for candidate in candidates if candidate["recommended"]),
             None,
         )
         if recommendation is None:
+            unassigned_candidates = [
+                candidate
+                for candidate in candidates
+                if candidate["existing_recurring_event_id"] not in recommended_event_ids
+            ]
+            if not unassigned_candidates:
+                missing_after_adoption.append(
+                    {
+                        "source_type": source_key[0],
+                        "source_id": source_key[1],
+                        "expected_summary": candidates[0]["expected_summary"],
+                        "reason": "same-date series belong to other DB events",
+                    }
+                )
+                continue
             unresolved.append(
                 {
                     "source_type": source_key[0],
                     "source_id": source_key[1],
                     "expected_summary": candidates[0]["expected_summary"],
-                    "candidates": candidates,
+                    "candidates": unassigned_candidates,
                 }
             )
             continue
@@ -353,9 +374,11 @@ def write_private_audit_report(audit: ExistingEventAudit, report_path: Path) -> 
 
     report = {
         "proposed_adoptions": proposed,
+        "missing_after_adoption": missing_after_adoption,
         "unresolved": unresolved,
         "summary": {
             "proposed": len(proposed),
+            "missing_after_adoption": len(missing_after_adoption),
             "unresolved": len(unresolved),
             "candidate_pairs_considered": len(audit.candidates),
         },
