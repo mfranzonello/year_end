@@ -29,6 +29,25 @@ class BuildMessageTests(TestCase):
         with self.assertRaisesRegex(ValueError, "recipient"):
             build_message([], "Subject", "Body")
 
+    def test_supports_cc_only_and_html_fallback(self):
+        raw = build_message(
+            None,
+            "Subject",
+            "Plain body",
+            cc=["first@example.com", "second@example.com"],
+            html_body="<p><b>HTML body</b></p>",
+        )
+        padded = raw + "=" * (-len(raw) % 4)
+        message = BytesParser(policy=policy.default).parsebytes(
+            base64.urlsafe_b64decode(padded)
+        )
+
+        self.assertIsNone(message["To"])
+        self.assertEqual(message["Cc"], "first@example.com, second@example.com")
+        self.assertTrue(message.is_multipart())
+        self.assertEqual(message.get_body(preferencelist=("plain",)).get_content().strip(), "Plain body")
+        self.assertIn("<b>HTML body</b>", message.get_body(preferencelist=("html",)).get_content())
+
 
 class SendMessageTests(TestCase):
     @patch("integrations.google.gmail.client.get_access_token", return_value="gmail-token")

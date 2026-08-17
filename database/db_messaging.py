@@ -18,6 +18,7 @@ def fetch_kickoff_folder_links(engine: Engine, project_year: int):
             contacts.email_address,
             display_names.full_name,
             repositories.repository_name,
+            folder_locations.is_canonical,
             shares.share_url
         FROM project.folders AS folders
         JOIN public.display_names AS display_names
@@ -39,7 +40,10 @@ def fetch_kickoff_folder_links(engine: Engine, project_year: int):
               WHERE no_contacts.person_id = folders.person_id
                 AND no_contacts.project_year = :project_year
           )
-        ORDER BY display_names.full_name, repositories.repository_name
+        ORDER BY
+            display_names.full_name,
+            folder_locations.is_canonical DESC,
+            repositories.repository_name
         """
     )
     with engine.begin() as connection:

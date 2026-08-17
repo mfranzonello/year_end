@@ -41,17 +41,43 @@ def _request(
         raise GmailRequestError(f"Gmail API request failed: {error}") from error
 
 
-def build_message(recipients: str | Iterable[str], subject: str, body: str, *, sender: str | None = None) -> str:
-    """Build a base64url-encoded plain-text MIME message without sending it."""
-    recipient_list = [recipients] if isinstance(recipients, str) else list(recipients)
-    if not recipient_list or any(not address.strip() for address in recipient_list):
-        raise ValueError("At least one non-empty recipient is required")
+def _addresses(value: str | Iterable[str] | None) -> list[str]:
+    """Normalize one optional address header."""
+    addresses = [] if value is None else ([value] if isinstance(value, str) else list(value))
+    if any(not address.strip() for address in addresses):
+        raise ValueError("Email addresses must not be empty")
+    return addresses
+
+
+def build_message(
+    recipients: str | Iterable[str] | None,
+    subject: str,
+    body: str,
+    *,
+    cc: str | Iterable[str] | None = None,
+    bcc: str | Iterable[str] | None = None,
+    html_body: str | None = None,
+    sender: str | None = None,
+) -> str:
+    """Build a base64url-encoded MIME message without sending it."""
+    recipient_list = _addresses(recipients)
+    cc_list = _addresses(cc)
+    bcc_list = _addresses(bcc)
+    if not recipient_list and not cc_list and not bcc_list:
+        raise ValueError("At least one recipient is required")
     message = EmailMessage()
-    message["To"] = ", ".join(recipient_list)
+    if recipient_list:
+        message["To"] = ", ".join(recipient_list)
+    if cc_list:
+        message["Cc"] = ", ".join(cc_list)
+    if bcc_list:
+        message["Bcc"] = ", ".join(bcc_list)
     message["Subject"] = subject
     if sender:
         message["From"] = sender
     message.set_content(body)
+    if html_body is not None:
+        message.add_alternative(html_body, subtype="html")
     return base64.urlsafe_b64encode(message.as_bytes()).decode("ascii").rstrip("=")
 
 
@@ -64,15 +90,26 @@ def send_message(recipients: str | Iterable[str], subject: str, body: str, *, se
 
 
 def create_draft(
-    recipients: str | Iterable[str],
+    recipients: str | Iterable[str] | None,
     subject: str,
     body: str,
     *,
+    cc: str | Iterable[str] | None = None,
+    bcc: str | Iterable[str] | None = None,
+    html_body: str | None = None,
     sender: str | None = None,
     force_login: bool = False,
 ) -> dict[str, Any]:
     """Create one unsent Gmail draft for explicit review."""
-    raw_message = build_message(recipients, subject, body, sender=sender)
+    raw_message = build_message(
+        recipients,
+        subject,
+        body,
+        cc=cc,
+        bcc=bcc,
+        html_body=html_body,
+        sender=sender,
+    )
     return _request(
         "POST",
         "/users/me/drafts",
