@@ -61,6 +61,15 @@ ownership from event titles or modify unrelated events entered by family
 members. Applying a sync may create or update owned series, while stale owned
 series are reported for review rather than automatically deleted.
 
+Calendar membership is always derived from the founder-rooted relationship
+data in Neon. Birthdays require a day-precise birth on or before the sync date
+and end at an exact death date. Anniversaries require a day-precise wedding,
+both spouses in the derived family set, and end at the first exact spouse death.
+February 29 birthdays recur on the last day of February. Existing unowned
+recurring events are matched first by observed date and then by title as a
+confidence signal; candidates require explicit adoption review before an apply
+can create otherwise duplicate series.
+
 Tree and editorial scope are dynamic: the configured founder anchors the family
 relationship traversal, and people outside that relationship may be included
 when their actual project appearances warrant it. This should not require a

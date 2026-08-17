@@ -21,6 +21,7 @@ class AnnualEvent:
     source_id: str
     summary: str
     start_date: date
+    end_date: date | None = None
 
     @property
     def key(self) -> tuple[str, str]:
@@ -31,11 +32,22 @@ class AnnualEvent:
         """Build a Google Calendar recurring-event resource."""
         if self.start_date > date.today():
             raise ValueError(f"Annual event has not started yet: {self.key!r}")
+        if self.end_date is not None and self.end_date < self.start_date:
+            raise ValueError(f"Annual event ends before it starts: {self.key!r}")
+
+        recurrence = (
+            "RRULE:FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=-1"
+            if self.start_date.month == 2 and self.start_date.day == 29
+            else "RRULE:FREQ=YEARLY"
+        )
+        if self.end_date is not None:
+            recurrence = f"{recurrence};UNTIL={self.end_date:%Y%m%d}"
+
         return {
             "summary": self.summary,
             "start": {"date": self.start_date.isoformat()},
             "end": {"date": (self.start_date + timedelta(days=1)).isoformat()},
-            "recurrence": ["RRULE:FREQ=YEARLY"],
+            "recurrence": [recurrence],
             "transparency": "transparent",
             "extendedProperties": {
                 "private": {

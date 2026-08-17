@@ -133,6 +133,13 @@ nested beneath the identity provider.
   its events with private extended properties, updates only those events, and
   reports stale managed events without deleting them. The authorization checks
   do not send messages or change calendar events.
+
+`calendar_sync.py` is the database-to-provider adapter. It gets the founder
+from `nello.founder`, reuses the existing ancestry traversal for membership,
+and converts exact person/marriage dates into provider-neutral annual event
+specifications. Its default mode is read-only. An existing-calendar audit uses
+bounded event windows and writes detailed candidate mappings only beneath the
+ignored `.secrets` directory.
 - `microsoft/` owns delegated Microsoft OAuth and token refresh.
   `microsoft/onedrive/` inspects and shares OneDrive folders through Microsoft
   Graph. Future Microsoft product clients can select their own scopes and cache.

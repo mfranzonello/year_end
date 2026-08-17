@@ -1,11 +1,12 @@
 """Unit tests for the Google Calendar API client."""
 
+from datetime import datetime, timezone
 from unittest import TestCase
 from unittest.mock import patch
 
 from integrations.google.google_calendar.client import (
     create_event,
-    get_calendar,
+    list_event_instances,
     list_managed_events,
     update_event,
 )
@@ -14,26 +15,16 @@ from integrations.google.google_calendar.client import (
 class GoogleCalendarClientTests(TestCase):
     @patch("integrations.google.google_calendar.client.get_access_token", return_value="token")
     @patch("integrations.google.google_calendar.client._request")
-    def test_gets_configured_calendar(self, request, get_token):
-        request.return_value = {"id": "calendar-id", "summary": "Family"}
-
-        result = get_calendar("calendar-id", force_login=True)
-
-        self.assertEqual(result["summary"], "Family")
-        get_token.assert_called_once_with("google_calendar", force_login=True)
-        self.assertEqual(request.call_args.args, ("GET", "/calendars/calendar-id"))
-
-    @patch("integrations.google.google_calendar.client.get_access_token", return_value="token")
-    @patch("integrations.google.google_calendar.client._request")
-    def test_lists_all_managed_event_pages(self, request, _get_token):
+    def test_lists_all_managed_event_pages(self, request, get_token):
         request.side_effect = [
             {"items": [{"id": "first"}], "nextPageToken": "next"},
             {"items": [{"id": "second"}]},
         ]
 
-        events = list_managed_events("calendar/id")
+        events = list_managed_events("calendar/id", force_login=True)
 
         self.assertEqual([event["id"] for event in events], ["first", "second"])
+        get_token.assert_called_once_with("google_calendar", force_login=True)
         self.assertEqual(request.call_count, 2)
         first_params = request.call_args_list[0].kwargs["params"]
         second_params = request.call_args_list[1].kwargs["params"]
@@ -54,3 +45,19 @@ class GoogleCalendarClientTests(TestCase):
         self.assertEqual(request.call_args_list[0].args[0], "POST")
         self.assertEqual(request.call_args_list[1].args[0], "PATCH")
         self.assertIn("event%2Fid", request.call_args_list[1].args[1])
+
+    @patch("integrations.google.google_calendar.client.get_access_token", return_value="token")
+    @patch("integrations.google.google_calendar.client._request")
+    def test_lists_bounded_expanded_instances(self, request, _get_token):
+        request.return_value = {"items": [{"id": "instance"}]}
+
+        events = list_event_instances(
+            "calendar-id",
+            datetime(2026, 1, 1, tzinfo=timezone.utc),
+            datetime(2027, 1, 1, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(events, [{"id": "instance"}])
+        params = request.call_args.kwargs["params"]
+        self.assertEqual(params["singleEvents"], "true")
+        self.assertEqual(params["orderBy"], "startTime")

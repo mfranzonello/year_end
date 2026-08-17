@@ -25,6 +25,30 @@ class AnnualEventTests(TestCase):
         with self.assertRaisesRegex(ValueError, "not started"):
             AnnualEvent("birthday", "person-id", "Future", date(2999, 1, 1)).payload()
 
+    def test_moves_february_29_to_the_last_day_of_february(self):
+        payload = AnnualEvent(
+            "birthday",
+            "person-id",
+            "Leap birthday",
+            date(2000, 2, 29),
+        ).payload()
+
+        self.assertEqual(
+            payload["recurrence"],
+            ["RRULE:FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=-1"],
+        )
+
+    def test_ends_recurrence_at_death(self):
+        payload = AnnualEvent(
+            "birthday",
+            "person-id",
+            "A birthday",
+            date(1950, 1, 2),
+            date(2020, 3, 4),
+        ).payload()
+
+        self.assertEqual(payload["recurrence"], ["RRULE:FREQ=YEARLY;UNTIL=20200304"])
+
 
 class SyncAnnualEventsTests(TestCase):
     @patch("integrations.google.google_calendar.sync.update_event")

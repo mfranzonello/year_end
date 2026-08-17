@@ -120,6 +120,17 @@ Run the local OAuth connectivity checks (they are read-only after sign-in):
 .\.venv\Scripts\python.exe -m tests.integration.check_google_calendar --login
 ```
 
+Preview the database-driven family calendar sync and write a private adoption
+candidate report when reconciling an existing calendar:
+
+```powershell
+.\.venv\Scripts\python.exe calendar_sync.py
+.\.venv\Scripts\python.exe calendar_sync.py --audit-report .secrets\calendar\adoption_candidates.json
+```
+
+The report is deliberately restricted to the ignored `.secrets` directory.
+Do not use `--apply` until recurring same-date candidates have been reviewed.
+
 ## Repository map
 
 | Path | Purpose |

@@ -1,6 +1,7 @@
 """Google Calendar API client for project-owned recurring events."""
 
 from typing import Any
+from datetime import datetime
 from urllib.error import HTTPError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
@@ -58,28 +59,54 @@ def _request(
         ) from error
 
 
-def get_calendar(calendar_id: str, *, force_login: bool = False) -> dict[str, Any]:
-    """Return metadata for a configured calendar without changing it."""
-    if not calendar_id.strip():
-        raise ValueError("calendar_id must not be empty")
-    return _request(
-        "GET",
-        f"/calendars/{quote(calendar_id, safe='')}",
-        access_token=get_access_token("google_calendar", force_login=force_login),
-    )
-
-
-def list_managed_events(calendar_id: str) -> list[dict[str, Any]]:
+def list_managed_events(
+    calendar_id: str,
+    *,
+    force_login: bool = False,
+) -> list[dict[str, Any]]:
     """Return recurring event masters owned by this project."""
     if not calendar_id.strip():
         raise ValueError("calendar_id must not be empty")
 
-    access_token = get_access_token("google_calendar")
+    access_token = get_access_token("google_calendar", force_login=force_login)
     path = f"/calendars/{quote(calendar_id, safe='')}/events"
     params = {
         "privateExtendedProperty": f"{MANAGED_PROPERTY}={MANAGED_VALUE}",
         "showDeleted": "false",
         "singleEvents": "false",
+        "maxResults": "2500",
+    }
+    events = []
+    while True:
+        response = _request("GET", path, access_token=access_token, params=params)
+        events.extend(response.get("items", []))
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            return events
+        params = {**params, "pageToken": page_token}
+
+
+def list_event_instances(
+    calendar_id: str,
+    time_min: datetime,
+    time_max: datetime,
+) -> list[dict[str, Any]]:
+    """Return expanded event instances in a bounded half-open time window."""
+    if not calendar_id.strip():
+        raise ValueError("calendar_id must not be empty")
+    if time_min.tzinfo is None or time_max.tzinfo is None:
+        raise ValueError("time_min and time_max must be timezone-aware")
+    if time_min >= time_max:
+        raise ValueError("time_min must be before time_max")
+
+    access_token = get_access_token("google_calendar")
+    path = f"/calendars/{quote(calendar_id, safe='')}/events"
+    params = {
+        "timeMin": time_min.isoformat(),
+        "timeMax": time_max.isoformat(),
+        "showDeleted": "false",
+        "singleEvents": "true",
+        "orderBy": "startTime",
         "maxResults": "2500",
     }
     events = []

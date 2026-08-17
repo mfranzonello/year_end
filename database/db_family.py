@@ -9,7 +9,7 @@ from database.db import read_sql, execute_sql, build_values
 def fetch_persons(engine:Engine) -> DataFrame:
     sql = f'''SELECT person_id,
     first_name, last_name, nick_name, suffix,
-    birth_date, birth_date_precision
+    birth_date, birth_date_precision, death_date, death_date_precision
     FROM persons
     ;'''
     return read_sql(engine, sql)
@@ -35,7 +35,8 @@ def fetch_pets(engine:Engine) -> DataFrame:
     return read_sql(engine, sql)
 
 def fetch_marriages(engine:Engine) -> DataFrame:
-    sql = f'''SELECT husband_id, wife_id, marriage_id
+    sql = f'''SELECT husband_id, wife_id, marriage_id,
+    wedding_date, wedding_date_precision
     FROM marriages
     ;'''
     return read_sql(engine, sql)
