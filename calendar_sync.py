@@ -311,14 +311,58 @@ def _title_event_type(summary: str) -> str | None:
 
 
 def write_private_audit_report(audit: ExistingEventAudit, report_path: Path) -> None:
-    """Write candidate details only beneath the ignored local secrets directory."""
+    """Write proposed adoptions and genuine ambiguities beneath local secrets."""
     secrets_root = Path(".secrets").resolve()
     resolved_path = report_path.resolve()
     if secrets_root not in resolved_path.parents:
         raise ValueError("Calendar audit reports must be written beneath .secrets")
+
+    candidates_by_source: dict[tuple[object, object], list[dict[str, object]]] = {}
+    candidates_by_event: dict[object, list[dict[str, object]]] = {}
+    for candidate in audit.candidates:
+        source_key = (candidate["source_type"], candidate["source_id"])
+        candidates_by_source.setdefault(source_key, []).append(candidate)
+        candidates_by_event.setdefault(candidate["existing_recurring_event_id"], []).append(candidate)
+
+    proposed = []
+    unresolved = []
+    for source_key, candidates in candidates_by_source.items():
+        recommendation = next(
+            (candidate for candidate in candidates if candidate["recommended"]),
+            None,
+        )
+        if recommendation is None:
+            unresolved.append(
+                {
+                    "source_type": source_key[0],
+                    "source_id": source_key[1],
+                    "expected_summary": candidates[0]["expected_summary"],
+                    "candidates": candidates,
+                }
+            )
+            continue
+        proposed.append(
+            {
+                **recommendation,
+                "same_date_source_candidates": len(candidates),
+                "same_date_event_candidates": len(
+                    candidates_by_event[recommendation["existing_recurring_event_id"]]
+                ),
+            }
+        )
+
+    report = {
+        "proposed_adoptions": proposed,
+        "unresolved": unresolved,
+        "summary": {
+            "proposed": len(proposed),
+            "unresolved": len(unresolved),
+            "candidate_pairs_considered": len(audit.candidates),
+        },
+    }
     resolved_path.parent.mkdir(parents=True, exist_ok=True)
     resolved_path.write_text(
-        json.dumps(audit.candidates, indent=2),
+        json.dumps(report, indent=2),
         encoding="utf-8",
     )
 
@@ -335,9 +379,10 @@ def adopt_approved_events(
     resolved_path = report_path.resolve()
     if secrets_root not in resolved_path.parents:
         raise ValueError("Calendar adoption reports must be read beneath .secrets")
-    rows = json.loads(resolved_path.read_text(encoding="utf-8"))
+    report = json.loads(resolved_path.read_text(encoding="utf-8"))
+    rows = report.get("proposed_adoptions") if isinstance(report, dict) else report
     if not isinstance(rows, list):
-        raise ValueError("Calendar adoption report must contain a JSON list")
+        raise ValueError("Calendar adoption report must contain proposed adoptions")
 
     desired_by_key = {event.key: event for event in desired_events}
     approved_events: set[str] = set()

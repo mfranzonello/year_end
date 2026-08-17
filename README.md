@@ -131,10 +131,12 @@ candidate report when reconciling an existing calendar:
 ```
 
 The report is deliberately restricted to the ignored `.secrets` directory.
-Candidate rows default to `"approved": false`; review the date, event kind,
-and names before changing selected rows to `true`. The adoption command is
-itself a dry run unless paired with `--apply`. Do not run the general apply
-until recurring same-date candidates have been reviewed.
+`proposed_adoptions` contains only one-to-one recommendations; rejected
+same-date cross-pairs are omitted, while genuinely unresolved records retain
+their alternatives under `unresolved`. Proposed rows default to
+`"approved": false`; review them before changing selected rows to `true`. The
+adoption command is itself a dry run unless paired with `--apply`. Do not run
+the general apply until recurring same-date candidates have been reviewed.
 
 ## Repository map
 

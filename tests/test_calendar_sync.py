@@ -11,6 +11,7 @@ import json
 from pandas import DataFrame
 
 from calendar_sync import adopt_approved_events, audit_existing_events, build_family_event_plan
+from calendar_sync import ExistingEventAudit, write_private_audit_report
 from integrations.google.google_calendar.sync import AnnualEvent
 
 
@@ -184,20 +185,22 @@ class AdoptApprovedEventsTests(TestCase):
             report = Path(directory) / "report.json"
             report.write_text(
                 json.dumps(
-                    [
-                        {
-                            "source_type": "birthday",
-                            "source_id": str(PERSON_A),
-                            "existing_recurring_event_id": "approved-event",
-                            "approved": True,
-                        },
-                        {
-                            "source_type": "birthday",
-                            "source_id": str(PERSON_B),
-                            "existing_recurring_event_id": "ignored-event",
-                            "approved": False,
-                        },
-                    ]
+                    {
+                        "proposed_adoptions": [
+                            {
+                                "source_type": "birthday",
+                                "source_id": str(PERSON_A),
+                                "existing_recurring_event_id": "approved-event",
+                                "approved": True,
+                            },
+                            {
+                                "source_type": "birthday",
+                                "source_id": str(PERSON_B),
+                                "existing_recurring_event_id": "ignored-event",
+                                "approved": False,
+                            },
+                        ]
+                    }
                 ),
                 encoding="utf-8",
             )
@@ -211,3 +214,46 @@ class AdoptApprovedEventsTests(TestCase):
 
         self.assertEqual(count, 1)
         update.assert_called_once_with("calendar-id", "approved-event", desired.payload())
+
+    def test_report_hides_rejected_cross_pairs_from_proposals(self):
+        first = {
+            "source_type": "birthday",
+            "source_id": str(PERSON_A),
+            "expected_summary": "Person A's Birthday",
+            "existing_recurring_event_id": "person-a-event",
+            "existing_summary": "Person A's Birthday",
+            "recommended": True,
+            "approved": False,
+        }
+        rejected_cross_pair = {
+            "source_type": "birthday",
+            "source_id": str(PERSON_B),
+            "expected_summary": "Person B's Birthday",
+            "existing_recurring_event_id": "person-a-event",
+            "existing_summary": "Person A's Birthday",
+            "recommended": False,
+            "approved": False,
+        }
+        second = {
+            "source_type": "birthday",
+            "source_id": str(PERSON_B),
+            "expected_summary": "Person B's Birthday",
+            "existing_recurring_event_id": "person-b-event",
+            "existing_summary": "Person B's Birthday",
+            "recommended": True,
+            "approved": False,
+        }
+        audit = ExistingEventAudit(2, 2, 2, 2, (first, rejected_cross_pair, second))
+
+        with TemporaryDirectory(dir=".secrets") as directory:
+            report_path = Path(directory) / "report.json"
+            write_private_audit_report(audit, report_path)
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(len(report["proposed_adoptions"]), 2)
+        self.assertEqual(report["unresolved"], [])
+        proposed_pairs = {
+            (row["source_id"], row["existing_recurring_event_id"])
+            for row in report["proposed_adoptions"]
+        }
+        self.assertNotIn((str(PERSON_B), "person-a-event"), proposed_pairs)
