@@ -3,7 +3,7 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
 
-from database.db_messaging import upsert_calendar_event_mappings
+from database.db_messaging import fetch_kickoff_folder_links, upsert_calendar_event_mappings
 from integrations.google.google_calendar.sync import SyncResult
 
 
@@ -32,3 +32,19 @@ class CalendarEventMappingTests(TestCase):
 
         with self.assertRaisesRegex(ValueError, "Unsupported"):
             upsert_calendar_event_mappings(engine, results)
+
+
+class KickoffFolderLinkTests(TestCase):
+    def test_fetches_current_year_links_with_suppression_query(self):
+        engine = MagicMock()
+        connection = engine.begin.return_value.__enter__.return_value
+        connection.execute.return_value.mappings.return_value.all.return_value = []
+
+        rows = fetch_kickoff_folder_links(engine, 2026)
+
+        self.assertEqual(rows, [])
+        statement, params = connection.execute.call_args.args
+        sql = str(statement)
+        self.assertIn("messaging.no_contacts", sql)
+        self.assertIn("shares.is_active = true", sql)
+        self.assertEqual(params, {"project_year": 2026})

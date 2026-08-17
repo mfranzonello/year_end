@@ -7,6 +7,48 @@ from sqlalchemy import Engine, text
 from integrations.google.google_calendar.sync import SyncResult
 
 
+def fetch_kickoff_folder_links(engine: Engine, project_year: int):
+    """Return eligible people and their active project-folder share links."""
+    if project_year < 1900:
+        raise ValueError("project_year must be a four-digit year")
+    statement = text(
+        """
+        SELECT DISTINCT
+            folders.person_id,
+            contacts.email_address,
+            display_names.full_name,
+            repositories.repository_name,
+            shares.share_url
+        FROM project.folders AS folders
+        JOIN public.display_names AS display_names
+          ON display_names.member_id = folders.member_id
+        JOIN messaging.contacts AS contacts
+          ON contacts.person_id = folders.person_id
+        JOIN project.folder_locations AS folder_locations
+          ON folder_locations.folder_id = folders.folder_id
+        JOIN ingestion.repositories AS repositories
+          ON repositories.repository_id = folder_locations.repository_id
+        JOIN project.shares AS shares
+          ON shares.folder_location_id = folder_locations.folder_location_id
+         AND shares.is_active = true
+        WHERE folders.project_year = :project_year
+          AND contacts.email_address IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM messaging.no_contacts AS no_contacts
+              WHERE no_contacts.person_id = folders.person_id
+                AND no_contacts.project_year = :project_year
+          )
+        ORDER BY display_names.full_name, repositories.repository_name
+        """
+    )
+    with engine.begin() as connection:
+        return connection.execute(
+            statement,
+            {"project_year": project_year},
+        ).mappings().all()
+
+
 def upsert_calendar_event_mappings(
     engine: Engine,
     results: Iterable[SyncResult],

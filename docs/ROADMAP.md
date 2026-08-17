@@ -314,6 +314,29 @@ Approval policy: group or broadcast messages are drafts for review and explicit
 approval before delivery. Routine, personalized operational messages may be
 sent automatically once their trigger, recipients, and wording are agreed.
 
+For the first 2026 kickoff draft, keep the implementation deliberately small:
+accept an explicit subject, freeform body, and signature; derive the eligible
+recipient list and active OneDrive/Google Drive folder links from Neon; append
+one repeatable link block per person; and create a reviewable draft. Do not make
+the initial workflow depend on `messaging.templates`. A later phase can design
+purpose/version fields, variables, and reusable templates, then backfill this
+message as a template with no required variables.
+
+### 6a. Family calendar and explicit recurring events
+
+Extend the database-driven family Calendar sync beyond derived birthdays and
+anniversaries. Add provider-neutral event and event-type records for recurring
+dates that do not have a natural authoritative field elsewhere, such as Holy
+Days, cancer-remission milestones, and selected pets' gotcha days. Events may
+optionally link to people or animals; shared observances need no member link.
+
+Keep birthdays derived from birth records and anniversaries derived from
+marriages. Only explicitly Calendar-enabled records should sync. Extend the
+provider mapping model so an explicit event can own a recurring Calendar master
+without encoding Google-specific concepts in the domain table. This will let
+currently ignored recurring events be reviewed and adopted instead of treated
+permanently as stray Calendar data.
+
 ### 7. Future idea
 
 _Placeholder for the idea to be added when recalled._
@@ -322,8 +345,8 @@ _Placeholder for the idea to be added when recalled._
 
 Outside the current scope, but a natural extension of the family-tree track:
 
-- A family calendar, potentially integrated with Google Calendar, for birthdays,
-  anniversaries, and other shared events.
+- Family-calendar presentation and family-facing controls over the existing
+  database-driven Google Calendar synchronization.
 - A family rolodex that expands beyond email to addresses and phone numbers.
 - A family map that shows where people live.
 - Other practical, family-facing reference guides built on the same relationship
