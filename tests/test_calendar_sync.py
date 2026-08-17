@@ -4,10 +4,13 @@ from datetime import date, datetime
 from unittest import TestCase
 from unittest.mock import Mock, patch
 from uuid import UUID
+from pathlib import Path
+from tempfile import TemporaryDirectory
+import json
 
 from pandas import DataFrame
 
-from calendar_sync import audit_existing_events, build_family_event_plan
+from calendar_sync import adopt_approved_events, audit_existing_events, build_family_event_plan
 from integrations.google.google_calendar.sync import AnnualEvent
 
 
@@ -142,6 +145,16 @@ class ExistingEventAuditTests(TestCase):
                 "start": {"date": "2026-02-28"},
                 "recurringEventId": "exact-candidate",
             },
+            {
+                "summary": "Unrelated observance",
+                "start": {"date": "2026-02-28"},
+                "recurringEventId": "unrelated",
+            },
+            {
+                "summary": "A Couple's Anniversary",
+                "start": {"date": "2026-05-06"},
+                "recurringEventId": "wrong-kind",
+            },
         ]
         desired = (
             AnnualEvent("birthday", str(PERSON_A), "Person A's Birthday", date(1980, 2, 29)),
@@ -154,3 +167,47 @@ class ExistingEventAuditTests(TestCase):
         self.assertEqual(audit.recurring_date_candidates, 2)
         self.assertEqual(audit.exact_candidates, 1)
         self.assertEqual(len(audit.candidates), 2)
+        self.assertEqual(sum(candidate["recommended"] for candidate in audit.candidates), 2)
+        self.assertTrue(all(candidate["approved"] is False for candidate in audit.candidates))
+
+
+class AdoptApprovedEventsTests(TestCase):
+    @patch("calendar_sync.update_event")
+    def test_adopts_only_explicitly_approved_one_to_one_rows(self, update):
+        desired = AnnualEvent(
+            "birthday",
+            str(PERSON_A),
+            "Person A's Birthday",
+            date(1980, 2, 29),
+        )
+        with TemporaryDirectory(dir=".secrets") as directory:
+            report = Path(directory) / "report.json"
+            report.write_text(
+                json.dumps(
+                    [
+                        {
+                            "source_type": "birthday",
+                            "source_id": str(PERSON_A),
+                            "existing_recurring_event_id": "approved-event",
+                            "approved": True,
+                        },
+                        {
+                            "source_type": "birthday",
+                            "source_id": str(PERSON_B),
+                            "existing_recurring_event_id": "ignored-event",
+                            "approved": False,
+                        },
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            count = adopt_approved_events(
+                "calendar-id",
+                (desired,),
+                report,
+                apply=True,
+            )
+
+        self.assertEqual(count, 1)
+        update.assert_called_once_with("calendar-id", "approved-event", desired.payload())

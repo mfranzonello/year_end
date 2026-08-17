@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from uuid import UUID
 from difflib import SequenceMatcher
 import json
+import re
 
 from pandas import DataFrame, isna
 from sqlalchemy import Engine
@@ -19,7 +20,7 @@ from database.db_display import fetch_display_names
 from database.db_family import fetch_founder, fetch_marriages, fetch_persons
 from family_tree.ancestry import build_tree
 from integrations.google.google_calendar.sync import AnnualEvent, sync_annual_events
-from integrations.google.google_calendar.client import list_event_instances
+from integrations.google.google_calendar.client import list_event_instances, update_event
 
 
 @dataclass(frozen=True)
@@ -201,6 +202,8 @@ def audit_existing_events(
             event
             for event in instances
             if _instance_matches_annual_date(event, desired)
+            and _title_event_type(str(event.get("summary", "")))
+            == desired.source_type
         ]
         collisions += bool(matches)
         recurring_candidates += any(event.get("recurringEventId") for event in matches)
@@ -237,17 +240,34 @@ def audit_existing_events(
             == desired.summary.strip().casefold()
             for event in matches
         )
+    unique_candidates = list(
+        {
+            (candidate["source_id"], candidate["existing_recurring_event_id"]): candidate
+            for candidate in candidates
+        }.values()
+    )
+    used_sources: set[object] = set()
+    used_events: set[object] = set()
+    for candidate in sorted(
+        unique_candidates,
+        key=lambda item: float(item["title_similarity"]),
+        reverse=True,
+    ):
+        source_id = candidate["source_id"]
+        event_id = candidate["existing_recurring_event_id"]
+        recommended = source_id not in used_sources and event_id not in used_events
+        candidate["recommended"] = recommended
+        candidate["approved"] = False
+        if recommended:
+            used_sources.add(source_id)
+            used_events.add(event_id)
+
     return ExistingEventAudit(
         exact,
         collisions,
         recurring_candidates,
         len(instances),
-        tuple(
-            {
-                (candidate["source_id"], candidate["existing_recurring_event_id"]): candidate
-                for candidate in candidates
-            }.values()
-        ),
+        tuple(unique_candidates),
     )
 
 
@@ -280,6 +300,16 @@ def _normalized_title(value: str) -> str:
     return "".join(character for character in value.casefold() if character.isalnum())
 
 
+def _title_event_type(summary: str) -> str | None:
+    """Classify only explicit birthday and anniversary event titles."""
+    normalized = summary.casefold()
+    if re.search(r"\bbirthdays?\b", normalized):
+        return "birthday"
+    if re.search(r"\banniversar(?:y|ies)\b", normalized):
+        return "anniversary"
+    return None
+
+
 def write_private_audit_report(audit: ExistingEventAudit, report_path: Path) -> None:
     """Write candidate details only beneath the ignored local secrets directory."""
     secrets_root = Path(".secrets").resolve()
@@ -291,6 +321,48 @@ def write_private_audit_report(audit: ExistingEventAudit, report_path: Path) -> 
         json.dumps(audit.candidates, indent=2),
         encoding="utf-8",
     )
+
+
+def adopt_approved_events(
+    calendar_id: str,
+    desired_events: tuple[AnnualEvent, ...],
+    report_path: Path,
+    *,
+    apply: bool = False,
+) -> int:
+    """Adopt explicitly approved recurring masters from a private audit report."""
+    secrets_root = Path(".secrets").resolve()
+    resolved_path = report_path.resolve()
+    if secrets_root not in resolved_path.parents:
+        raise ValueError("Calendar adoption reports must be read beneath .secrets")
+    rows = json.loads(resolved_path.read_text(encoding="utf-8"))
+    if not isinstance(rows, list):
+        raise ValueError("Calendar adoption report must contain a JSON list")
+
+    desired_by_key = {event.key: event for event in desired_events}
+    approved_events: set[str] = set()
+    approved_sources: set[tuple[str, str]] = set()
+    approved_count = 0
+    for row in rows:
+        if not isinstance(row, dict) or row.get("approved") is not True:
+            continue
+        source_type = row.get("source_type")
+        source_id = row.get("source_id")
+        event_id = row.get("existing_recurring_event_id")
+        if not all(isinstance(value, str) and value for value in (source_type, source_id, event_id)):
+            raise ValueError("An approved adoption row is missing its stable identity")
+        key = (source_type, source_id)
+        desired = desired_by_key.get(key)
+        if desired is None:
+            raise ValueError(f"Approved adoption no longer matches a desired event: {key!r}")
+        if key in approved_sources or event_id in approved_events:
+            raise ValueError("Approved adoption rows must form a one-to-one mapping")
+        if apply:
+            update_event(calendar_id, event_id, desired.payload())
+        approved_sources.add(key)
+        approved_events.add(event_id)
+        approved_count += 1
+    return approved_count
 
 
 def _build_engine() -> Engine:
@@ -314,10 +386,16 @@ def main() -> None:
         action="store_true",
         help="Create or update project-managed events; defaults to dry-run.",
     )
-    parser.add_argument(
+    report_group = parser.add_mutually_exclusive_group()
+    report_group.add_argument(
         "--audit-report",
         type=Path,
         help="Write private same-date recurring candidates beneath .secrets.",
+    )
+    report_group.add_argument(
+        "--adopt-report",
+        type=Path,
+        help="Adopt rows explicitly marked approved in a private audit report.",
     )
     args = parser.parse_args()
 
@@ -330,6 +408,16 @@ def main() -> None:
     audit = audit_existing_events(calendar_id, plan.events, year=date.today().year)
     if args.audit_report:
         write_private_audit_report(audit, args.audit_report)
+    if args.adopt_report:
+        adopted = adopt_approved_events(
+            calendar_id,
+            plan.events,
+            args.adopt_report,
+            apply=args.apply,
+        )
+        mode = "Adopted" if args.apply else "Would adopt"
+        print(f"{mode} {adopted} explicitly approved recurring event(s).")
+        return
     if args.apply and audit.recurring_date_candidates:
         raise SystemExit(
             "Apply stopped: recurring same-date events require adoption review first."
@@ -343,8 +431,8 @@ def main() -> None:
     print(
         f"{mode}: {counts}; skipped database events: {len(plan.skipped)}; "
         f"existing exact candidates: {audit.exact_candidates}; "
-        f"desired dates with any existing event: {audit.date_collisions}; "
-        f"desired dates with a recurring event: {audit.recurring_date_candidates}; "
+        f"desired dates with a same-kind event: {audit.date_collisions}; "
+        f"desired dates with a same-kind recurring event: {audit.recurring_date_candidates}; "
         f"calendar instances inspected: {audit.calendar_instances}"
     )
 

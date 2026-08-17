@@ -68,7 +68,9 @@ both spouses in the derived family set, and end at the first exact spouse death.
 February 29 birthdays recur on the last day of February. Existing unowned
 recurring events are matched first by observed date and then by title as a
 confidence signal; candidates require explicit adoption review before an apply
-can create otherwise duplicate series.
+can create otherwise duplicate series. Birthday candidates only match titles
+that explicitly contain `Birthday`, and anniversaries only match titles that
+contain `Anniversary`; unrelated observances on the same date are ignored.
 
 Tree and editorial scope are dynamic: the configured founder anchors the family
 relationship traversal, and people outside that relationship may be included

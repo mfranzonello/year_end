@@ -126,10 +126,15 @@ candidate report when reconciling an existing calendar:
 ```powershell
 .\.venv\Scripts\python.exe calendar_sync.py
 .\.venv\Scripts\python.exe calendar_sync.py --audit-report .secrets\calendar\adoption_candidates.json
+.\.venv\Scripts\python.exe calendar_sync.py --adopt-report .secrets\calendar\adoption_candidates.json
+.\.venv\Scripts\python.exe calendar_sync.py --adopt-report .secrets\calendar\adoption_candidates.json --apply
 ```
 
 The report is deliberately restricted to the ignored `.secrets` directory.
-Do not use `--apply` until recurring same-date candidates have been reviewed.
+Candidate rows default to `"approved": false`; review the date, event kind,
+and names before changing selected rows to `true`. The adoption command is
+itself a dry run unless paired with `--apply`. Do not run the general apply
+until recurring same-date candidates have been reviewed.
 
 ## Repository map
 
