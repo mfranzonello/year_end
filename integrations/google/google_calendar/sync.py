@@ -103,6 +103,35 @@ def _managed_fields(event: dict[str, object]) -> dict[str, object]:
     return {**fields, "identity": identity}
 
 
+def _annual_fields_match(existing: dict[str, object], desired: dict[str, object]) -> bool:
+    """Compare annual events while tolerating provider and legacy normalizations."""
+    existing_fields = _managed_fields(existing)
+    desired_fields = _managed_fields(desired)
+    existing_start = existing_fields.get("start")
+    desired_start = desired_fields.get("start")
+    if isinstance(existing_start, dict) and isinstance(desired_start, dict):
+        existing_date = existing_start.get("date")
+        desired_date = desired_start.get("date")
+        if isinstance(existing_date, str) and isinstance(desired_date, str):
+            existing_value = date.fromisoformat(existing_date)
+            desired_value = date.fromisoformat(desired_date)
+            if (existing_value.month, existing_value.day) == (
+                desired_value.month,
+                desired_value.day,
+            ):
+                desired_fields["start"] = existing_start
+                desired_fields["end"] = existing_fields.get("end")
+
+    for fields in (existing_fields, desired_fields):
+        recurrence = fields.get("recurrence")
+        if isinstance(recurrence, list):
+            fields["recurrence"] = [
+                rule.replace(";INTERVAL=1", "") if isinstance(rule, str) else rule
+                for rule in recurrence
+            ]
+    return existing_fields == desired_fields
+
+
 def sync_annual_events(
     calendar_id: str,
     desired_events: Iterable[AnnualEvent],
@@ -136,7 +165,7 @@ def sync_annual_events(
         event_id = existing.get("id")
         if not isinstance(event_id, str) or not event_id:
             raise ValueError(f"Managed calendar event has no ID: {key!r}")
-        if _managed_fields(existing) == _managed_fields(payload):
+        if _annual_fields_match(existing, payload):
             results.append(SyncResult(key, "unchanged", event_id))
             continue
 

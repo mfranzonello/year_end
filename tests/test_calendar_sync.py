@@ -173,14 +173,19 @@ class ExistingEventAuditTests(TestCase):
 
 
 class AdoptApprovedEventsTests(TestCase):
+    @patch("calendar_sync.get_event")
     @patch("calendar_sync.update_event")
-    def test_adopts_only_explicitly_approved_one_to_one_rows(self, update):
+    def test_adopts_only_explicitly_approved_one_to_one_rows(self, update, get_event):
         desired = AnnualEvent(
             "birthday",
             str(PERSON_A),
             "Person A's Birthday",
             date(1980, 2, 29),
         )
+        get_event.return_value = {
+            "start": {"date": "2020-02-29"},
+            "end": {"date": "2020-03-01"},
+        }
         with TemporaryDirectory(dir=".secrets") as directory:
             report = Path(directory) / "report.json"
             report.write_text(
@@ -214,7 +219,59 @@ class AdoptApprovedEventsTests(TestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].event_id, "approved-event")
-        update.assert_called_once_with("calendar-id", "approved-event", desired.payload())
+        expected = desired.payload()
+        del expected["start"]
+        del expected["end"]
+        del expected["recurrence"]
+        del expected["transparency"]
+        update.assert_called_once_with("calendar-id", "approved-event", expected)
+
+    @patch("calendar_sync.get_event")
+    @patch("calendar_sync.update_event")
+    def test_can_adopt_all_reviewed_proposals_without_rewriting_report(self, update, get_event):
+        desired = AnnualEvent(
+            "birthday",
+            str(PERSON_A),
+            "Person A's Birthday",
+            date(1980, 2, 29),
+        )
+        get_event.return_value = {
+            "start": {"date": "2020-02-29"},
+            "end": {"date": "2020-03-01"},
+        }
+        with TemporaryDirectory(dir=".secrets") as directory:
+            report = Path(directory) / "report.json"
+            report.write_text(
+                json.dumps(
+                    {
+                        "proposed_adoptions": [
+                            {
+                                "source_type": "birthday",
+                                "source_id": str(PERSON_A),
+                                "existing_recurring_event_id": "reviewed-event",
+                                "approved": False,
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            results = adopt_approved_events(
+                "calendar-id",
+                (desired,),
+                report,
+                apply=True,
+                include_all_proposals=True,
+            )
+
+        self.assertEqual(len(results), 1)
+        expected = desired.payload()
+        del expected["start"]
+        del expected["end"]
+        del expected["recurrence"]
+        del expected["transparency"]
+        update.assert_called_once_with("calendar-id", "reviewed-event", expected)
 
     def test_report_hides_rejected_cross_pairs_from_proposals(self):
         first = {

@@ -94,6 +94,23 @@ class SyncAnnualEventsTests(TestCase):
     @patch("integrations.google.google_calendar.sync.update_event")
     @patch("integrations.google.google_calendar.sync.create_event")
     @patch("integrations.google.google_calendar.sync.list_managed_events")
+    def test_accepts_matching_legacy_start_year(self, list_events, create, update):
+        event = AnnualEvent("birthday", "person-id", "A birthday", date(1980, 4, 5))
+        old_event = existing_event("event-id", event)
+        old_event["start"] = {"date": "2020-04-05"}
+        old_event["end"] = {"date": "2020-04-06"}
+        old_event["recurrence"] = ["RRULE:FREQ=YEARLY;INTERVAL=1"]
+        list_events.return_value = [old_event]
+
+        result = sync_annual_events("calendar-id", [event], apply=True)
+
+        self.assertEqual(result[0].action, "unchanged")
+        create.assert_not_called()
+        update.assert_not_called()
+
+    @patch("integrations.google.google_calendar.sync.update_event")
+    @patch("integrations.google.google_calendar.sync.create_event")
+    @patch("integrations.google.google_calendar.sync.list_managed_events")
     def test_updates_only_a_managed_event(self, list_events, create, update):
         event = AnnualEvent("birthday", "person-id", "Correct birthday", date(2000, 4, 5))
         old_event = existing_event("event-id", event)

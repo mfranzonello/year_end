@@ -18,7 +18,13 @@ class GoogleCalendarClientTests(TestCase):
     @patch("integrations.google.google_calendar.client._request")
     def test_lists_all_managed_event_pages(self, request, get_token):
         request.side_effect = [
-            {"items": [{"id": "first"}], "nextPageToken": "next"},
+            {
+                "items": [
+                    {"id": "first"},
+                    {"id": "exception", "recurringEventId": "first"},
+                ],
+                "nextPageToken": "next",
+            },
             {"items": [{"id": "second"}]},
         ]
 

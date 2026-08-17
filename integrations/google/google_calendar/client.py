@@ -6,6 +6,7 @@ from urllib.error import HTTPError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 import json
+from time import sleep
 
 from common.config import read_toml
 from integrations.google.auth import get_access_token
@@ -35,28 +36,37 @@ def _request(
     """Make one authenticated Calendar API request."""
     query = f"?{urlencode(params)}" if params else ""
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
-    request = Request(
-        f"{_api_url()}{path}{query}",
-        data=data,
-        headers={
-            "Authorization": f"Bearer {access_token}",
-            "Accept": "application/json",
-            **({"Content-Type": "application/json"} if data is not None else {}),
-        },
-        method=method,
-    )
-    try:
-        with urlopen(request, timeout=30) as response:
-            return json.load(response)
-    except HTTPError as error:
-        body = error.read().decode("utf-8", errors="replace")
-        raise GoogleCalendarRequestError(
-            f"Google Calendar API returned HTTP {error.code}: {body}"
-        ) from error
-    except Exception as error:
-        raise GoogleCalendarRequestError(
-            f"Google Calendar API request failed: {error}"
-        ) from error
+    for attempt in range(3):
+        request = Request(
+            f"{_api_url()}{path}{query}",
+            data=data,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/json",
+                **({"Content-Type": "application/json"} if data is not None else {}),
+            },
+            method=method,
+        )
+        try:
+            with urlopen(request, timeout=30) as response:
+                return json.load(response)
+        except HTTPError as error:
+            body = error.read().decode("utf-8", errors="replace")
+            raise GoogleCalendarRequestError(
+                f"Google Calendar API returned HTTP {error.code}: {body}"
+            ) from error
+        except OSError as error:
+            if attempt < 2:
+                sleep(attempt + 1)
+                continue
+            raise GoogleCalendarRequestError(
+                f"Google Calendar API request failed after 3 attempts: {error}"
+            ) from error
+        except Exception as error:
+            raise GoogleCalendarRequestError(
+                f"Google Calendar API request failed: {error}"
+            ) from error
+    raise AssertionError("Calendar request retry loop exited unexpectedly")
 
 
 def list_managed_events(
@@ -79,7 +89,11 @@ def list_managed_events(
     events = []
     while True:
         response = _request("GET", path, access_token=access_token, params=params)
-        events.extend(response.get("items", []))
+        events.extend(
+            event
+            for event in response.get("items", [])
+            if not event.get("recurringEventId")
+        )
         page_token = response.get("nextPageToken")
         if not page_token:
             return events

@@ -22,7 +22,12 @@ from database.db_messaging import upsert_calendar_event_mappings
 from family_tree.ancestry import build_tree
 from integrations.google.google_calendar.sync import AnnualEvent, sync_annual_events
 from integrations.google.google_calendar.sync import SyncResult
-from integrations.google.google_calendar.client import get_event, list_event_instances, update_event
+from integrations.google.google_calendar.client import (
+    GoogleCalendarRequestError,
+    get_event,
+    list_event_instances,
+    update_event,
+)
 
 
 @dataclass(frozen=True)
@@ -398,6 +403,7 @@ def adopt_approved_events(
     report_path: Path,
     *,
     apply: bool = False,
+    include_all_proposals: bool = False,
 ) -> list[SyncResult]:
     """Adopt explicitly approved recurring masters from a private audit report."""
     secrets_root = Path(".secrets").resolve()
@@ -414,7 +420,9 @@ def adopt_approved_events(
     approved_sources: set[tuple[str, str]] = set()
     adopted = []
     for row in rows:
-        if not isinstance(row, dict) or row.get("approved") is not True:
+        if not isinstance(row, dict) or (
+            row.get("approved") is not True and not include_all_proposals
+        ):
             continue
         source_type = row.get("source_type")
         source_id = row.get("source_id")
@@ -428,7 +436,28 @@ def adopt_approved_events(
         if key in approved_sources or event_id in approved_events:
             raise ValueError("Approved adoption rows must form a one-to-one mapping")
         if apply:
-            update_event(calendar_id, event_id, desired.payload())
+            master = get_event(calendar_id, event_id)
+            payload = desired.payload()
+            master_start = master.get("start")
+            if not isinstance(master_start, dict) or not isinstance(master_start.get("date"), str):
+                raise ValueError("An adopted recurring master must be an all-day event")
+            existing_start = date.fromisoformat(master_start["date"])
+            if (existing_start.month, existing_start.day) != (
+                desired.start_date.month,
+                desired.start_date.day,
+            ):
+                raise ValueError("An adopted recurring master must match the desired month and day")
+            del payload["start"]
+            del payload["end"]
+            del payload["recurrence"]
+            del payload["transparency"]
+            try:
+                update_event(calendar_id, event_id, payload)
+            except GoogleCalendarRequestError:
+                adopted.append(SyncResult(key, "adoption_failed"))
+                approved_sources.add(key)
+                approved_events.add(event_id)
+                continue
         approved_sources.add(key)
         approved_events.add(event_id)
         adopted.append(
@@ -504,6 +533,11 @@ def main() -> None:
         action="store_true",
         help="Create or update project-managed events; defaults to dry-run.",
     )
+    parser.add_argument(
+        "--adopt-all-proposals",
+        action="store_true",
+        help="Adopt every one-to-one proposal in --adopt-report.",
+    )
     report_group = parser.add_mutually_exclusive_group()
     report_group.add_argument(
         "--audit-report",
@@ -521,6 +555,8 @@ def main() -> None:
         help="Verify proposed recurring-master start dates and enrich the report.",
     )
     args = parser.parse_args()
+    if args.adopt_all_proposals and args.adopt_report is None:
+        parser.error("--adopt-all-proposals requires --adopt-report")
 
     engine = _build_engine()
     try:
@@ -537,12 +573,14 @@ def main() -> None:
             plan.events,
             args.adopt_report,
             apply=args.apply,
+            include_all_proposals=args.adopt_all_proposals,
         )
         mapped = persist_calendar_results(adoption_results) if args.apply else 0
-        mode = "Adopted" if args.apply else "Would adopt"
+        failed = sum(result.action == "adoption_failed" for result in adoption_results)
+        mode = "Adopted or mapped" if args.apply else "Would adopt"
         print(
             f"{mode} {len(adoption_results)} explicitly approved recurring event(s); "
-            f"stored mappings: {mapped}."
+            f"stored mappings: {mapped}; provider update failures: {failed}."
         )
         return
     if args.verify_report:
