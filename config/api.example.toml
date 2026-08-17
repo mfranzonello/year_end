@@ -27,7 +27,7 @@ scopes = ["https://www.googleapis.com/auth/drive"]
 api = "https://gmail.googleapis.com/gmail/v1"
 
 [gmail.oauth]
-scopes = ["https://www.googleapis.com/auth/gmail.send"]
+scopes = ["https://www.googleapis.com/auth/gmail.compose"]
 
 [google_calendar.urls]
 api = "https://www.googleapis.com/calendar/v3"

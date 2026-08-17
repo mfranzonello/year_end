@@ -127,8 +127,8 @@ nested beneath the identity provider.
 - `google/` owns desktop OAuth with PKCE and reuses one Google OAuth client
   registration while keeping product scopes and token caches separate.
   `google/google_drive/` inspects and shares Drive folders, while
-  `google/gmail/` constructs and explicitly sends messages using a send-only
-  token. `google/google_calendar/` reads and reconciles project-owned annual
+  `google/gmail/` constructs, drafts, updates, and explicitly sends messages
+  using a Gmail compose token. `google/google_calendar/` reads and reconciles project-owned annual
   events using a separate Calendar event token. Calendar reconciliation marks
   its events with private extended properties, updates only those events, and
   reports stale managed events without deleting them. The authorization checks
