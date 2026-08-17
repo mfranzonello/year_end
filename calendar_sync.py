@@ -26,6 +26,7 @@ from integrations.google.google_calendar.client import (
     GoogleCalendarRequestError,
     get_event,
     list_event_instances,
+    list_managed_events,
     update_event,
 )
 
@@ -194,6 +195,13 @@ def audit_existing_events(
         datetime(year, 1, 1, tzinfo=timezone),
         datetime(year + years, 1, 1, tzinfo=timezone),
     )
+    managed_keys = set()
+    for event in list_managed_events(calendar_id):
+        private = event.get("extendedProperties", {}).get("private", {})
+        source_type = private.get("sourceType")
+        source_id = private.get("sourceId")
+        if isinstance(source_type, str) and isinstance(source_id, str):
+            managed_keys.add((source_type, source_id))
     instances = [
         event
         for event in instances
@@ -205,6 +213,8 @@ def audit_existing_events(
     recurring_candidates = 0
     candidates: list[dict[str, object]] = []
     for desired in desired_events:
+        if desired.key in managed_keys:
+            continue
         matches = [
             event
             for event in instances

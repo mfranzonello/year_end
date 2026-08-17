@@ -133,8 +133,13 @@ class BuildFamilyEventPlanTests(TestCase):
 
 
 class ExistingEventAuditTests(TestCase):
+    @patch("calendar_sync.list_managed_events", return_value=[])
     @patch("calendar_sync.list_event_instances")
-    def test_uses_date_as_candidate_and_title_as_stronger_signal(self, list_events):
+    def test_uses_date_as_candidate_and_title_as_stronger_signal(
+        self,
+        list_events,
+        _list_managed,
+    ):
         list_events.return_value = [
             {
                 "summary": "Different birthday title",
@@ -170,6 +175,41 @@ class ExistingEventAuditTests(TestCase):
         self.assertEqual(len(audit.candidates), 2)
         self.assertEqual(sum(candidate["recommended"] for candidate in audit.candidates), 2)
         self.assertTrue(all(candidate["approved"] is False for candidate in audit.candidates))
+
+    @patch("calendar_sync.list_managed_events")
+    @patch("calendar_sync.list_event_instances")
+    def test_ignores_unmanaged_duplicates_for_an_already_managed_source(
+        self,
+        list_instances,
+        list_managed,
+    ):
+        desired = AnnualEvent(
+            "anniversary",
+            str(MARRIAGE),
+            "Person A & Person B's Anniversary",
+            date(2001, 11, 1),
+        )
+        private = {
+            "yearEndManaged": "true",
+            "sourceType": "anniversary",
+            "sourceId": str(MARRIAGE),
+        }
+        list_managed.return_value = [
+            {"extendedProperties": {"private": private}}
+        ]
+        list_instances.return_value = [
+            {
+                "summary": "Person A and Person B's Anniversary",
+                "start": {"date": "2026-11-01"},
+                "recurringEventId": "legacy-duplicate",
+            }
+        ]
+
+        audit = audit_existing_events("calendar-id", (desired,), year=2026)
+
+        self.assertEqual(audit.date_collisions, 0)
+        self.assertEqual(audit.recurring_date_candidates, 0)
+        self.assertEqual(audit.candidates, ())
 
 
 class AdoptApprovedEventsTests(TestCase):
