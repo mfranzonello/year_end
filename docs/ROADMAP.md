@@ -143,7 +143,27 @@ text-track API can create chapters: it explicitly supports caption/subtitle
 tracks but not chapter tracks. Keep manual chapter entry as the safe baseline
 until a separate supported API capability is verified against the account.
 
-### 3a. Interactive video playback
+### 3a. YouTube reference playlists and publication
+
+Support a per-project-year YouTube reference playlist for tutorials, sound- or
+visual-effects walkthroughs, Easter-egg inspiration, and other videos the
+editor may want to revisit while assembling the YIR. These are editorial
+references, not submissions or project media: their completion state must not
+affect project status, contributor progress, scoring, or the canonical media
+inventory.
+
+The workflow should let the editor add a reference, retain its YouTube identity
+and useful context, and mark it reviewed or otherwise complete. Keep the
+completion model deliberately lightweight and extensible rather than treating a
+finite list of reference types as application logic. The `playback` package is
+the natural home for provider operations and project-aware playlist workflows.
+
+Later, evaluate YouTube as an additional or alternative public distribution
+destination alongside Vimeo, Facebook, and Instagram. Treat publication as a
+separate capability from playlist curation: it needs its own privacy,
+visibility, upload/update, caption, metadata, approval, and rights decisions.
+
+### 3b. Interactive video playback
 
 Explore an interactive playback experience alongside the conventional finished
 YIR. Potential experiences include selecting among multiple edits of a video or
@@ -187,7 +207,7 @@ it is equally valid to preserve separate variant and branching paths. Do not
 commit to a future Clue-style-to-Bandersnatch-style migration until a concrete
 use case establishes the tradeoff.
 
-### 3b. Submission scoring and participation insights
+### 3c. Submission scoring and participation insights
 
 Design a configurable submission-scoring system that can consider the number
 of submitted files, submission timing, and media quality. The intended outcome
