@@ -28,7 +28,7 @@ class PhoneReviewTests(TestCase):
             )
             extracted.write_text(
                 'vcard_index,raw_phones,normalized_phones\n'
-                '1,"[[""type=CELL"", ""(607) 555-0123""]]","[""+16075550123""]"\n',
+                '1,"[[""type=CELL"", ""(607) 555-0123""]]","[""6075550123""]"\n',
                 encoding="utf-8",
             )
 
@@ -38,5 +38,5 @@ class PhoneReviewTests(TestCase):
 
         self.assertEqual(result["selected_matches"], 1)
         self.assertEqual(rows[0]["phone_count"], "1")
-        self.assertEqual(rows[0]["selected_phone_number"], "+16075550123")
+        self.assertEqual(rows[0]["selected_phone_number"], "6075550123")
         self.assertEqual(rows[0]["selection_status"], "default_single")

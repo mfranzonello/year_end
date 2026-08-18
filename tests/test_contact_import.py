@@ -35,9 +35,10 @@ END:VCARD
 
     def test_normalizes_names_and_north_american_phone_numbers(self):
         self.assertEqual(normalize_name("Dr. José O’Neil, Jr."), "dr jose o neil jr")
-        self.assertEqual(normalize_phone("(607) 555-0123"), "+16075550123")
-        self.assertEqual(normalize_phone("+1 607 555 0123 ext. 9"), "+16075550123")
+        self.assertEqual(normalize_phone("(607) 555-0123"), "6075550123")
+        self.assertEqual(normalize_phone("+1 607 555 0123 ext. 9"), "6075550123")
         self.assertIsNone(normalize_phone("555-0123"))
+        self.assertIsNone(normalize_phone("+44 20 7946 0958"))
 
     def test_exact_email_outranks_a_different_exact_name(self):
         card_content = """BEGIN:VCARD

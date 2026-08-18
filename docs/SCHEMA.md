@@ -274,7 +274,9 @@ retain seconds unless a consuming query or display converts them.
 ## `messaging`: contacts and message preparation
 
 - `contacts`: optional `person_id`, `email_address`, and `phone_number` contact
-  data. It references `public.persons`.
+  data. It references `public.persons`. A populated phone number is currently a
+  US-only ten-digit text value with no country code, spaces, punctuation, or
+  extension.
 - `addresses`: reusable address records. The current scaffold stores an optional
   address label and required postal code; fuller address components and final
   uniqueness rules remain to be designed.

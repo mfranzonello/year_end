@@ -148,15 +148,13 @@ def normalize_name(value: str) -> str:
 
 
 def normalize_phone(value: str) -> str | None:
-    """Normalize North American numbers to E.164 and preserve other + numbers."""
+    """Normalize US numbers to the database's ten-digit text format."""
     main = re.split(r"(?:ext\.?|extension|x)\s*\d+\s*$", value, flags=re.IGNORECASE)[0]
     digits = "".join(re.findall(r"\d", main))
     if len(digits) == 10:
-        return f"+1{digits}"
+        return digits
     if len(digits) == 11 and digits.startswith("1"):
-        return f"+{digits}"
-    if value.lstrip().startswith("+") and 8 <= len(digits) <= 15:
-        return f"+{digits}"
+        return digits[1:]
     return None
 
 
