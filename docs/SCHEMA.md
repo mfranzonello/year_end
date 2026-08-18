@@ -273,8 +273,13 @@ retain seconds unless a consuming query or display converts them.
 
 ## `messaging`: contacts and message preparation
 
-- `contacts`: optional `person_id`, `email_address`, and `repository_ids` JSONB
+- `contacts`: optional `person_id`, `email_address`, and `phone_number` contact
   data. It references `public.persons`.
+- `addresses`: reusable address records. The current scaffold stores an optional
+  address label and required postal code; fuller address components and final
+  uniqueness rules remain to be designed.
+- `address_moves`: links a person to an address with an optional start date so
+  address history can be represented relationally.
 - `no_contacts`: person/year suppression records used to remove people from a
   project's otherwise folder-derived recipient set.
 - `templates`: an initial project-year message-template scaffold. Its content,
@@ -339,8 +344,8 @@ historical sender address into a current contact method.
   and `member_id` on `project.folders`?
 - Which `tree` views should be considered stable interfaces versus work in
   progress?
-- What are the intended semantics and lifecycle of `messaging.contacts` and its
-  `repository_ids` JSONB column?
+- Should `messaging.contacts` remain one current email and phone per person, or
+  eventually support multiple typed contact methods and history?
 - Should `project.folder_locations` enforce one current location per folder and
   repository, or deliberately retain multiple historical locations?
 - Which relationship events beyond marriage should the future model capture,
