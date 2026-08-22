@@ -85,7 +85,7 @@ def _known_metadata(engine, group: dict) -> dict[tuple, tuple]:
     """Return locally derived metadata keyed to a repository-relative file."""
     query = text('''
         SELECT folder_name, subfolder_name, file_name,
-               video_duration, video_resolution
+               file_size, video_duration, video_resolution
         FROM project.files
         JOIN project.folders USING (folder_id)
         WHERE media_type = :media_type
@@ -96,7 +96,7 @@ def _known_metadata(engine, group: dict) -> dict[tuple, tuple]:
         rows = connection.execute(query, group).mappings()
         return {
             (row["folder_name"], row["subfolder_name"], row["file_name"]): (
-                row["video_duration"], row["video_resolution"],
+                row["video_duration"], row["video_resolution"], row["file_size"],
             )
             for row in rows
         }
@@ -213,6 +213,61 @@ def audit_rating_range() -> dict:
     }
 
 
+def audit_duration_evidence(extensions: set[str]) -> list[dict]:
+    """Compare duration outliers with file-size and bitrate evidence."""
+    engine = _engine()
+    try:
+        media_folders = dict(get_media_locations(engine))
+        groups = [
+            group for group in _representative_groups(engine)
+            if group["extension"] in extensions
+        ]
+        root = read_toml("drives")["local_storage"]["onedrive"]["videos"]
+        results = []
+        for group in groups:
+            known = _known_metadata(engine, group)
+            files = [
+                item for item in _year_files(
+                    root, media_folders[group["media_type"]], group["project_year"],
+                )
+                if Path(item["name"]).suffix.lower() == group["extension"]
+            ]
+            for item in files:
+                key = (item["folder_name"], item.get("relative_parent"), item["name"])
+                local_duration, _resolution, database_size_mib = known.get(
+                    key, (None, None, None),
+                )
+                video = item.get("video") or {}
+                graph_duration_ms = video.get("duration")
+                bitrate = video.get("bitrate")
+                size = item.get("size")
+                if None in (local_duration, graph_duration_ms, bitrate, size):
+                    continue
+                graph_duration = graph_duration_ms / 1000
+                if abs(round(graph_duration) - local_duration) <= 1:
+                    continue
+                results.append({
+                    "media_type": group["media_type"],
+                    "project_year": group["project_year"],
+                    "extension": group["extension"],
+                    "size_mib": round(size / 1024 ** 2, 1),
+                    "database_size_mib": database_size_mib,
+                    "graph_bitrate_mbps": round(bitrate / 1_000_000, 3),
+                    "graph_duration_seconds": round(graph_duration),
+                    "local_duration_seconds": local_duration,
+                    "size_implied_seconds_at_graph_bitrate": round(size * 8 / bitrate),
+                    "effective_mbps_at_graph_duration": round(
+                        size * 8 / graph_duration / 1_000_000, 3
+                    ),
+                    "effective_mbps_at_local_duration": round(
+                        size * 8 / local_duration / 1_000_000, 3
+                    ),
+                })
+        return results
+    finally:
+        engine.dispose()
+
+
 def main() -> None:
     """Print aggregate Graph facet coverage without exposing archive filenames."""
     engine = _engine()
@@ -245,7 +300,9 @@ def main() -> None:
         duration_differences = []
         for item in files:
             key = (item["folder_name"], item.get("relative_parent"), item["name"])
-            local_duration, local_resolution = known.get(key, (None, None))
+            local_duration, local_resolution, _file_size = known.get(
+                key, (None, None, None),
+            )
             video = item.get("video") or {}
             if local_duration is None or local_resolution is None:
                 continue
