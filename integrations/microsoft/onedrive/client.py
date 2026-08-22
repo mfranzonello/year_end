@@ -109,7 +109,7 @@ def _list_children(folder_id: str, access_token: str) -> list[dict[str, Any]]:
     encoded_id = quote(folder_id, safe="")
     response = _get(
         f"/me/drive/items/{encoded_id}/children?"
-        "$select=id,name,webUrl,size,folder,file,lastModifiedDateTime&$top=999",
+        "$select=id,name,webUrl,size,folder,file,video,lastModifiedDateTime&$top=999",
         access_token=access_token,
     )
     children = []

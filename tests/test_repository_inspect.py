@@ -123,6 +123,7 @@ class OneDriveCloudContentInspectionTests(TestCase):
             {
                 "id": "nested-video", "name": "clip.mov", "size": 1572864,
                 "file": {}, "relative_parent": "Trip",
+                "video": {"duration": 8053, "width": 3840, "height": 2160},
             },
             {
                 "id": "not-video", "name": "notes.txt", "size": 10,
@@ -140,7 +141,10 @@ class OneDriveCloudContentInspectionTests(TestCase):
         self.assertEqual(files["file_name"].tolist(), ["root.mp4", "clip.mov"])
         self.assertEqual(files["file_size"].tolist(), [1.0, 1.5])
         self.assertEqual(files["subfolder_name"].tolist(), [None, "Trip"])
-        self.assertNotIn("video_duration", files.columns)
+        self.assertTrue(files["video_duration"].isna().iloc[0])
+        self.assertEqual(files["video_duration"].iloc[1], 8)
+        self.assertTrue(files["video_resolution"].isna().iloc[0])
+        self.assertEqual(files["video_resolution"].iloc[1], "4k")
         update_folders.assert_called_once()
         update_files.assert_called_once()
         purge_files.assert_not_called()

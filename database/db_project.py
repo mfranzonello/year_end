@@ -99,18 +99,25 @@ def update_files(engine:Engine, df:DataFrame):
 
     # cloud stored
     sql = f'''
-    INSERT INTO project.files (folder_id, subfolder_name, file_name, file_size)
+    INSERT INTO project.files (
+        folder_id, subfolder_name, file_name, file_size,
+        video_duration, video_resolution
+    )
     SELECT f.folder_id,
         :subfolder_name,
         :file_name,
-        :file_size
+        :file_size,
+        :video_duration,
+        :video_resolution
     FROM project.folders f
     WHERE f.folder_name IS NOT DISTINCT FROM :folder_name
         AND f.project_year = :project_year
         AND f.media_type = :media_type
     ON CONFLICT (folder_id, subfolder_name, file_name) DO UPDATE
 
-    SET file_size = EXCLUDED.file_size
+    SET file_size = EXCLUDED.file_size,
+        video_duration = COALESCE(EXCLUDED.video_duration, project.files.video_duration),
+        video_resolution = COALESCE(EXCLUDED.video_resolution, project.files.video_resolution)
     ;'''
     execute_sql(engine, sql, df=df[df['stored']=='cloud'])
 

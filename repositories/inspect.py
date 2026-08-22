@@ -11,7 +11,10 @@ from common.system import (
     get_premiere_projects_in_folder, get_videos_in_folder, resolve_relative_path, rebuild_path, is_file_available, sort_paths,
     get_year_folders, get_person_folders
     )
-from adobe.bridge import get_video_rating, get_video_date, get_video_cv2_details, is_file_available
+from adobe.bridge import (
+    get_resolution, get_video_rating, get_video_date, get_video_cv2_details,
+    is_file_available,
+)
 from adobe.premiere import convert_to_xml, extract_used_video_paths
 from database.db_project import (
     fetch_known_folders, update_folders, purge_folders,
@@ -108,12 +111,29 @@ def _cloud_file_row(
         raise GraphRequestError(
             f"Microsoft Graph returned an invalid size for {item.get('name')!r}"
         )
+    video = item.get("video") if isinstance(item.get("video"), dict) else {}
+    duration_ms = video.get("duration")
+    duration = (
+        round(duration_ms / 1000)
+        if isinstance(duration_ms, (int, float)) and duration_ms >= 0
+        else None
+    )
+    width = video.get("width")
+    height = video.get("height")
+    resolution = (
+        get_resolution(width, height)
+        if isinstance(width, int) and width > 0
+        and isinstance(height, int) and height > 0
+        else None
+    )
     return {
         "folder_name": folder_name,
         "project_year": project_year,
         "file_name": item["name"],
         "subfolder_name": subfolder_name,
         "file_size": round(size / (1024 ** 2), 1),
+        "video_duration": duration,
+        "video_resolution": resolution,
         "stored": "cloud",
     }
 
@@ -248,7 +268,7 @@ def inspect_onedrive_cloud_contents(
         file_rows,
         columns=[
             "folder_name", "project_year", "file_name", "subfolder_name",
-            "file_size", "stored",
+            "file_size", "video_duration", "video_resolution", "stored",
         ],
     )
     ui.add_update(
