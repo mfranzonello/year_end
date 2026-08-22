@@ -116,8 +116,8 @@ def update_files(engine:Engine, df:DataFrame):
     ON CONFLICT (folder_id, subfolder_name, file_name) DO UPDATE
 
     SET file_size = EXCLUDED.file_size,
-        video_duration = COALESCE(EXCLUDED.video_duration, project.files.video_duration),
-        video_resolution = COALESCE(EXCLUDED.video_resolution, project.files.video_resolution)
+        video_duration = COALESCE(project.files.video_duration, EXCLUDED.video_duration),
+        video_resolution = COALESCE(project.files.video_resolution, EXCLUDED.video_resolution)
     ;'''
     execute_sql(engine, sql, df=df[df['stored']=='cloud'])
 
