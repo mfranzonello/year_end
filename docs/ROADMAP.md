@@ -90,6 +90,14 @@ Open design questions:
   routing the entire file through a limited cloud runner.
 - Which metadata can be gathered remotely, and when a local download is needed
   for OpenCV or other file-level inspection.
+- Why Microsoft Graph reports substantially shorter durations than local
+  OpenCV inspection for some legacy AVI, MP4, and TS files, even though file
+  size and Graph's own bitrate support the longer local durations. Manually
+  inspect the identified files in a trusted media player, compare their actual
+  playback lengths with both values, and investigate whether concatenated
+  streams, container indexing, variable bitrate, or provider transcoding
+  explains the discrepancy. Until verified, cloud metadata should fill missing
+  durations without overwriting existing locally derived values.
 - Which cloud runtime will run scheduled or on-demand operations.
 - How a cloud orchestrator can queue and track browser-based local ingestion
   work without moving personal browser profiles or credentials into the cloud.
