@@ -100,14 +100,21 @@ class OneDriveFolderShareInspectionTests(TestCase):
 
 
 class OneDriveCloudContentInspectionTests(TestCase):
+    @patch("repositories.inspect.purge_files")
+    @patch("repositories.inspect.fetch_known_files")
     @patch("repositories.inspect.update_files")
     @patch("repositories.inspect.update_folders")
     @patch("repositories.inspect.list_onedrive_descendant_files")
     @patch("repositories.inspect.list_onedrive_children")
     @patch("repositories.inspect.find_onedrive_folder_id", return_value="year-id")
     def test_applies_cloud_metadata_without_download_only_fields(
-        self, find_year, list_children, list_descendants, update_folders, update_files
+        self, find_year, list_children, list_descendants, update_folders, update_files,
+        fetch_known_files, purge_files,
     ):
+        fetch_known_files.return_value = DataFrame(columns=[
+            "file_id", "folder_name", "project_year", "media_type", "file_name",
+            "subfolder_name",
+        ])
         list_children.return_value = [
             {"id": "root-video", "name": "root.mp4", "size": 1048576, "file": {}},
             {"id": "person", "name": "Participant", "folder": {}},
@@ -136,15 +143,24 @@ class OneDriveCloudContentInspectionTests(TestCase):
         self.assertNotIn("video_duration", files.columns)
         update_folders.assert_called_once()
         update_files.assert_called_once()
+        purge_files.assert_not_called()
 
+    @patch("repositories.inspect.purge_files")
+    @patch("repositories.inspect.fetch_known_files")
     @patch("repositories.inspect.update_files")
     @patch("repositories.inspect.update_folders")
     @patch("repositories.inspect.list_onedrive_descendant_files")
     @patch("repositories.inspect.list_onedrive_children")
     @patch("repositories.inspect.find_onedrive_folder_id", return_value="year-id")
     def test_dry_run_does_not_update_database(
-        self, _find_year, list_children, list_descendants, update_folders, update_files
+        self, _find_year, list_children, list_descendants, update_folders, update_files,
+        fetch_known_files, purge_files,
     ):
+        fetch_known_files.return_value = DataFrame([{
+            "file_id": "stale-id", "folder_name": "Participant",
+            "project_year": 2026, "media_type": "smartphone",
+            "file_name": "removed.mp4", "subfolder_name": None,
+        }])
         list_children.return_value = [
             {"id": "person", "name": "Participant", "folder": {}}
         ]
@@ -159,3 +175,39 @@ class OneDriveCloudContentInspectionTests(TestCase):
         self.assertTrue(files.empty)
         update_folders.assert_not_called()
         update_files.assert_not_called()
+        purge_files.assert_not_called()
+
+    @patch("repositories.inspect.purge_files")
+    @patch("repositories.inspect.fetch_known_files")
+    @patch("repositories.inspect.update_files")
+    @patch("repositories.inspect.update_folders")
+    @patch("repositories.inspect.list_onedrive_descendant_files", return_value=[])
+    @patch("repositories.inspect.list_onedrive_children")
+    @patch("repositories.inspect.find_onedrive_folder_id", return_value="year-id")
+    def test_apply_purges_database_files_absent_from_onedrive(
+        self, _find_year, list_children, _list_descendants, _update_folders,
+        _update_files, fetch_known_files, purge_files,
+    ):
+        list_children.return_value = [
+            {"id": "current", "name": "current.mp4", "size": 1048576, "file": {}},
+        ]
+        fetch_known_files.return_value = DataFrame([
+            {
+                "file_id": "current-id", "folder_name": None,
+                "project_year": 2026, "media_type": "smartphone",
+                "file_name": "current.mp4", "subfolder_name": None,
+            },
+            {
+                "file_id": "stale-id", "folder_name": None,
+                "project_year": 2026, "media_type": "smartphone",
+                "file_name": "removed.mp4", "subfolder_name": None,
+            },
+        ])
+
+        inspect_onedrive_cloud_contents(
+            Mock(), "Videos", "smartphone", "YIR Clips", Mock(),
+            dry_run=False, project_year=2026,
+        )
+
+        purged = purge_files.call_args.args[1]
+        self.assertEqual(purged["file_id"].tolist(), ["stale-id"])

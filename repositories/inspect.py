@@ -118,6 +118,35 @@ def _cloud_file_row(
     }
 
 
+def _find_stale_cloud_files(
+    engine: Engine,
+    files: DataFrame,
+    project_years: list[int],
+    media_type: str,
+) -> DataFrame:
+    """Return database files absent from a successful OneDrive inventory."""
+    comparison_columns = [
+        "folder_name", "project_year", "media_type", "file_name", "subfolder_name",
+    ]
+    found_files = files.copy()
+    if found_files.empty:
+        found_files = DataFrame(columns=comparison_columns)
+    else:
+        found_files["media_type"] = media_type
+
+    stale_files = []
+    for selected_year in project_years:
+        known_files = fetch_known_files(engine, selected_year, media_type)
+        found_for_year = found_files[
+            found_files["project_year"] == selected_year
+        ][comparison_columns]
+        stale = get_to_purge(known_files, found_for_year, comparison_columns)
+        if not stale.empty:
+            stale_files.append(stale)
+
+    return concat(stale_files, ignore_index=True) if stale_files else DataFrame()
+
+
 def inspect_onedrive_cloud_contents(
     engine: Engine,
     project_root: str,
@@ -226,12 +255,26 @@ def inspect_onedrive_cloud_contents(
         f"OneDrive cloud inventory found {len(folders)} project folders and "
         f"{len(files)} video files for {media_type}."
     )
+    inventoried_years = [int(item["name"]) for item in year_folders]
+    stale_files = (
+        DataFrame()
+        if folders_only
+        else _find_stale_cloud_files(engine, files, inventoried_years, media_type)
+    )
+    if not folders_only:
+        action = "would remove" if dry_run else "removed"
+        ui.add_update(
+            f"OneDrive cloud reconciliation {action} {len(stale_files)} stale "
+            f"database file records for {media_type}."
+        )
     if not dry_run:
         if not folders.empty:
             update_folders(engine, folders)
         if not files.empty:
             files["media_type"] = media_type
             update_files(engine, files)
+        if not stale_files.empty:
+            purge_files(engine, stale_files)
     return folders, files
 
 def get_child_from_relative(parent_folder:Path, full_path:Path) -> Path:
