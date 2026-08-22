@@ -207,12 +207,12 @@ publication of every local Premiere export.
 2. Local Google Drive folders may be copied into local OneDrive folders, with
    quarantine used for candidate duplicates.
 3. Shared photo albums may be downloaded through Selenium-based ingestion.
-4. Local OneDrive folders are reconciled with `project.folders` and
-   `project.files`: stale records may be purged and discovered files/folders may
-   be inserted or updated.
+4. OneDrive folders can be inventoried either from the local synchronized tree
+   or through Microsoft Graph. Both paths update `project.folders` and
+   `project.files`; only the local path currently purges stale records.
 5. Available local media receives ratings, date, duration, and resolution
-   inspection; cloud-only placeholders retain only data that can be read without
-   downloading them.
+   inspection. Graph-only inspection updates file names, relative subfolders,
+   and sizes while preserving fields that require downloaded media.
 6. The Premiere workflow uses reviewed media and writes usage/appearance data
    back to Neon. Streamlit then reads database summaries and relationship data.
 

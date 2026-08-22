@@ -15,7 +15,8 @@ from repositories.iterate import get_media_locations
 from repositories.migrate import dedupe_one_drive, copy_from_gdrive
 from repositories.ingest import copy_from_web, ingest_google_drive_folder_shares
 from repositories.inspect import (
-    inspect_onedrive_folder_shares, purge_stale_content, summarize_folders,
+    inspect_onedrive_cloud_contents, inspect_onedrive_folder_shares,
+    purge_stale_content, summarize_folders,
     update_database_images,
 )
 
@@ -80,22 +81,35 @@ def update_database(
     dry_run: bool = True,
     project_year: int | None = None,
     folders_only: bool = False,
+    cloud_only: bool = False,
 ):
     """Inspect configured media locations and update their database records."""
     engine = set_up_engine()
 
     for media_type, supfolder_name in media_locations:
-        summarize_folders(
-            engine,
-            ONE_DRIVE_FOLDER / supfolder_name,
-            media_type,
-            ADOBE_FOLDER,
-            YIR_REVIEWS,
-            ui,
-            dry_run=dry_run,
-            project_year=project_year,
-            folders_only=folders_only,
-        )
+        if cloud_only:
+            inspect_onedrive_cloud_contents(
+                engine,
+                DRIVE_CONFIG["onedrive"]["videos"],
+                media_type,
+                supfolder_name,
+                ui,
+                dry_run=dry_run,
+                project_year=project_year,
+                folders_only=folders_only,
+            )
+        else:
+            summarize_folders(
+                engine,
+                ONE_DRIVE_FOLDER / supfolder_name,
+                media_type,
+                ADOBE_FOLDER,
+                YIR_REVIEWS,
+                ui,
+                dry_run=dry_run,
+                project_year=project_year,
+                folders_only=folders_only,
+            )
     engine.dispose()
 
 def sync_cloud_folder_shares(
@@ -169,6 +183,7 @@ def main():
     ap.add_argument('--gdrive', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Drive to OneDrive.')
     ap.add_argument('--pictures', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
     ap.add_argument('--inspect-only', action='store_true', help='Only discover top-level participant folders and update their database records.')
+    ap.add_argument('--cloud-only', action='store_true', help='Inspect OneDrive through Microsoft Graph without downloading or parsing local files.')
     ap.add_argument('--onedrive-shares', action='store_true', help='Reconcile OneDrive folder IDs and share links for a year.')
     ap.add_argument('--google-drive-shares', action='store_true', help='Reconcile Google Drive folder IDs and share links for a year.')
     ap.add_argument('--year', type=int, help='Limit folder inspection or cloud sharing to one project year.')
@@ -181,12 +196,14 @@ def main():
     
     args = ap.parse_args()
     cloud_shares = args.onedrive_shares or args.google_drive_shares
-    if args.year and not (args.inspect_only or cloud_shares):
-        ap.error('--year requires --inspect-only or a cloud-share option.')
+    if args.year and not (args.inspect_only or args.cloud_only or cloud_shares):
+        ap.error('--year requires --inspect-only, --cloud-only, or a cloud-share option.')
     if cloud_shares and args.no_dbupdate:
         ap.error('Cloud-share reconciliation cannot be combined with --no-dbupdate.')
     if args.inspect_only and args.no_dbupdate:
         ap.error('--inspect-only cannot be combined with --no-dbupdate.')
+    if args.cloud_only and args.no_dbupdate:
+        ap.error('--cloud-only cannot be combined with --no-dbupdate.')
     dry_run = not args.apply  # default to dry-run unless --apply
 
     ui.add_update(f'Running with args: {args}')
@@ -202,7 +219,20 @@ def main():
         scan_folders(media_locations, dry_run=dry_run)
 
     if args.inspect_only:
-        update_database(media_locations, dry_run=dry_run, project_year=args.year, folders_only=True)
+        update_database(
+            media_locations,
+            dry_run=dry_run,
+            project_year=args.year,
+            folders_only=True,
+            cloud_only=args.cloud_only,
+        )
+    elif args.cloud_only:
+        update_database(
+            media_locations,
+            dry_run=dry_run,
+            project_year=args.year,
+            cloud_only=True,
+        )
     elif not args.no_dbupdate and not cloud_shares:
         purge_database(media_locations, dry_run=dry_run)
         update_database(media_locations, dry_run=dry_run)

@@ -7,7 +7,10 @@ from unittest.mock import Mock, patch
 
 from pandas import DataFrame
 
-from repositories.inspect import inspect_onedrive_folder_shares, summarize_folders
+from repositories.inspect import (
+    inspect_onedrive_cloud_contents, inspect_onedrive_folder_shares,
+    summarize_folders,
+)
 
 
 class FolderOnlyInspectionTests(TestCase):
@@ -94,3 +97,65 @@ class OneDriveFolderShareInspectionTests(TestCase):
         get_share.assert_called_once_with("provider-id")
         create_share.assert_not_called()
         update_shares.assert_called_once()
+
+
+class OneDriveCloudContentInspectionTests(TestCase):
+    @patch("repositories.inspect.update_files")
+    @patch("repositories.inspect.update_folders")
+    @patch("repositories.inspect.list_onedrive_descendant_files")
+    @patch("repositories.inspect.list_onedrive_children")
+    @patch("repositories.inspect.find_onedrive_folder_id", return_value="year-id")
+    def test_applies_cloud_metadata_without_download_only_fields(
+        self, find_year, list_children, list_descendants, update_folders, update_files
+    ):
+        list_children.return_value = [
+            {"id": "root-video", "name": "root.mp4", "size": 1048576, "file": {}},
+            {"id": "person", "name": "Participant", "folder": {}},
+        ]
+        list_descendants.return_value = [
+            {
+                "id": "nested-video", "name": "clip.mov", "size": 1572864,
+                "file": {}, "relative_parent": "Trip",
+            },
+            {
+                "id": "not-video", "name": "notes.txt", "size": 10,
+                "file": {}, "relative_parent": None,
+            },
+        ]
+
+        folders, files = inspect_onedrive_cloud_contents(
+            Mock(), "Videos", "smartphone", "YIR Clips", Mock(),
+            dry_run=False, project_year=2026,
+        )
+
+        find_year.assert_called_once_with("Videos/YIR Clips/2026")
+        self.assertEqual(folders["folder_name"].tolist(), [None, "Participant"])
+        self.assertEqual(files["file_name"].tolist(), ["root.mp4", "clip.mov"])
+        self.assertEqual(files["file_size"].tolist(), [1.0, 1.5])
+        self.assertEqual(files["subfolder_name"].tolist(), [None, "Trip"])
+        self.assertNotIn("video_duration", files.columns)
+        update_folders.assert_called_once()
+        update_files.assert_called_once()
+
+    @patch("repositories.inspect.update_files")
+    @patch("repositories.inspect.update_folders")
+    @patch("repositories.inspect.list_onedrive_descendant_files")
+    @patch("repositories.inspect.list_onedrive_children")
+    @patch("repositories.inspect.find_onedrive_folder_id", return_value="year-id")
+    def test_dry_run_does_not_update_database(
+        self, _find_year, list_children, list_descendants, update_folders, update_files
+    ):
+        list_children.return_value = [
+            {"id": "person", "name": "Participant", "folder": {}}
+        ]
+        list_descendants.return_value = []
+
+        folders, files = inspect_onedrive_cloud_contents(
+            Mock(), "Videos", "smartphone", "YIR Clips", Mock(),
+            dry_run=True, project_year=2026,
+        )
+
+        self.assertEqual(len(folders), 1)
+        self.assertTrue(files.empty)
+        update_folders.assert_not_called()
+        update_files.assert_not_called()

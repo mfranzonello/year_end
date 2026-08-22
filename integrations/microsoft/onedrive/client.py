@@ -98,22 +98,63 @@ def find_folder_id(folder_path: str) -> str:
 
 def list_child_folders(folder_id: str) -> list[dict[str, Any]]:
     """Return the immediate child folders of a OneDrive folder."""
+    return [item for item in list_children(folder_id) if "folder" in item]
+
+
+def _list_children(folder_id: str, access_token: str) -> list[dict[str, Any]]:
+    """Return all immediate children using an existing access token."""
     if not folder_id.strip():
         raise ValueError("folder_id must not be empty")
 
-    access_token = get_access_token("onedrive")
     encoded_id = quote(folder_id, safe="")
     response = _get(
-        f"/me/drive/items/{encoded_id}/children?$select=id,name,webUrl,folder&$top=999",
+        f"/me/drive/items/{encoded_id}/children?"
+        "$select=id,name,webUrl,size,folder,file,lastModifiedDateTime&$top=999",
         access_token=access_token,
     )
     children = []
     while True:
-        children.extend(child for child in response.get("value", []) if "folder" in child)
+        value = response.get("value", [])
+        if not isinstance(value, list):
+            raise GraphRequestError("Microsoft Graph returned malformed folder children")
+        children.extend(value)
         next_url = response.get("@odata.nextLink")
         if not next_url:
             return children
         response = _get_url(next_url, access_token=access_token)
+
+
+def list_children(folder_id: str) -> list[dict[str, Any]]:
+    """Return every immediate file and folder child, following pagination."""
+    return _list_children(folder_id, get_access_token("onedrive"))
+
+
+def list_descendant_files(folder_id: str) -> list[dict[str, Any]]:
+    """Return files below a folder with their relative parent folder path."""
+    if not folder_id.strip():
+        raise ValueError("folder_id must not be empty")
+
+    access_token = get_access_token("onedrive")
+    pending = [(folder_id, ())]
+    visited = set()
+    files = []
+    while pending:
+        current_id, relative_parts = pending.pop()
+        if current_id in visited:
+            raise GraphRequestError("Microsoft Graph returned a repeated folder ID")
+        visited.add(current_id)
+        for item in _list_children(current_id, access_token):
+            item_id = item.get("id")
+            name = item.get("name")
+            if not isinstance(item_id, str) or not item_id:
+                raise GraphRequestError("Microsoft Graph returned a child without an ID")
+            if not isinstance(name, str) or not name:
+                raise GraphRequestError("Microsoft Graph returned a child without a name")
+            if "folder" in item:
+                pending.append((item_id, (*relative_parts, name)))
+            elif "file" in item:
+                files.append({**item, "relative_parent": "/".join(relative_parts) or None})
+    return files
 
 
 def get_share_link(

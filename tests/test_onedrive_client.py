@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from integrations.microsoft.onedrive.client import (
     GraphRequestError, find_folder_id, get_or_create_share_link, get_share_link,
-    list_child_folders,
+    list_child_folders, list_children, list_descendant_files,
 )
 
 
@@ -121,4 +121,41 @@ class ListChildFoldersTests(TestCase):
         self.assertEqual([folder["id"] for folder in result], ["first", "second"])
         graph_get_url.assert_called_once_with(
             "https://graph.microsoft.com/v1.0/next", access_token="token"
+        )
+
+    @patch("integrations.microsoft.onedrive.client.get_access_token", return_value="token")
+    @patch("integrations.microsoft.onedrive.client._get_url")
+    @patch("integrations.microsoft.onedrive.client._get")
+    def test_list_children_keeps_files_and_folders(
+        self, graph_get, _graph_get_url, _get_token
+    ):
+        graph_get.return_value = {"value": [
+            {"id": "folder", "name": "Folder", "folder": {}},
+            {"id": "file", "name": "video.mp4", "size": 10, "file": {}},
+        ]}
+
+        result = list_children("parent")
+
+        self.assertEqual([item["id"] for item in result], ["folder", "file"])
+
+
+class ListDescendantFilesTests(TestCase):
+    @patch("integrations.microsoft.onedrive.client.get_access_token", return_value="token")
+    @patch("integrations.microsoft.onedrive.client._list_children")
+    def test_returns_relative_parent_for_nested_files(self, list_children, _get_token):
+        list_children.side_effect = [
+            [
+                {"id": "root-file", "name": "root.mp4", "size": 10, "file": {}},
+                {"id": "nested", "name": "Nested", "folder": {}},
+            ],
+            [{"id": "nested-file", "name": "inside.mov", "size": 20, "file": {}}],
+        ]
+
+        result = list_descendant_files("participant")
+
+        self.assertIsNone(result[0]["relative_parent"])
+        self.assertEqual(result[1]["relative_parent"], "Nested")
+        self.assertEqual(
+            [call.args for call in list_children.call_args_list],
+            [("participant", "token"), ("nested", "token")],
         )

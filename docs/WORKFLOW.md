@@ -119,6 +119,21 @@ Provider project roots use the existing `local_storage` folder names in
 `config/drives.toml`; for OneDrive this resolves to
 `Videos / YIR Clips / [Project Year]`.
 
+OneDrive content inspection can also run without a locally synchronized drive:
+
+```powershell
+python main.py --cloud-only --year 2026 --dry-run
+python main.py --cloud-only --year 2026 --apply
+```
+
+This mode walks participant folders recursively through Microsoft Graph and
+records video file names, relative subfolders, and sizes in MiB. It preserves
+download-only metadata such as rating, embedded capture date, duration,
+resolution, and Premiere usage. `--inspect-only --cloud-only` discovers only
+the immediate participant folders. Cloud-only inspection does not yet purge
+database records for items missing from OneDrive; stale-item deletion remains
+part of the established local crawl.
+
 ### 2. Collect media from where contributors already are
 
 Contributors use different paths. The project should accommodate those paths,

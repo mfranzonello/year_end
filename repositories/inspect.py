@@ -6,6 +6,7 @@ from pandas import DataFrame, concat
 from sqlalchemy import Engine
 
 from common.console import SplitConsole
+from common.structure import VIDEO_EXTS
 from common.system import (
     get_premiere_projects_in_folder, get_videos_in_folder, resolve_relative_path, rebuild_path, is_file_available, sort_paths,
     get_year_folders, get_person_folders
@@ -23,7 +24,9 @@ from integrations.microsoft.onedrive.client import (
     find_folder_id as find_onedrive_folder_id,
     get_share_link as get_onedrive_share_link,
     get_or_create_share_link as get_or_create_onedrive_share_link,
+    list_children as list_onedrive_children,
     list_child_folders as list_onedrive_child_folders,
+    list_descendant_files as list_onedrive_descendant_files,
 )
 from database.db_project import fetch_project_folders, update_folder_locations_and_shares
 
@@ -85,6 +88,151 @@ def inspect_onedrive_folder_shares(
     if not dry_run:
         update_folder_locations_and_shares(engine, results, "OneDrive", is_canonical=True)
     return results
+
+
+def _is_video_item(item: dict) -> bool:
+    """Return whether a Graph file item has a configured video extension."""
+    name = item.get("name")
+    return "file" in item and isinstance(name, str) and Path(name).suffix.lower() in VIDEO_EXTS
+
+
+def _cloud_file_row(
+    item: dict,
+    folder_name: str | None,
+    project_year: int,
+    subfolder_name: str | None,
+) -> dict:
+    """Convert Graph metadata to the portable project.files input contract."""
+    size = item.get("size")
+    if not isinstance(size, int) or size < 0:
+        raise GraphRequestError(
+            f"Microsoft Graph returned an invalid size for {item.get('name')!r}"
+        )
+    return {
+        "folder_name": folder_name,
+        "project_year": project_year,
+        "file_name": item["name"],
+        "subfolder_name": subfolder_name,
+        "file_size": round(size / (1024 ** 2), 1),
+        "stored": "cloud",
+    }
+
+
+def inspect_onedrive_cloud_contents(
+    engine: Engine,
+    project_root: str,
+    media_type: str,
+    supfolder_name: str,
+    ui: SplitConsole,
+    dry_run: bool = True,
+    project_year: int | None = None,
+    folders_only: bool = False,
+) -> tuple[DataFrame, DataFrame]:
+    """Inventory OneDrive folders and file metadata without downloading media."""
+    media_path = "/".join((project_root.strip("/\\"), supfolder_name))
+    requested_path = f"{media_path}/{project_year}" if project_year is not None else media_path
+    try:
+        if project_year is not None:
+            year_folders = [{
+                "id": find_onedrive_folder_id(f"{media_path}/{project_year}"),
+                "name": str(project_year),
+                "folder": {},
+            }]
+        else:
+            media_folder_id = find_onedrive_folder_id(media_path)
+            year_folders = [
+                item for item in list_onedrive_child_folders(media_folder_id)
+                if isinstance(item.get("name"), str)
+                and item["name"].isdigit()
+                and len(item["name"]) == 4
+            ]
+    except GraphRequestError as error:
+        if "HTTP 404" not in str(error):
+            raise
+        ui.add_update(f"OneDrive cloud path does not exist: {requested_path}")
+        return DataFrame(), DataFrame()
+
+    folder_rows = []
+    file_rows = []
+    for year_folder in sorted(year_folders, key=lambda item: item["name"]):
+        if not isinstance(year_folder.get("id"), str) or not year_folder["id"]:
+            raise GraphRequestError("Microsoft Graph returned a year folder without an ID")
+        selected_year = int(year_folder["name"])
+        ui.add_update(f"Checking OneDrive cloud metadata for {media_type} {selected_year}")
+        children = list_onedrive_children(year_folder["id"])
+        participant_folders = [item for item in children if "folder" in item]
+        participant_names = [item.get("name") for item in participant_folders]
+        if not all(isinstance(name, str) and name for name in participant_names):
+            raise GraphRequestError(
+                f"Microsoft Graph returned an unnamed folder beneath {selected_year}"
+            )
+        if not all(
+            isinstance(item.get("id"), str) and item["id"]
+            for item in participant_folders
+        ):
+            raise GraphRequestError(
+                f"Microsoft Graph returned a folder without an ID beneath {selected_year}"
+            )
+        if len(set(participant_names)) != len(participant_names):
+            raise ValueError(
+                f"OneDrive {selected_year} contains duplicate top-level folder names"
+            )
+
+        root_files = [item for item in children if _is_video_item(item)]
+        if root_files:
+            folder_rows.append({
+                "folder_name": None,
+                "project_year": selected_year,
+                "media_type": media_type,
+            })
+            if not folders_only:
+                file_rows.extend(
+                    _cloud_file_row(item, None, selected_year, None)
+                    for item in root_files
+                )
+
+        for participant in sorted(participant_folders, key=lambda item: item["name"]):
+            folder_name = participant["name"]
+            folder_rows.append({
+                "folder_name": folder_name,
+                "project_year": selected_year,
+                "media_type": media_type,
+            })
+            if folders_only:
+                continue
+            file_rows.extend(
+                _cloud_file_row(
+                    item,
+                    folder_name,
+                    selected_year,
+                    item.get("relative_parent"),
+                )
+                for item in list_onedrive_descendant_files(participant["id"])
+                if _is_video_item(item)
+            )
+
+    folders = DataFrame(
+        folder_rows,
+        columns=["folder_name", "project_year", "media_type"],
+    )
+    files = DataFrame(
+        file_rows,
+        columns=[
+            "folder_name", "project_year", "file_name", "subfolder_name",
+            "file_size", "stored",
+        ],
+    )
+    ui.add_update(
+        f"OneDrive cloud inventory found {len(folders)} project folders and "
+        f"{len(files)} video files for {media_type}."
+    )
+    if not dry_run:
+        if not folders.empty:
+            update_folders(engine, folders)
+        if not files.empty:
+            files["media_type"] = media_type
+            update_files(engine, files)
+    return folders, files
 
 def get_child_from_relative(parent_folder:Path, full_path:Path) -> Path:
     return parent_folder / full_path.relative_to(parent_folder).parents[-2]
