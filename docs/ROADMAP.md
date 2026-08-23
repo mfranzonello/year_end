@@ -283,13 +283,14 @@ Remaining work:
 
 - monitor the scheduled Google Drive migration plus OneDrive/Neon
   reconciliation workflow, including hosted token refresh and long transfers;
-- deploy an Azure-hosted OneDrive webhook receiver that validates and queues
-  Graph notifications, debounces upload bursts, processes changes through a
-  saved delta cursor, and renews its subscription before expiration;
-- add a Google Drive `changes.watch` channel that validates its `X-Goog-*`
-  headers, stores and advances a changes page token, filters changes to the
-  configured project hierarchy, and queues the Google Drive-to-OneDrive copy
-  workflow rather than transferring files inside the webhook request;
+- deploy the implemented Azure-hosted webhook receiver and its managed-identity
+  infrastructure; it already validates and durably queues Graph/Google signals,
+  uses a 10-minute quiet/30-minute maximum debounce, and dispatches the
+  provider-appropriate GitHub workflow without processing media in HTTP;
+- register the implemented OneDrive subscription and Google Drive
+  `changes.watch` helpers against the deployed HTTPS endpoints, then persist and
+  advance their implemented delta/page cursors to filter changes to the
+  configured project hierarchy before dispatch;
 - replace the Google Drive notification channel before its one-week maximum
   lifetime, allowing a brief channel overlap so notifications are not missed;
 - retain manual inspection and a periodic full reconciliation as recovery paths

@@ -188,6 +188,13 @@ full migration-and-reconciliation schedule to once daily as a recovery sweep;
 Google Drive notifications will invoke the full workflow, while OneDrive
 notifications will invoke only inspection and Neon reconciliation.
 
+Both workflows accept narrowly named `repository_dispatch` events. The Azure
+webhook host emits `google_drive_changed` for the complete migration and
+reconciliation path, and `onedrive_changed` for inspection only. It batches
+bursts for 10 quiet minutes, forces a dispatch after 30 minutes of continuous
+signals, and leaves failed dispatch state durable for retry. Deployment and
+provider limitations are documented in `docs/DRIVE_WEBHOOKS.md`.
+
 Repository modules follow a plan/apply/reconcile boundary. `ingest.py` reads
 source and destination metadata and produces migration candidates;
 `migrate.py` and `cloud_migrate.py` execute local/browser and API-based copies;

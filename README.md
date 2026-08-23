@@ -147,6 +147,13 @@ python -m integrations.microsoft.azure.bootstrap_key_vault `
   --vault-name <vault-name> --apply
 ```
 
+The event-driven layer is implemented but remains deliberately undeployed. An
+Azure Function validates provider notifications, stores them durably, waits for
+a 10-minute quiet period (with a 30-minute maximum), and dispatches the
+appropriate existing workflow. See [Drive webhook deployment](docs/DRIVE_WEBHOOKS.md)
+for the owner setup, infrastructure preview, deployment, and provider-scope
+details. Keep the 15-minute schedule enabled during rollout.
+
 The first command validates Azure access and local inputs without uploading.
 The second explicitly creates new Key Vault secret versions without printing
 their contents. Run the GitHub workflow as a dry run before approving an

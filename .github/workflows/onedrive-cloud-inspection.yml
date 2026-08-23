@@ -1,6 +1,8 @@
 name: OneDrive cloud inspection
 
 on:
+  repository_dispatch:
+    types: [onedrive_changed]
   workflow_dispatch:
     inputs:
       year:
@@ -28,8 +30,8 @@ jobs:
     timeout-minutes: 30
     environment: production
     env:
-      PROJECT_YEAR: ${{ inputs.year }}
-      APPLY_CHANGES: ${{ inputs.apply }}
+      PROJECT_YEAR: ${{ inputs.year || github.event.client_payload.year }}
+      APPLY_CHANGES: ${{ github.event_name == 'repository_dispatch' || inputs.apply }}
       AZURE_KEY_VAULT_NAME: ${{ vars.AZURE_KEY_VAULT_NAME }}
 
     steps:

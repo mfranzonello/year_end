@@ -1,0 +1,87 @@
+name: Deploy drive webhook receiver
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-drive-webhooks
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Validate and deploy
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      AZURE_FUNCTION_APP_NAME: ${{ vars.AZURE_FUNCTION_APP_NAME }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Validate deployment configuration
+        shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_FUNCTION_APP_NAME; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing production environment variable: ${name}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install webhook dependencies
+        run: python -m pip install --requirement requirements_webhooks.txt
+
+      - name: Run webhook unit tests
+        run: |
+          python -m unittest \
+            tests.test_change_notifications \
+            tests.test_webhook_handlers \
+            tests.test_webhook_store \
+            tests.test_webhook_service \
+            tests.test_github_actions_client \
+            tests.test_google_drive_subscriptions \
+            tests.test_google_drive_webhook \
+            tests.test_function_app \
+            tests.test_bootstrap_webhook_secrets
+
+      - name: Assemble minimal Function package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="${RUNNER_TEMP}/drive-webhooks"
+          mkdir -p "${package}/config"
+          cp function_app.py host.json "${package}/"
+          cp requirements_webhooks.txt "${package}/requirements.txt"
+          cp -R common integrations repositories "${package}/"
+          cp config/api.example.toml "${package}/config/api.toml"
+          echo "FUNCTION_PACKAGE=${package}" >> "${GITHUB_ENV}"
+
+      - name: Sign in to Azure with GitHub OIDC
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Function code
+        uses: Azure/functions-action@f9b4a151693661b043f188d9440fb20ed5fa7156 # v1.5.7
+        with:
+          app-name: ${{ env.AZURE_FUNCTION_APP_NAME }}
+          package: ${{ env.FUNCTION_PACKAGE }}
+          remote-build: true

@@ -24,7 +24,7 @@ def _graph_datetime(value: datetime) -> str:
 
 
 def folder_subscription_resource(folder_id: str | None = None) -> str:
-    """Return the Graph subscription resource for a personal OneDrive folder."""
+    """Return the Graph resource to test for a personal-OneDrive folder watch."""
     if folder_id is None:
         return "me/drive/root"
     if not folder_id.strip():

@@ -66,6 +66,43 @@ def _post(
         raise GoogleDriveRequestError(f"Google Drive API request failed: {error}") from error
 
 
+def _post_without_response(
+    path: str,
+    params: dict[str, str],
+    payload: dict[str, Any],
+    *,
+    access_token: str,
+) -> None:
+    """POST JSON to Google Drive when success has no response document."""
+    request = Request(
+        f"{_api_url()}{path}?{urlencode(params)}",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=30) as response:
+            if getattr(response, "status", response.getcode()) not in {200, 204}:
+                raise GoogleDriveRequestError(
+                    "Google Drive API returned an unexpected response"
+                )
+    except HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise GoogleDriveRequestError(
+            f"Google Drive API returned HTTP {error.code}: {body}"
+        ) from error
+    except GoogleDriveRequestError:
+        raise
+    except Exception as error:
+        raise GoogleDriveRequestError(
+            f"Google Drive API request failed: {error}"
+        ) from error
+
+
 def _patch(
     path: str,
     params: dict[str, str],

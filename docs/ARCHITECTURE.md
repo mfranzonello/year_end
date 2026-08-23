@@ -144,8 +144,10 @@ ignored `.secrets` directory.
 - `microsoft/` owns delegated Microsoft OAuth and token refresh.
   `microsoft/onedrive/` inspects and shares OneDrive folders through Microsoft
   Graph. It also owns host-neutral change-subscription, webhook-validation, and
-  delta-query helpers; an eventual Azure Function should remain a thin hosting
-  adapter around those pieces. Future Microsoft product clients can select
+  delta-query helpers. `function_app.py` is the thin Azure Functions adapter;
+  `microsoft/azure/` owns its durable queue/table adapter and debounce service.
+  Valid signals dispatch existing GitHub workflows and never process media in
+  the HTTP request. Future Microsoft product clients can select
   their own scopes and cache.
 
 The integrations use credentials from the local secrets mechanism and store

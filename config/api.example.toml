@@ -34,3 +34,6 @@ api = "https://www.googleapis.com/calendar/v3"
 
 [google_calendar.oauth]
 scopes = ["https://www.googleapis.com/auth/calendar.events"]
+
+[github.urls]
+api = "https://api.github.com"
