@@ -31,13 +31,17 @@ jobs:
       PROJECT_YEAR: ${{ inputs.year }}
       APPLY_CHANGES: ${{ inputs.apply }}
       AZURE_KEY_VAULT_NAME: ${{ vars.AZURE_KEY_VAULT_NAME }}
-      YEAR_END_SECRETS_FILE: ${{ runner.temp }}/year-end-secrets.toml
-      YEAR_END_ONEDRIVE_TOKEN_FILE: ${{ runner.temp }}/onedrive-token.json
-      ORIGINAL_ONEDRIVE_TOKEN_FILE: ${{ runner.temp }}/onedrive-token-original.json
 
     steps:
       - name: Check out repository
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Configure runner paths
+        shell: bash
+        run: |
+          echo "YEAR_END_SECRETS_FILE=${RUNNER_TEMP}/year-end-secrets.toml" >> "${GITHUB_ENV}"
+          echo "YEAR_END_ONEDRIVE_TOKEN_FILE=${RUNNER_TEMP}/onedrive-token.json" >> "${GITHUB_ENV}"
+          echo "ORIGINAL_ONEDRIVE_TOKEN_FILE=${RUNNER_TEMP}/onedrive-token-original.json" >> "${GITHUB_ENV}"
 
       - name: Validate hosted configuration
         shell: bash
