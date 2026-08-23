@@ -295,8 +295,8 @@ Remaining work:
   after event-driven OneDrive and Google Drive processing is enabled;
 - document and test owner-only OneDrive reauthorization after revocation or a
   failed refresh;
-- validate the Google Drive hosted token bootstrap and first dry-run/applied
-  cloud-migration workflow before moving transfers to Azure Container Apps;
+- validate the first hosted dry-run and applied Google Drive migration plus
+  OneDrive/Neon reconciliation workflow before scheduling it;
 - extend the managed-secret pattern deliberately to Vimeo and future hosted
   providers, with provider-specific scopes and recovery paths;
 - review audit logs, secret-version retention, and rotation practices after the

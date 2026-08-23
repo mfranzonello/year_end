@@ -97,9 +97,10 @@ audit.
 Application orchestration around database records and media workflows.
 
 - `iterate.py` derives storage locations for configured media types.
-- `migrate.py` copies Google Drive media to OneDrive, identifies likely
-  duplicates, and moves duplicates to quarantine.
-- `ingest.py` downloads supported shared albums through the scraping package.
+- `ingest.py` reads source-provider metadata and builds migration candidates.
+- `migrate.py` performs mounted-drive and browser-based copies, while
+  `cloud_migrate.py` streams Google Drive blobs into OneDrive upload sessions.
+- `cleanup.py` owns local duplicate detection and quarantine actions.
 - `inspect.py` reconciles the local media tree with project records, extracts
   metadata, records files/folders, detects Premiere usage, and provisions
   default Cloudinary profile images.
@@ -245,9 +246,9 @@ publication of every local Premiere export.
 | Capability | Current state | Target direction |
 | --- | --- | --- |
 | Database reads/writes | Neon via SQLAlchemy | Cloud-capable now; schema/API work remains. |
-| OneDrive inventory/share resolution | Microsoft Graph client | Extend to safe cloud operations. |
-| Google Drive inventory | Drive API client | Extend to safe cloud operations. |
-| Google Drive to OneDrive copy | Local synchronized folders | Design a provider-to-provider transfer strategy. |
+| OneDrive inventory/share resolution | Microsoft Graph cloud inspection | Retain local inspection only for Adobe-aware metadata. |
+| Google Drive inventory | Drive API cloud discovery | Add change notifications after periodic reconciliation is stable. |
+| Google Drive to OneDrive copy | Ranged Drive downloads into Graph resumable uploads | Validate multi-GB hosted runs and improve retry/checkpoint recovery. |
 | Video metadata extraction | Local OpenCV/Hachoir | Use remote metadata where available; download only when needed. |
 | Shared album ingestion | Selenium/local browsers | Reassess provider-supported cloud paths. |
 | Adobe Bridge/Premiere | Local desktop applications | Keep local-only. |

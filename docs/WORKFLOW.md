@@ -162,14 +162,23 @@ the participant's top-level OneDrive folder. An applied run streams 10-MiB
 chunks from Google Drive ranged downloads into a OneDrive resumable upload
 session, so the complete file is never stored on the runner.
 
-The cloud migration is copy-only: it never deletes, moves, deduplicates, or
-quarantines source files. Any case-insensitive destination filename match is
+The cloud migration step is copy-only: it never deletes, moves, deduplicates,
+or quarantines source files. Any case-insensitive destination filename match is
 treated as already migrated; size is retained for transfer mechanics but does
 not decide whether a file is new. Duplicate source names are reported for
-review and are not copied arbitrarily. The manual
-`Google Drive cloud migration` workflow uses the same Azure OIDC and Key Vault
-boundary as inspection and keeps the renewable provider tokens in separate Key
-Vault secrets.
+review and are not copied arbitrarily.
+
+The manual `Google Drive cloud migration` workflow runs the complete cloud
+intake sequence for the selected year: discover Google Drive candidates, copy
+eligible videos into OneDrive, and then inspect canonical OneDrive to reconcile
+Neon. Dry runs preview both stages without copying or writing to Neon. In apply
+mode the inspection runs only after migration succeeds; it updates file records
+and applies the existing safe stale-record purge. Deduplication remains outside
+this workflow because it still depends on locally verified metadata. The
+separate `OneDrive cloud inspection` workflow remains available for direct
+OneDrive submissions. Both workflows share a concurrency group and use the same
+Azure OIDC and Key Vault boundary, with renewable provider tokens kept in
+separate Key Vault secrets.
 
 Repository modules follow a plan/apply/reconcile boundary. `ingest.py` reads
 source and destination metadata and produces migration candidates;

@@ -119,8 +119,13 @@ chunks directly from Google Drive into OneDrive:
 ```
 
 The checked-in `OneDrive cloud inspection` and `Google Drive cloud migration`
-GitHub Actions workflows are manual and dry-run by default. Their `production`
-environment requires these non-secret environment variables:
+GitHub Actions workflows are manual and dry-run by default. An applied Google
+Drive run discovers and copies missing videos, then inventories canonical
+OneDrive and reconciles Neon. The separate OneDrive workflow supports direct
+OneDrive submissions without running Google Drive migration. A shared
+concurrency lock prevents the workflows from reconciling the library at the
+same time. Their `production` environment requires these non-secret environment
+variables:
 
 - `AZURE_CLIENT_ID`: the GitHub workload application's client ID;
 - `AZURE_TENANT_ID`: its Entra directory ID;
