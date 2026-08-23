@@ -147,7 +147,8 @@ ignored `.secrets` directory.
   delta-query helpers. `function_app.py` is the thin Azure Functions adapter;
   `microsoft/azure/` owns its durable queue/table adapter and debounce service.
   Valid signals dispatch existing GitHub workflows and never process media in
-  the HTTP request. Future Microsoft product clients can select
+  the HTTP request. The provider-neutral timing policy lives in the versioned,
+  non-secret `config/webhooks.toml`. Future Microsoft product clients can select
   their own scopes and cache.
 
 The integrations use credentials from the local secrets mechanism and store

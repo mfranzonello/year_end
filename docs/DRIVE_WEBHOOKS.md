@@ -6,9 +6,12 @@ written to Azure Queue Storage before the provider receives an acknowledgement.
 A one-minute timer folds them into provider-specific batches and dispatches the
 existing GitHub Actions workflows.
 
-The debounce policy is a 10-minute quiet period with a 30-minute maximum wait
-measured from the first notification. A continuing upload therefore extends the
-quiet period, but it cannot postpone reconciliation indefinitely.
+The checked-in `config/webhooks.toml` policy currently specifies a 10-minute
+quiet period with a 30-minute maximum wait measured from the first notification.
+A continuing upload therefore extends the quiet period, but it cannot postpone
+reconciliation indefinitely. Both values are positive minutes, and the quiet
+period cannot exceed the maximum wait. A policy change requires redeploying the
+Function package; it does not require rebuilding Azure infrastructure.
 
 | Signal | GitHub event | Work performed |
 | --- | --- | --- |

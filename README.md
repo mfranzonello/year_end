@@ -150,7 +150,9 @@ python -m integrations.microsoft.azure.bootstrap_key_vault `
 The event-driven layer is implemented but remains deliberately undeployed. An
 Azure Function validates provider notifications, stores them durably, waits for
 a 10-minute quiet period (with a 30-minute maximum), and dispatches the
-appropriate existing workflow. See [Drive webhook deployment](docs/DRIVE_WEBHOOKS.md)
+appropriate existing workflow. Those values live in the checked-in,
+provider-neutral `config/webhooks.toml`, not in the implementation. See
+[Drive webhook deployment](docs/DRIVE_WEBHOOKS.md)
 for the owner setup, infrastructure preview, deployment, and provider-scope
 details. Keep the 15-minute schedule enabled during rollout.
 

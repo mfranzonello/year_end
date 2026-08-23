@@ -1,0 +1,5 @@
+# Versioned, provider-neutral policy for hosted webhook processing.
+
+[drive_changes.debounce]
+quiet_minutes = 10
+maximum_wait_minutes = 30

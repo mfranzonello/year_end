@@ -70,6 +70,7 @@ jobs:
           cp requirements_webhooks.txt "${package}/requirements.txt"
           cp -R common integrations repositories "${package}/"
           cp config/api.example.toml "${package}/config/api.toml"
+          cp config/webhooks.toml "${package}/config/webhooks.toml"
           echo "FUNCTION_PACKAGE=${package}" >> "${GITHUB_ENV}"
 
       - name: Sign in to Azure with GitHub OIDC

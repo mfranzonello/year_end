@@ -2,16 +2,58 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from typing import Literal
+
+from common.config import read_toml
 
 
 ProviderName = Literal["google_drive", "onedrive"]
-QUIET_WINDOW = timedelta(minutes=10)
-MAXIMUM_BATCH_WAIT = timedelta(minutes=30)
 WORKFLOW_EVENTS: dict[ProviderName, str] = {
     "google_drive": "google_drive_changed",
     "onedrive": "onedrive_changed",
 }
+
+
+@dataclass(frozen=True)
+class DebouncePolicy:
+    """Validated provider-neutral timing policy for change batches."""
+
+    quiet_window: timedelta
+    maximum_wait: timedelta
+
+    def __post_init__(self) -> None:
+        if self.quiet_window <= timedelta(0) or self.maximum_wait <= timedelta(0):
+            raise ValueError("debounce windows must be positive")
+        if self.quiet_window > self.maximum_wait:
+            raise ValueError("quiet_window cannot exceed maximum_wait")
+
+
+def _configured_minutes(value: object, field_name: str) -> timedelta:
+    """Convert one positive numeric TOML minute value to a duration."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+        raise ValueError(
+            f"webhooks.drive_changes.debounce.{field_name} must be positive"
+        )
+    return timedelta(minutes=value)
+
+
+@lru_cache(maxsize=1)
+def get_debounce_policy() -> DebouncePolicy:
+    """Load and validate the checked-in drive-change debounce policy."""
+    try:
+        config = read_toml("webhooks")["drive_changes"]["debounce"]
+        quiet_window = _configured_minutes(
+            config["quiet_minutes"], "quiet_minutes",
+        )
+        maximum_wait = _configured_minutes(
+            config["maximum_wait_minutes"], "maximum_wait_minutes",
+        )
+    except (KeyError, TypeError) as error:
+        raise ValueError(
+            "config/webhooks.toml is missing the drive_changes debounce policy"
+        ) from error
+    return DebouncePolicy(quiet_window, maximum_wait)
 
 
 def _aware_utc(value: datetime) -> datetime:
@@ -71,14 +113,23 @@ def extend_batch(
     signal: ChangeSignal,
     existing: PendingBatch | None = None,
     *,
-    quiet_window: timedelta = QUIET_WINDOW,
-    maximum_wait: timedelta = MAXIMUM_BATCH_WAIT,
+    quiet_window: timedelta | None = None,
+    maximum_wait: timedelta | None = None,
 ) -> PendingBatch:
     """Start or extend a batch without allowing indefinite postponement."""
-    if quiet_window <= timedelta(0) or maximum_wait <= timedelta(0):
-        raise ValueError("debounce windows must be positive")
-    if quiet_window > maximum_wait:
-        raise ValueError("quiet_window cannot exceed maximum_wait")
+    if quiet_window is None or maximum_wait is None:
+        configured_policy = get_debounce_policy()
+        quiet_window = (
+            quiet_window
+            if quiet_window is not None
+            else configured_policy.quiet_window
+        )
+        maximum_wait = (
+            maximum_wait
+            if maximum_wait is not None
+            else configured_policy.maximum_wait
+        )
+    policy = DebouncePolicy(quiet_window, maximum_wait)
     if existing and existing.provider != signal.provider:
         raise ValueError("cannot combine notifications from different providers")
 
@@ -90,7 +141,10 @@ def extend_batch(
         existing.last_received_at if existing else signal.received_at,
         signal.received_at,
     )
-    due_at = min(last_received + quiet_window, first_received + maximum_wait)
+    due_at = min(
+        last_received + policy.quiet_window,
+        first_received + policy.maximum_wait,
+    )
     return PendingBatch(
         provider=signal.provider,
         first_received_at=first_received,

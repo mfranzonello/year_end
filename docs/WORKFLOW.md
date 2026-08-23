@@ -192,8 +192,9 @@ Both workflows accept narrowly named `repository_dispatch` events. The Azure
 webhook host emits `google_drive_changed` for the complete migration and
 reconciliation path, and `onedrive_changed` for inspection only. It batches
 bursts for 10 quiet minutes, forces a dispatch after 30 minutes of continuous
-signals, and leaves failed dispatch state durable for retry. Deployment and
-provider limitations are documented in `docs/DRIVE_WEBHOOKS.md`.
+signals, and leaves failed dispatch state durable for retry. Those timing values
+are deployment policy in `config/webhooks.toml`, not code constants. Deployment
+and provider limitations are documented in `docs/DRIVE_WEBHOOKS.md`.
 
 Repository modules follow a plan/apply/reconcile boundary. `ingest.py` reads
 source and destination metadata and produces migration candidates;

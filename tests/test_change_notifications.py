@@ -2,9 +2,11 @@
 
 from datetime import datetime, timedelta, timezone
 from unittest import TestCase
+from unittest.mock import patch
 
 from repositories.change_notifications import (
-    ChangeSignal, PendingBatch, extend_batch,
+    ChangeSignal, DebouncePolicy, PendingBatch, extend_batch,
+    get_debounce_policy,
 )
 
 
@@ -50,3 +52,57 @@ class ChangeNotificationBatchTests(TestCase):
 
         with self.assertRaisesRegex(ValueError, "different providers"):
             extend_batch(ChangeSignal("google_drive", "notice", START), existing)
+
+    def test_rejects_explicit_invalid_policy(self):
+        with self.assertRaisesRegex(ValueError, "positive"):
+            extend_batch(
+                ChangeSignal("onedrive", "notice", START),
+                quiet_window=timedelta(0),
+                maximum_wait=timedelta(minutes=30),
+            )
+
+
+class DebouncePolicyConfigurationTests(TestCase):
+    def setUp(self):
+        get_debounce_policy.cache_clear()
+
+    def tearDown(self):
+        get_debounce_policy.cache_clear()
+
+    @patch("repositories.change_notifications.read_toml")
+    def test_loads_policy_from_webhook_config(self, read_toml):
+        read_toml.return_value = {
+            "drive_changes": {
+                "debounce": {
+                    "quiet_minutes": 3,
+                    "maximum_wait_minutes": 12,
+                },
+            },
+        }
+
+        policy = get_debounce_policy()
+
+        self.assertEqual(
+            policy,
+            DebouncePolicy(timedelta(minutes=3), timedelta(minutes=12)),
+        )
+        read_toml.assert_called_once_with("webhooks")
+
+    @patch("repositories.change_notifications.read_toml")
+    def test_rejects_quiet_window_larger_than_maximum(self, read_toml):
+        read_toml.return_value = {
+            "drive_changes": {
+                "debounce": {
+                    "quiet_minutes": 20,
+                    "maximum_wait_minutes": 10,
+                },
+            },
+        }
+
+        with self.assertRaisesRegex(ValueError, "cannot exceed"):
+            get_debounce_policy()
+
+    @patch("repositories.change_notifications.read_toml", return_value={})
+    def test_rejects_missing_policy(self, _read_toml):
+        with self.assertRaisesRegex(ValueError, "missing"):
+            get_debounce_policy()

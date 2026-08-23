@@ -286,7 +286,8 @@ Remaining work:
 - deploy the implemented Azure-hosted webhook receiver and its managed-identity
   infrastructure; it already validates and durably queues Graph/Google signals,
   uses a 10-minute quiet/30-minute maximum debounce, and dispatches the
-  provider-appropriate GitHub workflow without processing media in HTTP;
+  provider-appropriate GitHub workflow without processing media in HTTP; the
+  timing policy is versioned in `config/webhooks.toml`;
 - register the implemented OneDrive subscription and Google Drive
   `changes.watch` helpers against the deployed HTTPS endpoints, then persist and
   advance their implemented delta/page cursors to filter changes to the
