@@ -27,10 +27,9 @@ def fetch_member_information(engine:Engine, cut_date=date.today()) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-def fetch_resolution_order(engine:Engine) -> dict:
+def fetch_resolution_order(engine:Engine) -> list[str]:
     sql = f'''
-    SELECT ranked_order
-    FROM config.enum_definitions
-    WHERE schema_name = 'project' AND enum_name = 'resolution'
+    SELECT value AS resolution
+    FROM unnest(enum_range(NULL::project.resolution)) AS values(value)
     ;'''
-    return read_sql(engine, sql).squeeze()
+    return read_sql(engine, sql)['resolution'].tolist()
