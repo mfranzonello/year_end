@@ -281,8 +281,8 @@ IDs rather than a mutable token cache.
 
 Remaining work:
 
-- monitor the scheduled Google Drive migration plus OneDrive/Neon
-  reconciliation workflow, including hosted token refresh and long transfers;
+- monitor webhook-triggered Google Drive migration and OneDrive/Neon
+  reconciliation, including hosted token refresh and long transfers;
 - deploy the implemented Azure-hosted webhook receiver and its managed-identity
   infrastructure; it already validates and durably queues Graph/Google signals,
   uses a 10-minute quiet/30-minute maximum debounce, and dispatches the
@@ -296,8 +296,9 @@ Remaining work:
   lifetime, allowing a brief channel overlap so notifications are not missed;
 - retain manual inspection and a periodic full reconciliation as recovery paths
   after event-driven OneDrive and Google Drive processing is enabled;
-- reduce the full reconciliation schedule from every 15 minutes during the day
-  to once daily after both provider notification paths are reliable;
+- add a separate once-daily full reconciliation recovery workflow after both
+  provider notification paths are reliable; the Google migration workflow has
+  no cron schedule;
 - document and test owner-only OneDrive reauthorization after revocation or a
   failed refresh;
 - extend the managed-secret pattern deliberately to Vimeo and future hosted

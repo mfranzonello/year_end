@@ -118,11 +118,10 @@ chunks directly from Google Drive into OneDrive:
 .\.venv\Scripts\python.exe run_cloud_migrate.py --year 2026 --apply
 ```
 
-The checked-in `Google Drive cloud migration` workflow runs every 15 minutes
-from 7:07 AM through 10:52 PM `America/New_York`. Scheduled runs apply changes:
-they discover and copy missing Google Drive videos, then inventory canonical
-OneDrive—including direct OneDrive submissions—and reconcile Neon. Manual runs
-remain dry-run by default. The separate, unscheduled `OneDrive cloud inspection`
+The checked-in `Google Drive cloud migration` workflow is event-driven and has
+no cron schedule. Google Drive webhook runs apply discovery and migration;
+manual runs remain dry-run by default and retain the full recovery sequence.
+The separate, unscheduled `OneDrive cloud inspection`
 workflow supports manual inspection now and a targeted OneDrive webhook later.
 A shared concurrency lock prevents the workflows from reconciling the library
 at the same time. Their `production` environment requires these non-secret
@@ -154,7 +153,7 @@ appropriate existing workflow. Those values live in the checked-in,
 provider-neutral `config/webhooks.toml`, not in the implementation. See
 [Drive webhook deployment](docs/DRIVE_WEBHOOKS.md)
 for the owner setup, infrastructure preview, deployment, and provider-scope
-details. Keep the 15-minute schedule enabled during rollout.
+details. The Google migration workflow has no cron schedule.
 
 The first command validates Azure access and local inputs without uploading.
 The second explicitly creates new Key Vault secret versions without printing

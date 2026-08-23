@@ -1,9 +1,6 @@
 name: Google Drive cloud migration
 
 on:
-  schedule:
-    - cron: "7,22,37,52 7-22 * * *"
-      timezone: America/New_York
   repository_dispatch:
     types: [google_drive_changed]
   workflow_dispatch:

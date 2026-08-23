@@ -86,9 +86,9 @@ file ancestors to a project year/person before dispatching.
 
 Google notification channels have a maximum lifetime of seven days and must be
 replaced, not renewed. OneDrive subscriptions also expire and must be renewed.
-The 15-minute reconciliation schedule remains the recovery path until automated
-channel replacement, delta cursors, and end-to-end delivery have been observed.
-After that, reduce full reconciliation to once daily.
+Manual full reconciliation remains the recovery path until a separate daily
+recovery schedule is added. The Google migration workflow itself has no cron
+schedule.
 
 ## Failure behavior
 

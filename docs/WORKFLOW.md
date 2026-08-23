@@ -171,9 +171,9 @@ review and are not copied arbitrarily.
 The `Google Drive cloud migration` workflow runs the complete cloud intake
 sequence for the selected year: discover Google Drive candidates, copy eligible
 videos into OneDrive, and then inspect canonical OneDrive to reconcile Neon.
-It runs every 15 minutes from 7:07 AM through 10:52 PM in the
-`America/New_York` timezone. Scheduled runs apply both stages to the current
-year; manual runs remain dry-run by default and accept an explicit year. In
+It has no cron schedule. Google webhook runs apply discovery and migration;
+manual runs remain dry-run by default, accept an explicit year, and retain the
+complete recovery sequence. In
 apply mode the inspection runs only after migration succeeds; it captures both
 migrated files and videos uploaded directly to OneDrive, updates file records,
 and applies the existing safe stale-record purge. Deduplication remains outside
@@ -183,8 +183,8 @@ The separate `OneDrive cloud inspection` workflow is unscheduled. It remains
 available for manual inspection and will become the targeted entry point for a
 OneDrive change notification. Both workflows share a concurrency group and use
 the same Azure OIDC and Key Vault boundary, with renewable provider tokens kept
-in separate Key Vault secrets. After provider webhooks are reliable, reduce the
-full migration-and-reconciliation schedule to once daily as a recovery sweep;
+in separate Key Vault secrets. Add a separate once-daily recovery sweep after
+provider webhooks are reliable;
 Google Drive notifications will invoke discovery and migration, while the
 resulting OneDrive notifications invoke inspection and Neon reconciliation.
 
