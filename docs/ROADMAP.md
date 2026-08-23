@@ -296,7 +296,7 @@ Remaining work:
 - document and test owner-only OneDrive reauthorization after revocation or a
   failed refresh;
 - validate the Google Drive hosted token bootstrap and first dry-run/applied
-  cloud-ingestion workflow before moving transfers to Azure Container Apps;
+  cloud-migration workflow before moving transfers to Azure Container Apps;
 - extend the managed-secret pattern deliberately to Vimeo and future hosted
   providers, with provider-specific scopes and recovery paths;
 - review audit logs, secret-version retention, and rotation practices after the
@@ -316,7 +316,7 @@ database-backed configuration. For each setting, decide whether it is:
 - versioned file configuration that should seed a queryable database table.
 
 Keep executable adapters distinguishable from reusable modules. Top-level
-`run_cloud_inspection.py` and `run_cloud_ingestion.py` launch operations, while
+`run_cloud_inspection.py` and `run_cloud_migrate.py` launch operations, while
 the `repositories` modules retain the provider and domain logic consumed by
 those adapters, GitHub Actions, and future administrative interfaces.
 

@@ -12,9 +12,11 @@ from common.config import read_toml
 from database.db import get_engine
 from database.db_project import fetch_project_folder_years
 from repositories.iterate import get_media_locations
-from repositories.migrate import dedupe_one_drive, copy_from_gdrive
+from repositories.cleanup import dedupe_one_drive
+from repositories.cloud_migrate import migrate_google_drive_cloud
+from repositories.migrate import copy_from_gdrive, download_shared_albums
 from repositories.ingest import (
-    copy_from_web, ingest_google_drive_cloud, ingest_google_drive_folder_shares,
+    ingest_google_drive_folder_shares,
 )
 from repositories.cloud_inspect import (
     inspect_onedrive_cloud_contents, inspect_onedrive_folder_shares,
@@ -66,9 +68,21 @@ def dedupe_folders(media_locations:list[tuple], dry_run:bool=True):
                          QUARANTINE_FOLDER / supfolder_name / QUARANTINE, dry_run)
     engine.dispose()
 
-def harvest_albums(google:bool, icloud:bool, headless:bool=True):
+def harvest_albums(
+    google: bool,
+    icloud: bool,
+    headless: bool = True,
+    dry_run: bool = True,
+):
     engine = set_up_engine()
-    copy_from_web(engine, ONE_DRIVE_FOLDER, google=google, icloud=icloud, headless=headless)
+    download_shared_albums(
+        engine,
+        ONE_DRIVE_FOLDER,
+        google=google,
+        icloud=icloud,
+        headless=headless,
+        dry_run=dry_run,
+    )
     engine.dispose()
 
 def purge_database(media_locations:list[tuple], dry_run:bool=True):
@@ -114,7 +128,7 @@ def update_database(
     engine.dispose()
 
 
-def scan_google_drive_cloud(
+def migrate_google_drive_folders_cloud(
     media_locations: list[tuple],
     project_year: int,
     dry_run: bool = True,
@@ -123,7 +137,7 @@ def scan_google_drive_cloud(
     engine = set_up_engine()
     try:
         for media_type, _supfolder_name in media_locations:
-            ingest_google_drive_cloud(
+            migrate_google_drive_cloud(
                 engine,
                 media_type,
                 project_year,
@@ -208,7 +222,7 @@ def main():
         '--cloud-only', action='store_true',
         help=(
             'Use provider APIs instead of mounted drives for OneDrive inspection '
-            'and, when combined with --gdrive, Google Drive ingestion.'
+            'and, when combined with --gdrive, Google Drive migration.'
         ),
     )
     ap.add_argument('--onedrive-shares', action='store_true', help='Reconcile OneDrive folder IDs and share links for a year.')
@@ -240,11 +254,16 @@ def main():
     engine.dispose()
 
     if args.gphotos or args.iphotos:
-        harvest_albums(args.gphotos, args.iphotos, args.headless)
+        harvest_albums(
+            args.gphotos,
+            args.iphotos,
+            args.headless,
+            dry_run=dry_run,
+        )
    
     if args.gdrive:
         if args.cloud_only:
-            scan_google_drive_cloud(
+            migrate_google_drive_folders_cloud(
                 media_locations,
                 args.year or date.today().year,
                 dry_run=dry_run,

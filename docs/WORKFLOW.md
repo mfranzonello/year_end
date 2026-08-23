@@ -148,8 +148,8 @@ during initial validation.
 Google Drive ingestion can likewise run without either provider mounted:
 
 ```powershell
-python run_cloud_ingestion.py --year 2026 --dry-run
-python run_cloud_ingestion.py --year 2026 --apply
+python run_cloud_migrate.py --year 2026 --dry-run
+python run_cloud_migrate.py --year 2026 --apply
 python main.py --gdrive --cloud-only --year 2026 --dry-run
 ```
 
@@ -162,13 +162,21 @@ the participant's top-level OneDrive folder. An applied run streams 10-MiB
 chunks from Google Drive ranged downloads into a OneDrive resumable upload
 session, so the complete file is never stored on the runner.
 
-The cloud sweep is copy-only: it never deletes, moves, deduplicates, or
-quarantines source files. Equal-name/equal-size files are treated as already
-present. Duplicate source names and destination names with differing sizes are
-reported as conflicts and are not overwritten or silently renamed. The manual
-`Google Drive cloud ingestion` workflow uses the same Azure OIDC and Key Vault
+The cloud migration is copy-only: it never deletes, moves, deduplicates, or
+quarantines source files. Any case-insensitive destination filename match is
+treated as already migrated; size is retained for transfer mechanics but does
+not decide whether a file is new. Duplicate source names are reported for
+review and are not copied arbitrarily. The manual
+`Google Drive cloud migration` workflow uses the same Azure OIDC and Key Vault
 boundary as inspection and keeps the renewable provider tokens in separate Key
 Vault secrets.
+
+Repository modules follow a plan/apply/reconcile boundary. `ingest.py` reads
+source and destination metadata and produces migration candidates;
+`migrate.py` and `cloud_migrate.py` execute local/browser and API-based copies;
+`inspect.py` and `cloud_inspect.py` reconcile canonical OneDrive contents into
+Neon. Provider-specific Selenium mechanics remain under `scraping`, while
+deduplication and quarantine actions live in `cleanup.py`.
 
 ### 2. Collect media from where contributors already are
 

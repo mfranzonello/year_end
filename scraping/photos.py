@@ -148,7 +148,7 @@ def harvest_shared_album(shared_album_url:str, download_directory:Path,
             # get videos from iCloud Photos
             downloaded_files = harvest_i_shared_album(driver, download_directory, shared_album_url, dry_run=dry_run)
    
-    if downloaded_files:
+    if downloaded_files and not dry_run:
         # ... you triggered downloads ...
         if not wait_for_expected_downloads(download_directory, downloaded_files):
             print("[warn] downloads may still be in progress or timed out")
@@ -157,5 +157,9 @@ def harvest_shared_album(shared_album_url:str, download_directory:Path,
         n_downloads = len(downloaded_files)
         v_s = '' if n_downloads == 1 else 's'
         print(f'Downloaded {n_downloads} new file{v_s} to {download_directory}:')
+    elif downloaded_files:
+        n_downloads = len(downloaded_files)
+        v_s = '' if n_downloads == 1 else 's'
+        print(f'Dry run: would download {n_downloads} new file{v_s}.')
 
     driver.quit()

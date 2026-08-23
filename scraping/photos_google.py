@@ -148,7 +148,9 @@ def harvest_g_shared_album(driver: WebDriver, download_directory: Path, shared_a
             downloaded_files = []
 
             for _ in shared_video_urls:
-                filename, downloadable = inspect_and_download(driver, known_files, timeout=15, dry_run=False)
+                filename, downloadable = inspect_and_download(
+                    driver, known_files, timeout=15, dry_run=dry_run,
+                )
                 if filename and downloadable:
                         downloaded_files.append(filename)
 

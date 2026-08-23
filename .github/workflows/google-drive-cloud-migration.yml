@@ -1,4 +1,4 @@
-name: Google Drive cloud ingestion
+name: Google Drive cloud migration
 
 on:
   workflow_dispatch:
@@ -18,12 +18,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: google-drive-cloud-ingestion
+  group: google-drive-cloud-migration
   cancel-in-progress: false
 
 jobs:
-  ingest:
-    name: Ingest Google Drive
+  migrate:
+    name: Migrate Google Drive
     runs-on: ubuntu-latest
     timeout-minutes: 360
     environment: production
@@ -112,7 +112,7 @@ jobs:
           cp config/api.example.toml config/api.toml
           cp config/drives.example.toml config/drives.toml
 
-      - name: Sweep Google Drive
+      - name: Migrate Google Drive
         shell: bash
         run: |
           set -euo pipefail
@@ -121,7 +121,7 @@ jobs:
           if [[ "${APPLY_CHANGES}" == "true" ]]; then
             arguments=(--year "${year}" --apply)
           fi
-          python run_cloud_ingestion.py "${arguments[@]}"
+          python run_cloud_migrate.py "${arguments[@]}"
 
       - name: Preserve refreshed provider tokens
         if: always() && steps.credentials.outcome == 'success'

@@ -114,11 +114,11 @@ only compare provider metadata; applied runs stream missing files in bounded
 chunks directly from Google Drive into OneDrive:
 
 ```powershell
-.\.venv\Scripts\python.exe run_cloud_ingestion.py --year 2026 --dry-run
-.\.venv\Scripts\python.exe run_cloud_ingestion.py --year 2026 --apply
+.\.venv\Scripts\python.exe run_cloud_migrate.py --year 2026 --dry-run
+.\.venv\Scripts\python.exe run_cloud_migrate.py --year 2026 --apply
 ```
 
-The checked-in `OneDrive cloud inspection` and `Google Drive cloud ingestion`
+The checked-in `OneDrive cloud inspection` and `Google Drive cloud migration`
 GitHub Actions workflows are manual and dry-run by default. Their `production`
 environment requires these non-secret environment variables:
 

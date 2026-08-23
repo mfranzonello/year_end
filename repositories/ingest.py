@@ -1,21 +1,17 @@
 """Ingest media and repository metadata from source providers."""
 
 from pathlib import Path
-from time import sleep
-from typing import Protocol
 
 from pandas import DataFrame
 from sqlalchemy import Engine
 
 from common.video import VIDEO_EXTS
-from database.db_project import fetch_shared_albums
 from database.db_project import (
     fetch_folder_transfer_locations, fetch_project_folders,
     update_folder_locations_and_shares,
 )
 from integrations.google.google_drive.client import (
     GoogleDriveRequestError,
-    download_file_range as download_google_drive_file_range,
     find_folder_id as find_google_drive_folder_id,
     get_share_link as get_google_drive_share_link,
     get_or_create_share_link as get_or_create_google_drive_share_link,
@@ -23,27 +19,12 @@ from integrations.google.google_drive.client import (
     list_descendant_files as list_google_drive_descendant_files,
 )
 from integrations.microsoft.onedrive.client import (
-    GraphRequestError,
-    UPLOAD_FRAGMENT_GRANULARITY,
-    cancel_upload_session as cancel_onedrive_upload_session,
-    create_upload_session as create_onedrive_upload_session,
-    get_upload_session_status as get_onedrive_upload_session_status,
     list_descendant_files as list_onedrive_descendant_files,
-    upload_chunk as upload_onedrive_chunk,
 )
-from scraping.photos import source_allowed, harvest_shared_album
 
 
-TRANSFER_CHUNK_SIZE = 32 * UPLOAD_FRAGMENT_GRANULARITY
 SOURCE_REPOSITORY = "Google Drive"
 DESTINATION_REPOSITORY = "OneDrive"
-
-
-class UpdateConsole(Protocol):
-    """Minimal status surface required by cloud ingestion."""
-
-    def add_update(self, message: str) -> None:
-        """Emit a durable status message."""
 
 
 def ingest_google_drive_folder_shares(
@@ -124,111 +105,12 @@ def _file_size(item: dict, provider: str) -> int:
     return size
 
 
-def _next_upload_offset(status: dict) -> int:
-    """Return the next sequential byte offset from an upload-session response."""
-    ranges = status.get("nextExpectedRanges")
-    if not isinstance(ranges, list) or not ranges or not isinstance(ranges[0], str):
-        raise GraphRequestError(
-            "OneDrive upload session did not report its next expected byte range"
-        )
-    start = ranges[0].split("-", 1)[0]
-    if not start.isdigit():
-        raise GraphRequestError(
-            "OneDrive upload session returned a malformed expected byte range"
-        )
-    return int(start)
-
-
-def _download_google_chunk(file_id: str, start: int, end: int) -> bytes:
-    """Download a Google Drive range with bounded transient retries."""
-    for attempt in range(3):
-        try:
-            return download_google_drive_file_range(file_id, start, end)
-        except GoogleDriveRequestError:
-            if attempt == 2:
-                raise
-            sleep(2 ** attempt)
-    raise AssertionError("Google Drive download retry loop ended unexpectedly")
-
-
-def transfer_google_file_to_onedrive(
-    source_file: dict,
-    destination_folder_id: str,
-) -> dict:
-    """Stream one Google Drive blob into a OneDrive folder without local storage."""
-    source_id = source_file.get("id")
-    file_name = source_file.get("name")
-    if not isinstance(source_id, str) or not source_id:
-        raise GoogleDriveRequestError("Google Drive returned a file without an ID")
-    if not isinstance(file_name, str) or not file_name:
-        raise GoogleDriveRequestError("Google Drive returned a file without a name")
-    if source_file.get("capabilities", {}).get("canDownload") is False:
-        raise GoogleDriveRequestError(
-            f"Google Drive does not permit downloading {file_name!r}"
-        )
-
-    total = _file_size(source_file, SOURCE_REPOSITORY)
-    session = create_onedrive_upload_session(
-        destination_folder_id,
-        file_name,
-        conflict_behavior="fail",
-    )
-    upload_url = session["uploadUrl"]
-    offset = 0
-    final_item = None
-    try:
-        while offset < total:
-            end = min(offset + TRANSFER_CHUNK_SIZE, total) - 1
-            content = _download_google_chunk(source_id, offset, end)
-            for attempt in range(3):
-                try:
-                    response = upload_onedrive_chunk(
-                        upload_url, content, offset, total,
-                    )
-                    break
-                except GraphRequestError:
-                    status = get_onedrive_upload_session_status(upload_url)
-                    next_offset = _next_upload_offset(status)
-                    if next_offset > offset:
-                        response = status
-                        break
-                    if next_offset != offset or attempt == 2:
-                        raise
-                    sleep(2 ** attempt)
-
-            expected_offset = end + 1
-            if expected_offset < total:
-                next_offset = _next_upload_offset(response)
-                if next_offset != expected_offset:
-                    raise GraphRequestError(
-                        f"OneDrive expected byte {next_offset}, not {expected_offset}"
-                    )
-            else:
-                final_item = response
-            offset = expected_offset
-    except Exception:
-        try:
-            cancel_onedrive_upload_session(upload_url)
-        except GraphRequestError:
-            pass
-        raise
-
-    if not isinstance(final_item, dict) or not isinstance(final_item.get("id"), str):
-        raise GraphRequestError(
-            f"OneDrive completed {file_name!r} without returning a file ID"
-        )
-    return final_item
-
-
-def ingest_google_drive_cloud(
+def discover_google_drive_migration(
     engine: Engine,
     media_type: str,
     project_year: int,
-    ui: UpdateConsole,
-    *,
-    dry_run: bool = True,
 ) -> DataFrame:
-    """Compare mapped provider folders and optionally stream missing videos."""
+    """Build a read-only filename-based Google Drive migration plan."""
     locations = fetch_folder_transfer_locations(
         engine,
         project_year,
@@ -252,11 +134,15 @@ def ingest_google_drive_cloud(
             "media_type": media_type,
         }
         if not isinstance(source_folder_id, str) or not source_folder_id:
-            rows.append({**base, "file_name": None, "file_size": None,
+            rows.append({**base, "source_file_id": None,
+                         "destination_folder_id": destination_folder_id,
+                         "file_name": None, "file_size": None,
                          "status": "missing_source_location"})
             continue
         if not isinstance(destination_folder_id, str) or not destination_folder_id:
-            rows.append({**base, "file_name": None, "file_size": None,
+            rows.append({**base, "source_file_id": None,
+                         "destination_folder_id": None,
+                         "file_name": None, "file_size": None,
                          "status": "missing_destination_location"})
             continue
 
@@ -288,10 +174,18 @@ def ingest_google_drive_cloud(
             try:
                 size = _file_size(source_file, SOURCE_REPOSITORY)
             except ValueError:
-                rows.append({**base, "file_name": file_name, "file_size": None,
+                rows.append({**base, "source_file_id": source_file["id"],
+                             "destination_folder_id": destination_folder_id,
+                             "file_name": file_name, "file_size": None,
                              "status": "invalid_source_size"})
                 continue
-            file_row = {**base, "file_name": file_name, "file_size": size}
+            file_row = {
+                **base,
+                "source_file_id": source_file["id"],
+                "destination_folder_id": destination_folder_id,
+                "file_name": file_name,
+                "file_size": size,
+            }
             if source_file.get("capabilities", {}).get("canDownload") is False:
                 rows.append({**file_row, "status": "download_not_allowed"})
                 continue
@@ -301,67 +195,17 @@ def ingest_google_drive_cloud(
 
             destination_matches = destination_by_name.get(file_name.casefold(), [])
             if destination_matches:
-                destination_sizes = {
-                    int(item["size"])
-                    for item in destination_matches
-                    if str(item.get("size", "")).isdigit()
-                }
-                status = (
-                    "already_present"
-                    if len(destination_matches) == 1 and destination_sizes == {size}
-                    else "destination_name_conflict"
-                )
-                rows.append({**file_row, "status": status})
+                rows.append({**file_row, "status": "already_present"})
                 continue
 
-            if dry_run:
-                rows.append({**file_row, "status": "would_copy"})
-                continue
-
-            uploaded = transfer_google_file_to_onedrive(
-                source_file, destination_folder_id,
-            )
-            rows.append({
-                **file_row,
-                "status": "copied",
-                "destination_item_id": uploaded["id"],
-            })
+            rows.append({**file_row, "status": "candidate"})
 
     results = DataFrame(rows)
-    counts = results["status"].value_counts().to_dict() if not results.empty else {}
-    mapped_pairs = sum(
+    results.attrs["folder_count"] = len(locations)
+    results.attrs["mapped_folder_count"] = sum(
         isinstance(row.get("source_item_id"), str) and bool(row["source_item_id"])
         and isinstance(row.get("destination_item_id"), str)
         and bool(row["destination_item_id"])
         for row in locations.to_dict(orient="records")
     )
-    action_summary = (
-        ", ".join(
-            f"{count} {status.replace('_', ' ')}"
-            for status, count in sorted(counts.items())
-        )
-        if counts else "0 video candidates"
-    )
-    ui.add_update(
-        f"Google Drive cloud ingest for {media_type} {project_year}: "
-        f"{mapped_pairs} of {len(locations)} folder pairs mapped; {action_summary}."
-    )
     return results
-
-
-def copy_from_web(engine, one_drive_folder, google=True, icloud=True, headless=False):
-    albums = fetch_shared_albums(engine)
-    for _, (_, url, folder_name, project_year, supfolder_name,
-            scrape_name, browser_name, profile_name, notes) in albums.iterrows():
-        
-        if notes:
-            print(f'Skipping album: {notes}')
-
-        else:
-            share_source = scrape_name.lower()
-            browser_profile = f'{profile_name} {scrape_name}'
-            download_directory = one_drive_folder / supfolder_name / str(project_year) / folder_name
-
-            if source_allowed(share_source, google=google, icloud=icloud):
-                harvest_shared_album(url, download_directory, scrape_name, browser_name, browser_profile,
-                                     headless=headless)
