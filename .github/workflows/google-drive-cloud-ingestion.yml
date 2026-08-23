@@ -121,7 +121,7 @@ jobs:
           if [[ "${APPLY_CHANGES}" == "true" ]]; then
             arguments=(--year "${year}" --apply)
           fi
-          python cloud_ingest.py "${arguments[@]}"
+          python run_cloud_ingestion.py "${arguments[@]}"
 
       - name: Preserve refreshed provider tokens
         if: always() && steps.credentials.outcome == 'success'

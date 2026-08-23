@@ -315,11 +315,10 @@ database-backed configuration. For each setting, decide whether it is:
 - mutable operational/reference data best maintained in the database; or
 - versioned file configuration that should seed a queryable database table.
 
-Also reconcile command/module naming after the cloud workflows stabilize. The
-current top-level `cloud_inspect.py` and `cloud_ingest.py` files are executable
-entry points while similarly named modules under `repositories` hold reusable
-logic; retain that distinction for now, then choose names that make the roles
-obvious without relying on directory context.
+Keep executable adapters distinguishable from reusable modules. Top-level
+`run_cloud_inspection.py` and `run_cloud_ingestion.py` launch operations, while
+the `repositories` modules retain the provider and domain logic consumed by
+those adapters, GitHub Actions, and future administrative interfaces.
 
 When a file seeds a table, define a one-way source of truth, stable keys,
 validation, and version/checksum tracking. Do not introduce undirected two-way

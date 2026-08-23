@@ -139,7 +139,7 @@ that are no longer present. A missing or inaccessible year path never triggers
 purging, and participant `project.folders` records are not deleted. Use
 `--inspect-only --cloud-only` to discover only immediate participant folders.
 
-Hosted inspection uses `cloud_inspect.py` through the manual GitHub Actions
+Hosted inspection uses `run_cloud_inspection.py` through the manual GitHub Actions
 workflow. It authenticates to Azure with GitHub OIDC, reads only the minimal
 OneDrive/Neon credential bundle from Key Vault, and writes a refreshed OneDrive
 token back to the vault. Hosted runs default to dry-run and are unscheduled
@@ -148,8 +148,8 @@ during initial validation.
 Google Drive ingestion can likewise run without either provider mounted:
 
 ```powershell
-python cloud_ingest.py --year 2026 --dry-run
-python cloud_ingest.py --year 2026 --apply
+python run_cloud_ingestion.py --year 2026 --dry-run
+python run_cloud_ingestion.py --year 2026 --apply
 python main.py --gdrive --cloud-only --year 2026 --dry-run
 ```
 

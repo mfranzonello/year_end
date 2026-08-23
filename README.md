@@ -105,8 +105,8 @@ Inspect the media CLI options:
 Run the lightweight OneDrive-only entrypoint locally or in a hosted runner:
 
 ```powershell
-.\.venv\Scripts\python.exe cloud_inspect.py --year 2026 --dry-run
-.\.venv\Scripts\python.exe cloud_inspect.py --year 2026 --apply
+.\.venv\Scripts\python.exe run_cloud_inspection.py --year 2026 --dry-run
+.\.venv\Scripts\python.exe run_cloud_inspection.py --year 2026 --apply
 ```
 
 Sweep mapped Google Drive folders without mounting either provider. Dry runs
@@ -114,8 +114,8 @@ only compare provider metadata; applied runs stream missing files in bounded
 chunks directly from Google Drive into OneDrive:
 
 ```powershell
-.\.venv\Scripts\python.exe cloud_ingest.py --year 2026 --dry-run
-.\.venv\Scripts\python.exe cloud_ingest.py --year 2026 --apply
+.\.venv\Scripts\python.exe run_cloud_ingestion.py --year 2026 --dry-run
+.\.venv\Scripts\python.exe run_cloud_ingestion.py --year 2026 --apply
 ```
 
 The checked-in `OneDrive cloud inspection` and `Google Drive cloud ingestion`

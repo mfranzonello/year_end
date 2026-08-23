@@ -113,7 +113,7 @@ jobs:
           if [[ "${APPLY_CHANGES}" == "true" ]]; then
             arguments=(--year "${year}" --apply)
           fi
-          python cloud_inspect.py "${arguments[@]}"
+          python run_cloud_inspection.py "${arguments[@]}"
 
       - name: Preserve refreshed OneDrive token
         if: always() && steps.credentials.outcome == 'success'
