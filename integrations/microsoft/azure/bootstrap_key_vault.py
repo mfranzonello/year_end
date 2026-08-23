@@ -1,4 +1,4 @@
-"""Upload the minimal hosted OneDrive credentials to Azure Key Vault safely."""
+"""Upload minimal hosted cloud credentials to Azure Key Vault safely."""
 
 import argparse
 import json
@@ -11,6 +11,7 @@ import tomllib
 
 CLOUD_SECRET_NAME = "year-end-cloud-secrets"
 TOKEN_SECRET_NAME = "onedrive-oauth-token"
+GOOGLE_DRIVE_TOKEN_SECRET_NAME = "google-drive-oauth-token"
 
 
 def _find_azure_cli() -> str | None:
@@ -39,7 +40,7 @@ def _required_value(config: dict, section: tuple[str, ...], key: str) -> object:
 
 
 def build_cloud_secrets(local_secrets: dict) -> str:
-    """Return TOML containing only credentials required by cloud inspection."""
+    """Return TOML containing only credentials required by hosted cloud jobs."""
     microsoft = {
         key: _required_value(local_secrets, ("microsoft", "desktop"), key)
         for key in ("client_id", "client_secret")
@@ -48,8 +49,14 @@ def build_cloud_secrets(local_secrets: dict) -> str:
         key: _required_value(local_secrets, ("postgresql",), key)
         for key in ("host", "port", "database", "user", "password")
     }
+    google = {
+        key: _required_value(local_secrets, ("google", "desktop"), key)
+        for key in ("client_id", "client_secret")
+    }
     lines = ["[microsoft]", "", "[microsoft.desktop]"]
     lines.extend(f"{key} = {json.dumps(str(value))}" for key, value in microsoft.items())
+    lines.extend(["", "[google]", "", "[google.desktop]"])
+    lines.extend(f"{key} = {json.dumps(str(value))}" for key, value in google.items())
     lines.extend(["", "[postgresql]"])
     lines.extend(f"{key} = {json.dumps(str(value))}" for key, value in postgresql.items())
     return "\n".join(lines) + "\n"
@@ -63,10 +70,11 @@ def bootstrap(
     vault_name: str,
     secrets_file: Path,
     token_file: Path,
+    google_drive_token_file: Path,
     subscription: str | None = None,
     apply: bool = False,
 ) -> None:
-    """Validate local inputs and optionally upload the two hosted secrets."""
+    """Validate local inputs and optionally upload hosted cloud secrets."""
     azure_cli = _find_azure_cli()
     if azure_cli is None:
         raise RuntimeError("Azure CLI is not installed or is not available on PATH")
@@ -74,6 +82,10 @@ def bootstrap(
         raise FileNotFoundError(f"Local secrets file does not exist: {secrets_file}")
     if not token_file.is_file():
         raise FileNotFoundError(f"OneDrive token file does not exist: {token_file}")
+    if not google_drive_token_file.is_file():
+        raise FileNotFoundError(
+            f"Google Drive token file does not exist: {google_drive_token_file}"
+        )
 
     with secrets_file.open("rb") as source:
         cloud_secrets = build_cloud_secrets(tomllib.load(source))
@@ -81,6 +93,12 @@ def bootstrap(
         token = json.load(source)
     if not token.get("refresh_token"):
         raise ValueError("The OneDrive token cache does not contain a refresh token")
+    with google_drive_token_file.open(encoding="utf-8") as source:
+        google_drive_token = json.load(source)
+    if not google_drive_token.get("refresh_token"):
+        raise ValueError(
+            "The Google Drive token cache does not contain a refresh token"
+        )
 
     _run_azure([azure_cli, "account", "show", "--output", "none"])
     if subscription:
@@ -92,7 +110,8 @@ def bootstrap(
     if not apply:
         print(
             f"Dry run: validated {vault_name!r}; would upload "
-            f"{CLOUD_SECRET_NAME!r} and {TOKEN_SECRET_NAME!r}."
+            f"{CLOUD_SECRET_NAME!r}, {TOKEN_SECRET_NAME!r}, and "
+            f"{GOOGLE_DRIVE_TOKEN_SECRET_NAME!r}."
         )
         return
 
@@ -100,11 +119,16 @@ def bootstrap(
         temporary_path = Path(temporary_directory)
         cloud_path = temporary_path / "cloud-secrets.toml"
         token_path = temporary_path / "onedrive-token.json"
+        google_drive_token_path = temporary_path / "google-drive-token.json"
         cloud_path.write_text(cloud_secrets, encoding="utf-8")
         token_path.write_text(json.dumps(token), encoding="utf-8")
+        google_drive_token_path.write_text(
+            json.dumps(google_drive_token), encoding="utf-8"
+        )
         for name, source_path in (
             (CLOUD_SECRET_NAME, cloud_path),
             (TOKEN_SECRET_NAME, token_path),
+            (GOOGLE_DRIVE_TOKEN_SECRET_NAME, google_drive_token_path),
         ):
             _run_azure([
                 azure_cli, "keyvault", "secret", "set",
@@ -114,13 +138,13 @@ def bootstrap(
                 "--encoding", "utf-8",
                 "--output", "none",
             ])
-    print(f"Uploaded the hosted OneDrive credentials to {vault_name!r}.")
+    print(f"Uploaded the hosted cloud credentials to {vault_name!r}.")
 
 
 def main() -> None:
     """Parse bootstrap arguments and perform a dry run or explicit upload."""
     parser = argparse.ArgumentParser(
-        description="Upload minimal OneDrive cloud-runner credentials to Key Vault.",
+        description="Upload minimal cloud-runner credentials to Key Vault.",
     )
     parser.add_argument("--vault-name", required=True)
     parser.add_argument("--subscription")
@@ -132,6 +156,10 @@ def main() -> None:
         default=Path(".secrets/auths/tokens/azure/token.json"),
     )
     parser.add_argument(
+        "--google-drive-token-file", type=Path,
+        default=Path(".secrets/auths/tokens/gdrive/token.json"),
+    )
+    parser.add_argument(
         "--apply", action="store_true",
         help="Upload the validated credentials; defaults to a dry run.",
     )
@@ -140,6 +168,7 @@ def main() -> None:
         arguments.vault_name,
         arguments.secrets_file,
         arguments.token_file,
+        arguments.google_drive_token_file,
         subscription=arguments.subscription,
         apply=arguments.apply,
     )

@@ -13,7 +13,9 @@ from database.db import get_engine
 from database.db_project import fetch_project_folder_years
 from repositories.iterate import get_media_locations
 from repositories.migrate import dedupe_one_drive, copy_from_gdrive
-from repositories.ingest import copy_from_web, ingest_google_drive_folder_shares
+from repositories.ingest import (
+    copy_from_web, ingest_google_drive_cloud, ingest_google_drive_folder_shares,
+)
 from repositories.cloud_inspect import (
     inspect_onedrive_cloud_contents, inspect_onedrive_folder_shares,
 )
@@ -111,6 +113,26 @@ def update_database(
             )
     engine.dispose()
 
+
+def scan_google_drive_cloud(
+    media_locations: list[tuple],
+    project_year: int,
+    dry_run: bool = True,
+):
+    """Sweep mapped Google Drive source folders without a mounted drive."""
+    engine = set_up_engine()
+    try:
+        for media_type, _supfolder_name in media_locations:
+            ingest_google_drive_cloud(
+                engine,
+                media_type,
+                project_year,
+                ui,
+                dry_run=dry_run,
+            )
+    finally:
+        engine.dispose()
+
 def sync_cloud_folder_shares(
     media_locations: list[tuple],
     project_year: int | None,
@@ -182,7 +204,13 @@ def main():
     ap.add_argument('--gdrive', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Drive to OneDrive.')
     ap.add_argument('--pictures', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
     ap.add_argument('--inspect-only', action='store_true', help='Only discover top-level participant folders and update their database records.')
-    ap.add_argument('--cloud-only', action='store_true', help='Inspect OneDrive through Microsoft Graph without downloading or parsing local files.')
+    ap.add_argument(
+        '--cloud-only', action='store_true',
+        help=(
+            'Use provider APIs instead of mounted drives for OneDrive inspection '
+            'and, when combined with --gdrive, Google Drive ingestion.'
+        ),
+    )
     ap.add_argument('--onedrive-shares', action='store_true', help='Reconcile OneDrive folder IDs and share links for a year.')
     ap.add_argument('--google-drive-shares', action='store_true', help='Reconcile Google Drive folder IDs and share links for a year.')
     ap.add_argument('--year', type=int, help='Limit folder inspection or cloud sharing to one project year.')
@@ -215,7 +243,14 @@ def main():
         harvest_albums(args.gphotos, args.iphotos, args.headless)
    
     if args.gdrive:
-        scan_folders(media_locations, dry_run=dry_run)
+        if args.cloud_only:
+            scan_google_drive_cloud(
+                media_locations,
+                args.year or date.today().year,
+                dry_run=dry_run,
+            )
+        else:
+            scan_folders(media_locations, dry_run=dry_run)
 
     if args.inspect_only:
         update_database(

@@ -86,8 +86,15 @@ historical material without treating the inbox as an unrestricted media source.
 
 Open design questions:
 
-- How to transfer large media files between Google Drive and OneDrive without
-  routing the entire file through a limited cloud runner.
+- The first cloud transfer implementation relays bounded byte ranges from
+  Google Drive into OneDrive resumable upload sessions without storing the full
+  file. Move long-running production transfers from GitHub Actions to an
+  event-driven Azure Container Apps Job, persist resumable offsets outside the
+  runner, and validate interruption recovery with multi-gigabyte media.
+- Before event-driven copies depend on file identity, design a provider-neutral
+  file-location mapping analogous to `project.folder_locations`. The initial
+  sweep deliberately uses conservative filename/size reconciliation and does
+  not introduce a schema migration without an impact and rollback review.
 - Which metadata can be gathered remotely, and when a local download is needed
   for OpenCV or other file-level inspection.
 - Why Microsoft Graph reports substantially shorter durations than local
@@ -266,10 +273,11 @@ server-side action/API, not solely by the interface.
 
 ### Cross-cutting: hosted OAuth token management
 
-The initial OneDrive implementation uses Azure Key Vault with GitHub OIDC. The
-manual workflow reads a minimal Microsoft/Neon credential bundle and renewable
-OneDrive token, then stores a new token version only after a refresh. GitHub
-holds non-secret Azure identity/resource IDs rather than a mutable token cache.
+The initial provider implementation uses Azure Key Vault with GitHub OIDC. The
+manual workflows read a minimal Microsoft/Google/Neon credential bundle and
+separate renewable OneDrive and Google Drive tokens, then store new token
+versions only after a refresh. GitHub holds non-secret Azure identity/resource
+IDs rather than a mutable token cache.
 
 Remaining work:
 
@@ -287,8 +295,10 @@ Remaining work:
   after event-driven OneDrive and Google Drive processing is enabled;
 - document and test owner-only OneDrive reauthorization after revocation or a
   failed refresh;
-- extend the managed-secret pattern deliberately to Google Drive, Vimeo, and
-  future hosted providers, with provider-specific scopes and recovery paths;
+- validate the Google Drive hosted token bootstrap and first dry-run/applied
+  cloud-ingestion workflow before moving transfers to Azure Container Apps;
+- extend the managed-secret pattern deliberately to Vimeo and future hosted
+  providers, with provider-specific scopes and recovery paths;
 - review audit logs, secret-version retention, and rotation practices after the
   initial operating period.
 
@@ -304,6 +314,12 @@ database-backed configuration. For each setting, decide whether it is:
 - versioned deployment/application configuration best kept in a repository file;
 - mutable operational/reference data best maintained in the database; or
 - versioned file configuration that should seed a queryable database table.
+
+Also reconcile command/module naming after the cloud workflows stabilize. The
+current top-level `cloud_inspect.py` and `cloud_ingest.py` files are executable
+entry points while similarly named modules under `repositories` hold reusable
+logic; retain that distinction for now, then choose names that make the roles
+obvious without relying on directory context.
 
 When a file seeds a table, define a one-way source of truth, stable keys,
 validation, and version/checksum tracking. Do not introduce undirected two-way

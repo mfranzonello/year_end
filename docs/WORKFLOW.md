@@ -145,6 +145,31 @@ OneDrive/Neon credential bundle from Key Vault, and writes a refreshed OneDrive
 token back to the vault. Hosted runs default to dry-run and are unscheduled
 during initial validation.
 
+Google Drive ingestion can likewise run without either provider mounted:
+
+```powershell
+python cloud_ingest.py --year 2026 --dry-run
+python cloud_ingest.py --year 2026 --apply
+python main.py --gdrive --cloud-only --year 2026 --dry-run
+```
+
+The sweep uses the Google Drive and OneDrive folder IDs already mapped through
+`project.folder_locations`; it does not infer participant identity from folder
+names. It traverses Google Drive folders and accessible folder shortcuts,
+compares case-insensitive video filenames against the full destination folder,
+and preserves the established behavior of flattening nested source files into
+the participant's top-level OneDrive folder. An applied run streams 10-MiB
+chunks from Google Drive ranged downloads into a OneDrive resumable upload
+session, so the complete file is never stored on the runner.
+
+The cloud sweep is copy-only: it never deletes, moves, deduplicates, or
+quarantines source files. Equal-name/equal-size files are treated as already
+present. Duplicate source names and destination names with differing sizes are
+reported as conflicts and are not overwritten or silently renamed. The manual
+`Google Drive cloud ingestion` workflow uses the same Azure OIDC and Key Vault
+boundary as inspection and keeps the renewable provider tokens in separate Key
+Vault secrets.
+
 ### 2. Collect media from where contributors already are
 
 Contributors use different paths. The project should accommodate those paths,

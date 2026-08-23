@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 import base64
 import hashlib
 import json
+import os
 import secrets as secure_secrets
 import time
 import webbrowser
@@ -18,7 +19,10 @@ from common.config import read_toml
 
 
 TOKEN_CACHES = {
-    "google_drive": Path(".secrets/auths/tokens/gdrive/token.json"),
+    "google_drive": Path(os.environ.get(
+        "YEAR_END_GOOGLE_DRIVE_TOKEN_FILE",
+        ".secrets/auths/tokens/gdrive/token.json",
+    )),
     "gmail": Path(".secrets/auths/tokens/gmail/token.json"),
     "google_calendar": Path(".secrets/auths/tokens/google_calendar/token.json"),
 }

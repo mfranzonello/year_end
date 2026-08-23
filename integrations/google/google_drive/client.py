@@ -1,4 +1,4 @@
-"""Google Drive API client for folder lookup and sharing."""
+"""Google Drive API client for folder lookup, traversal, sharing, and downloads."""
 
 from typing import Any
 from urllib.error import HTTPError
@@ -15,6 +15,7 @@ class GoogleDriveRequestError(RuntimeError):
 
 
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
+SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut"
 
 
 def _api_url() -> str:
@@ -170,6 +171,156 @@ def list_child_folders(folder_id: str) -> list[dict[str, Any]]:
         if not page_token:
             return folders
         params = {**params, "pageToken": page_token}
+
+
+def _list_children(folder_id: str, access_token: str) -> list[dict[str, Any]]:
+    """Return all immediate children using an existing access token."""
+    if not folder_id.strip():
+        raise ValueError("folder_id must not be empty")
+
+    escaped_parent = _escape_query_value(folder_id)
+    params = {
+        "q": f"'{escaped_parent}' in parents and trashed = false",
+        "pageSize": "1000",
+        "orderBy": "folder,name",
+        "fields": (
+            "files(id,name,mimeType,size,webViewLink,modifiedTime,"
+            "capabilities(canDownload),shortcutDetails(targetId,targetMimeType)),"
+            "nextPageToken"
+        ),
+        "spaces": "drive",
+    }
+    children = []
+    while True:
+        response = _get("/files", params, access_token=access_token)
+        value = response.get("files", [])
+        if not isinstance(value, list):
+            raise GoogleDriveRequestError("Google Drive returned malformed folder children")
+        children.extend(value)
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            return children
+        params = {**params, "pageToken": page_token}
+
+
+def list_children(folder_id: str) -> list[dict[str, Any]]:
+    """Return every immediate Google Drive child, following pagination."""
+    return _list_children(folder_id, get_access_token("google_drive"))
+
+
+def _get_file(file_id: str, access_token: str) -> dict[str, Any]:
+    """Return transferable metadata for one Drive item using an existing token."""
+    if not file_id.strip():
+        raise ValueError("file_id must not be empty")
+    return _get(
+        f"/files/{quote(file_id, safe='')}",
+        {
+            "fields": (
+                "id,name,mimeType,size,webViewLink,modifiedTime,"
+                "capabilities(canDownload),shortcutDetails(targetId,targetMimeType)"
+            ),
+        },
+        access_token=access_token,
+    )
+
+
+def get_file(file_id: str) -> dict[str, Any]:
+    """Return metadata needed to inspect or download one Google Drive item."""
+    return _get_file(file_id, get_access_token("google_drive"))
+
+
+def list_descendant_files(folder_id: str) -> list[dict[str, Any]]:
+    """Return files below a folder, following accessible folder shortcuts."""
+    if not folder_id.strip():
+        raise ValueError("folder_id must not be empty")
+
+    access_token = get_access_token("google_drive")
+    pending = [(folder_id, ())]
+    visited_folders = set()
+    files = []
+    while pending:
+        current_id, relative_parts = pending.pop()
+        if current_id in visited_folders:
+            raise GoogleDriveRequestError(
+                "Google Drive traversal reached the same folder more than once"
+            )
+        visited_folders.add(current_id)
+        for item in _list_children(current_id, access_token):
+            item_id = item.get("id")
+            name = item.get("name")
+            mime_type = item.get("mimeType")
+            if not isinstance(item_id, str) or not item_id:
+                raise GoogleDriveRequestError("Google Drive returned a child without an ID")
+            if not isinstance(name, str) or not name:
+                raise GoogleDriveRequestError("Google Drive returned a child without a name")
+            if mime_type == FOLDER_MIME_TYPE:
+                pending.append((item_id, (*relative_parts, name)))
+                continue
+            if mime_type == SHORTCUT_MIME_TYPE:
+                shortcut = item.get("shortcutDetails", {})
+                target_id = shortcut.get("targetId")
+                target_type = shortcut.get("targetMimeType")
+                if not isinstance(target_id, str) or not target_id:
+                    raise GoogleDriveRequestError(
+                        f"Google Drive shortcut {name!r} has no accessible target ID"
+                    )
+                if target_type == FOLDER_MIME_TYPE:
+                    pending.append((target_id, (*relative_parts, name)))
+                else:
+                    target = _get_file(target_id, access_token)
+                    files.append({
+                        **target,
+                        "relative_parent": "/".join(relative_parts) or None,
+                        "shortcut_id": item_id,
+                    })
+                continue
+            files.append({
+                **item,
+                "relative_parent": "/".join(relative_parts) or None,
+            })
+    return files
+
+
+def download_file_range(file_id: str, start: int, end: int) -> bytes:
+    """Download one inclusive byte range from a Google Drive blob file."""
+    if not file_id.strip():
+        raise ValueError("file_id must not be empty")
+    if start < 0 or end < start:
+        raise ValueError("start and end must identify a non-empty byte range")
+
+    access_token = get_access_token("google_drive")
+    request = Request(
+        f"{_api_url()}/files/{quote(file_id, safe='')}?alt=media",
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/octet-stream",
+            "Range": f"bytes={start}-{end}",
+        },
+    )
+    try:
+        with urlopen(request, timeout=120) as response:
+            status = getattr(response, "status", response.getcode())
+            if status not in {200, 206} or (status == 200 and start != 0):
+                raise GoogleDriveRequestError(
+                    f"Google Drive ignored the requested byte range (HTTP {status})"
+                )
+            content = response.read()
+    except HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise GoogleDriveRequestError(
+            f"Google Drive download returned HTTP {error.code}: {body}"
+        ) from error
+    except GoogleDriveRequestError:
+        raise
+    except Exception as error:
+        raise GoogleDriveRequestError(f"Google Drive download failed: {error}") from error
+
+    expected_length = end - start + 1
+    if len(content) != expected_length:
+        raise GoogleDriveRequestError(
+            f"Google Drive returned {len(content)} bytes for a {expected_length}-byte range"
+        )
+    return content
 
 
 def _get_share_details(folder_id: str, access_token: str) -> tuple[str, dict[str, Any] | None]:

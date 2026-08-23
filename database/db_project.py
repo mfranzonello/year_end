@@ -213,6 +213,54 @@ def fetch_project_folders(engine: Engine, project_year: int, media_type: str) ->
             params={"project_year": project_year, "media_type": media_type},
         )
 
+
+def fetch_folder_transfer_locations(
+    engine: Engine,
+    project_year: int,
+    media_type: str,
+    source_repository: str,
+    destination_repository: str,
+) -> DataFrame:
+    """Return provider folder IDs for a project-year transfer without name inference."""
+    sql = '''
+    WITH source_locations AS (
+        SELECT folder_location_id, folder_id, repository_item_id
+        FROM project.folder_locations
+        JOIN ingestion.repositories USING (repository_id)
+        WHERE repository_name = :source_repository
+    ), destination_locations AS (
+        SELECT folder_location_id, folder_id, repository_item_id
+        FROM project.folder_locations
+        JOIN ingestion.repositories USING (repository_id)
+        WHERE repository_name = :destination_repository
+    )
+    SELECT
+        folders.folder_id,
+        folders.folder_name,
+        folders.project_year,
+        folders.media_type,
+        source_locations.repository_item_id AS source_item_id,
+        destination_locations.repository_item_id AS destination_item_id
+    FROM project.folders AS folders
+    LEFT JOIN source_locations USING (folder_id)
+    LEFT JOIN destination_locations USING (folder_id)
+    WHERE folders.project_year = :project_year
+      AND folders.media_type = :media_type
+      AND folders.folder_name IS NOT NULL
+    ORDER BY folders.folder_name
+    ;'''
+    with engine.begin() as conn:
+        return read_sql_query(
+            text(sql),
+            conn,
+            params={
+                "project_year": project_year,
+                "media_type": media_type,
+                "source_repository": source_repository,
+                "destination_repository": destination_repository,
+            },
+        )
+
 def update_folder_locations_and_shares(
     engine: Engine,
     folders: DataFrame,

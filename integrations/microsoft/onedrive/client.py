@@ -16,6 +16,9 @@ class GraphRequestError(RuntimeError):
     """Raised when Microsoft Graph rejects a request."""
 
 
+UPLOAD_FRAGMENT_GRANULARITY = 320 * 1024
+
+
 def _graph_url() -> str:
     """Read the Graph endpoint without loading local-drive configuration."""
     return read_toml("api")["onedrive"]["urls"]["graph"]
@@ -194,6 +197,119 @@ def list_descendant_files(folder_id: str) -> list[dict[str, Any]]:
             elif "file" in item:
                 files.append({**item, "relative_parent": "/".join(relative_parts) or None})
     return files
+
+
+def create_upload_session(
+    folder_id: str,
+    file_name: str,
+    *,
+    conflict_behavior: str = "fail",
+) -> dict[str, Any]:
+    """Create a resumable upload session beneath an existing OneDrive folder."""
+    if not folder_id.strip():
+        raise ValueError("folder_id must not be empty")
+    if not file_name.strip() or "/" in file_name or "\\" in file_name:
+        raise ValueError("file_name must be a non-empty leaf filename")
+    if conflict_behavior not in {"fail", "replace", "rename"}:
+        raise ValueError("conflict_behavior must be fail, replace, or rename")
+
+    encoded_id = quote(folder_id, safe="")
+    encoded_name = quote(file_name, safe="")
+    session = _post(
+        f"/me/drive/items/{encoded_id}:/{encoded_name}:/createUploadSession",
+        {
+            "item": {
+                "@microsoft.graph.conflictBehavior": conflict_behavior,
+                "name": file_name,
+            },
+        },
+        access_token=get_access_token("onedrive"),
+    )
+    upload_url = session.get("uploadUrl")
+    if not isinstance(upload_url, str) or not upload_url.startswith("https://"):
+        raise GraphRequestError(
+            "Microsoft Graph created an upload session without a secure upload URL"
+        )
+    return session
+
+
+def upload_chunk(upload_url: str, content: bytes, start: int, total: int) -> dict[str, Any]:
+    """Upload one sequential fragment to an existing OneDrive upload session."""
+    if not upload_url.startswith("https://"):
+        raise ValueError("upload_url must be a secure URL returned by Microsoft Graph")
+    if not content:
+        raise ValueError("content must not be empty")
+    if start < 0 or total <= 0 or start + len(content) > total:
+        raise ValueError("content range must fit within the declared file size")
+    if start % UPLOAD_FRAGMENT_GRANULARITY:
+        raise ValueError("upload chunk offsets must be a multiple of 320 KiB")
+    if start + len(content) < total and len(content) % UPLOAD_FRAGMENT_GRANULARITY:
+        raise ValueError("non-final upload chunks must be a multiple of 320 KiB")
+
+    end = start + len(content) - 1
+    request = Request(
+        upload_url,
+        data=content,
+        headers={
+            "Content-Length": str(len(content)),
+            "Content-Range": f"bytes {start}-{end}/{total}",
+            "Content-Type": "application/octet-stream",
+        },
+        method="PUT",
+    )
+    try:
+        with urlopen(request, timeout=120) as response:
+            status = getattr(response, "status", response.getcode())
+            if status not in {200, 201, 202}:
+                raise GraphRequestError(
+                    f"OneDrive upload returned unexpected HTTP {status}"
+                )
+            return json.load(response)
+    except HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise GraphRequestError(
+            f"OneDrive upload returned HTTP {error.code}: {body}"
+        ) from error
+    except GraphRequestError:
+        raise
+    except Exception as error:
+        raise GraphRequestError(f"OneDrive upload failed: {error}") from error
+
+
+def get_upload_session_status(upload_url: str) -> dict[str, Any]:
+    """Return expiration and expected ranges for an active upload session."""
+    if not upload_url.startswith("https://"):
+        raise ValueError("upload_url must be a secure URL returned by Microsoft Graph")
+    request = Request(upload_url, headers={"Accept": "application/json"})
+    try:
+        with urlopen(request, timeout=30) as response:
+            return json.load(response)
+    except HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise GraphRequestError(
+            f"OneDrive upload status returned HTTP {error.code}: {body}"
+        ) from error
+    except Exception as error:
+        raise GraphRequestError(f"OneDrive upload status failed: {error}") from error
+
+
+def cancel_upload_session(upload_url: str) -> None:
+    """Cancel an incomplete OneDrive upload session without Graph authentication."""
+    if not upload_url.startswith("https://"):
+        raise ValueError("upload_url must be a secure URL returned by Microsoft Graph")
+    request = Request(upload_url, method="DELETE")
+    try:
+        with urlopen(request, timeout=30):
+            return
+    except HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise GraphRequestError(
+            f"OneDrive upload cancellation returned HTTP {error.code}: {body}"
+        ) from error
+    except Exception as error:
+        raise GraphRequestError(
+            f"OneDrive upload cancellation failed: {error}"
+        ) from error
 
 
 def get_share_link(

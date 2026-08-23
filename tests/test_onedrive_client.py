@@ -2,11 +2,33 @@
 
 from unittest import TestCase
 from unittest.mock import patch
+import json
 
 from integrations.microsoft.onedrive.client import (
-    GraphRequestError, find_folder_id, get_or_create_share_link, get_share_link,
-    list_child_folders, list_children, list_descendant_files,
+    GraphRequestError, UPLOAD_FRAGMENT_GRANULARITY, create_upload_session,
+    find_folder_id, get_or_create_share_link, get_share_link, list_child_folders,
+    list_children, list_descendant_files, upload_chunk,
 )
+
+
+class JsonResponse:
+    """Small context-managed HTTP response used by upload tests."""
+
+    def __init__(self, payload: dict, status: int):
+        self.payload = payload
+        self.status = status
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def read(self):
+        return json.dumps(self.payload).encode("utf-8")
+
+    def getcode(self):
+        return self.status
 
 
 class FindFolderIdTests(TestCase):
@@ -28,6 +50,56 @@ class FindFolderIdTests(TestCase):
     def test_rejects_a_file_path(self, _graph_get, _get_token):
         with self.assertRaisesRegex(GraphRequestError, "not a folder"):
             find_folder_id("photo.jpg")
+
+
+class ResumableUploadTests(TestCase):
+    @patch("integrations.microsoft.onedrive.client.get_access_token", return_value="token")
+    @patch("integrations.microsoft.onedrive.client._post")
+    def test_creates_a_fail_on_conflict_upload_session(self, graph_post, _get_token):
+        graph_post.return_value = {"uploadUrl": "https://upload.example/session"}
+
+        result = create_upload_session("folder/id", "My clip.mp4")
+
+        self.assertEqual(result["uploadUrl"], "https://upload.example/session")
+        graph_post.assert_called_once_with(
+            "/me/drive/items/folder%2Fid:/My%20clip.mp4:/createUploadSession",
+            {
+                "item": {
+                    "@microsoft.graph.conflictBehavior": "fail",
+                    "name": "My clip.mp4",
+                },
+            },
+            access_token="token",
+        )
+
+    @patch("integrations.microsoft.onedrive.client.urlopen")
+    def test_uploads_a_non_final_320_kib_fragment(self, urlopen):
+        urlopen.return_value = JsonResponse(
+            {"nextExpectedRanges": [f"{UPLOAD_FRAGMENT_GRANULARITY}-"]},
+            202,
+        )
+        content = b"x" * UPLOAD_FRAGMENT_GRANULARITY
+
+        result = upload_chunk(
+            "https://upload.example/session",
+            content,
+            0,
+            UPLOAD_FRAGMENT_GRANULARITY + 1,
+        )
+
+        self.assertEqual(
+            result["nextExpectedRanges"],
+            [f"{UPLOAD_FRAGMENT_GRANULARITY}-"],
+        )
+        request = urlopen.call_args.args[0]
+        self.assertEqual(
+            request.get_header("Content-range"),
+            f"bytes 0-{UPLOAD_FRAGMENT_GRANULARITY - 1}/{UPLOAD_FRAGMENT_GRANULARITY + 1}",
+        )
+
+    def test_rejects_a_misaligned_non_final_fragment(self):
+        with self.assertRaisesRegex(ValueError, "multiple of 320 KiB"):
+            upload_chunk("https://upload.example/session", b"x", 0, 2)
 
 
 class GetOrCreateShareLinkTests(TestCase):

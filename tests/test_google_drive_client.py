@@ -1,16 +1,40 @@
 """Unit tests for Google Drive folder lookup and sharing-link helpers."""
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from integrations.google.google_drive.client import (
     FOLDER_MIME_TYPE,
+    SHORTCUT_MIME_TYPE,
     GoogleDriveRequestError,
+    download_file_range,
     find_folder_id,
     get_or_create_share_link,
     get_share_link,
     list_child_folders,
+    list_descendant_files,
 )
+
+
+class JsonResponse:
+    """Small context-managed HTTP response used by byte-download tests."""
+
+    status = 206
+
+    def __init__(self, content: bytes):
+        self.content = content
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def read(self):
+        return self.content
+
+    def getcode(self):
+        return self.status
 
 
 class FindFolderIdTests(TestCase):
@@ -136,3 +160,63 @@ class ListChildFoldersTests(TestCase):
 
         self.assertEqual([folder["id"] for folder in result], ["first", "second"])
         self.assertEqual(drive_get.call_args_list[1].args[1]["pageToken"], "next")
+
+
+class ListDescendantFilesTests(TestCase):
+    @patch("integrations.google.google_drive.client.get_access_token", return_value="token")
+    @patch("integrations.google.google_drive.client._get_file")
+    @patch("integrations.google.google_drive.client._list_children")
+    def test_recurses_folders_and_follows_shortcuts(
+        self, list_children, get_file, _get_token
+    ):
+        list_children.side_effect = [
+            [
+                {"id": "nested", "name": "Nested", "mimeType": FOLDER_MIME_TYPE},
+                {
+                    "id": "shortcut", "name": "Shared", "mimeType": SHORTCUT_MIME_TYPE,
+                    "shortcutDetails": {
+                        "targetId": "shared-folder", "targetMimeType": FOLDER_MIME_TYPE,
+                    },
+                },
+                {
+                    "id": "file-shortcut", "name": "Linked", "mimeType": SHORTCUT_MIME_TYPE,
+                    "shortcutDetails": {
+                        "targetId": "target-file", "targetMimeType": "video/mp4",
+                    },
+                },
+            ],
+            [{"id": "shared-file", "name": "shared.mp4", "mimeType": "video/mp4"}],
+            [{"id": "nested-file", "name": "nested.mov", "mimeType": "video/quicktime"}],
+        ]
+        get_file.return_value = {
+            "id": "target-file", "name": "linked.mp4", "mimeType": "video/mp4",
+        }
+
+        result = list_descendant_files("participant")
+
+        self.assertEqual(
+            {item["id"] for item in result},
+            {"target-file", "shared-file", "nested-file"},
+        )
+        self.assertEqual(
+            next(item for item in result if item["id"] == "shared-file")["relative_parent"],
+            "Shared",
+        )
+        self.assertEqual(
+            next(item for item in result if item["id"] == "nested-file")["relative_parent"],
+            "Nested",
+        )
+
+
+class DownloadFileRangeTests(TestCase):
+    @patch("integrations.google.google_drive.client.get_access_token", return_value="token")
+    @patch("integrations.google.google_drive.client.urlopen")
+    def test_downloads_an_inclusive_range(self, urlopen, _get_token):
+        urlopen.return_value = JsonResponse(b"abcd")
+
+        result = download_file_range("file/id", 10, 13)
+
+        self.assertEqual(result, b"abcd")
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_header("Range"), "bytes=10-13")
+        self.assertIn("file%2Fid?alt=media", request.full_url)

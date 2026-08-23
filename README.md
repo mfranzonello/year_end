@@ -109,20 +109,29 @@ Run the lightweight OneDrive-only entrypoint locally or in a hosted runner:
 .\.venv\Scripts\python.exe cloud_inspect.py --year 2026 --apply
 ```
 
-The checked-in `OneDrive cloud inspection` GitHub Actions workflow is manual
-and dry-run by default. Its `production` environment requires these non-secret
-environment variables:
+Sweep mapped Google Drive folders without mounting either provider. Dry runs
+only compare provider metadata; applied runs stream missing files in bounded
+chunks directly from Google Drive into OneDrive:
+
+```powershell
+.\.venv\Scripts\python.exe cloud_ingest.py --year 2026 --dry-run
+.\.venv\Scripts\python.exe cloud_ingest.py --year 2026 --apply
+```
+
+The checked-in `OneDrive cloud inspection` and `Google Drive cloud ingestion`
+GitHub Actions workflows are manual and dry-run by default. Their `production`
+environment requires these non-secret environment variables:
 
 - `AZURE_CLIENT_ID`: the GitHub workload application's client ID;
 - `AZURE_TENANT_ID`: its Entra directory ID;
 - `AZURE_SUBSCRIPTION_ID`: the Azure subscription ID; and
 - `AZURE_KEY_VAULT_NAME`: the vault containing the hosted credentials.
 
-The workflow authenticates to Azure through GitHub OIDC. Key Vault stores a
-minimal `year-end-cloud-secrets` TOML value and the renewable
-`onedrive-oauth-token` JSON value; GitHub secrets are not used as a mutable
-token cache. Use the guarded bootstrap after installing Azure CLI and signing
-in locally:
+The workflows authenticate to Azure through GitHub OIDC. Key Vault stores a
+minimal `year-end-cloud-secrets` TOML value plus renewable
+`onedrive-oauth-token` and `google-drive-oauth-token` JSON values; GitHub
+secrets are not used as a mutable token cache. Use the guarded bootstrap after
+installing Azure CLI, signing in locally, and authorizing both provider clients:
 
 ```powershell
 az login
