@@ -168,17 +168,25 @@ treated as already migrated; size is retained for transfer mechanics but does
 not decide whether a file is new. Duplicate source names are reported for
 review and are not copied arbitrarily.
 
-The manual `Google Drive cloud migration` workflow runs the complete cloud
-intake sequence for the selected year: discover Google Drive candidates, copy
-eligible videos into OneDrive, and then inspect canonical OneDrive to reconcile
-Neon. Dry runs preview both stages without copying or writing to Neon. In apply
-mode the inspection runs only after migration succeeds; it updates file records
+The `Google Drive cloud migration` workflow runs the complete cloud intake
+sequence for the selected year: discover Google Drive candidates, copy eligible
+videos into OneDrive, and then inspect canonical OneDrive to reconcile Neon.
+It runs every 15 minutes from 7:07 AM through 10:52 PM in the
+`America/New_York` timezone. Scheduled runs apply both stages to the current
+year; manual runs remain dry-run by default and accept an explicit year. In
+apply mode the inspection runs only after migration succeeds; it captures both
+migrated files and videos uploaded directly to OneDrive, updates file records,
 and applies the existing safe stale-record purge. Deduplication remains outside
-this workflow because it still depends on locally verified metadata. The
-separate `OneDrive cloud inspection` workflow remains available for direct
-OneDrive submissions. Both workflows share a concurrency group and use the same
-Azure OIDC and Key Vault boundary, with renewable provider tokens kept in
-separate Key Vault secrets.
+this workflow because it still depends on locally verified metadata.
+
+The separate `OneDrive cloud inspection` workflow is unscheduled. It remains
+available for manual inspection and will become the targeted entry point for a
+OneDrive change notification. Both workflows share a concurrency group and use
+the same Azure OIDC and Key Vault boundary, with renewable provider tokens kept
+in separate Key Vault secrets. After provider webhooks are reliable, reduce the
+full migration-and-reconciliation schedule to once daily as a recovery sweep;
+Google Drive notifications will invoke the full workflow, while OneDrive
+notifications will invoke only inspection and Neon reconciliation.
 
 Repository modules follow a plan/apply/reconcile boundary. `ingest.py` reads
 source and destination metadata and produces migration candidates;

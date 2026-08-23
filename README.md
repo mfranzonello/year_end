@@ -118,14 +118,15 @@ chunks directly from Google Drive into OneDrive:
 .\.venv\Scripts\python.exe run_cloud_migrate.py --year 2026 --apply
 ```
 
-The checked-in `OneDrive cloud inspection` and `Google Drive cloud migration`
-GitHub Actions workflows are manual and dry-run by default. An applied Google
-Drive run discovers and copies missing videos, then inventories canonical
-OneDrive and reconciles Neon. The separate OneDrive workflow supports direct
-OneDrive submissions without running Google Drive migration. A shared
-concurrency lock prevents the workflows from reconciling the library at the
-same time. Their `production` environment requires these non-secret environment
-variables:
+The checked-in `Google Drive cloud migration` workflow runs every 15 minutes
+from 7:07 AM through 10:52 PM `America/New_York`. Scheduled runs apply changes:
+they discover and copy missing Google Drive videos, then inventory canonical
+OneDrive—including direct OneDrive submissions—and reconcile Neon. Manual runs
+remain dry-run by default. The separate, unscheduled `OneDrive cloud inspection`
+workflow supports manual inspection now and a targeted OneDrive webhook later.
+A shared concurrency lock prevents the workflows from reconciling the library
+at the same time. Their `production` environment requires these non-secret
+environment variables:
 
 - `AZURE_CLIENT_ID`: the GitHub workload application's client ID;
 - `AZURE_TENANT_ID`: its Entra directory ID;

@@ -274,14 +274,15 @@ server-side action/API, not solely by the interface.
 ### Cross-cutting: hosted OAuth token management
 
 The initial provider implementation uses Azure Key Vault with GitHub OIDC. The
-manual workflows read a minimal Microsoft/Google/Neon credential bundle and
+hosted workflows read a minimal Microsoft/Google/Neon credential bundle and
 separate renewable OneDrive and Google Drive tokens, then store new token
 versions only after a refresh. GitHub holds non-secret Azure identity/resource
 IDs rather than a mutable token cache.
 
 Remaining work:
 
-- validate the first dry-run and applied production workflow before scheduling;
+- monitor the scheduled Google Drive migration plus OneDrive/Neon
+  reconciliation workflow, including hosted token refresh and long transfers;
 - deploy an Azure-hosted OneDrive webhook receiver that validates and queues
   Graph notifications, debounces upload bursts, processes changes through a
   saved delta cursor, and renews its subscription before expiration;
@@ -293,10 +294,10 @@ Remaining work:
   lifetime, allowing a brief channel overlap so notifications are not missed;
 - retain manual inspection and a periodic full reconciliation as recovery paths
   after event-driven OneDrive and Google Drive processing is enabled;
+- reduce the full reconciliation schedule from every 15 minutes during the day
+  to once daily after both provider notification paths are reliable;
 - document and test owner-only OneDrive reauthorization after revocation or a
   failed refresh;
-- validate the first hosted dry-run and applied Google Drive migration plus
-  OneDrive/Neon reconciliation workflow before scheduling it;
 - extend the managed-secret pattern deliberately to Vimeo and future hosted
   providers, with provider-specific scopes and recovery paths;
 - review audit logs, secret-version retention, and rotation practices after the

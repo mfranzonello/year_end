@@ -1,6 +1,9 @@
 name: Google Drive cloud migration
 
 on:
+  schedule:
+    - cron: "7,22,37,52 7-22 * * *"
+      timezone: America/New_York
   workflow_dispatch:
     inputs:
       year:
@@ -29,7 +32,7 @@ jobs:
     environment: production
     env:
       PROJECT_YEAR: ${{ inputs.year }}
-      APPLY_CHANGES: ${{ inputs.apply }}
+      APPLY_CHANGES: ${{ github.event_name == 'schedule' || inputs.apply }}
       AZURE_KEY_VAULT_NAME: ${{ vars.AZURE_KEY_VAULT_NAME }}
 
     steps:
