@@ -277,8 +277,14 @@ Remaining work:
 - deploy an Azure-hosted OneDrive webhook receiver that validates and queues
   Graph notifications, debounces upload bursts, processes changes through a
   saved delta cursor, and renews its subscription before expiration;
+- add a Google Drive `changes.watch` channel that validates its `X-Goog-*`
+  headers, stores and advances a changes page token, filters changes to the
+  configured project hierarchy, and queues the Google Drive-to-OneDrive copy
+  workflow rather than transferring files inside the webhook request;
+- replace the Google Drive notification channel before its one-week maximum
+  lifetime, allowing a brief channel overlap so notifications are not missed;
 - retain manual inspection and a periodic full reconciliation as recovery paths
-  after event-driven OneDrive inspection is enabled;
+  after event-driven OneDrive and Google Drive processing is enabled;
 - document and test owner-only OneDrive reauthorization after revocation or a
   failed refresh;
 - extend the managed-secret pattern deliberately to Google Drive, Vimeo, and
