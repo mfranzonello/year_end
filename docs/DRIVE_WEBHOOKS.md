@@ -15,11 +15,13 @@ Function package; it does not require rebuilding Azure infrastructure.
 
 | Signal | GitHub event | Work performed |
 | --- | --- | --- |
-| Google Drive | `google_drive_changed` | Discover Google videos, migrate missing videos to OneDrive, then inspect OneDrive and reconcile Neon. |
+| Google Drive | `google_drive_changed` | Discover Google videos and migrate missing videos to OneDrive. The resulting OneDrive notification owns inspection. |
 | OneDrive | `onedrive_changed` | Inspect canonical OneDrive folders and reconcile Neon. |
 
 Both workflows share their existing concurrency group, so simultaneous batches
 queue behind one another rather than mutating the media inventory concurrently.
+Scheduled and manual Google Drive runs retain the complete migration plus
+OneDrive inspection sequence as a recovery path.
 
 ## What the project owner must configure
 

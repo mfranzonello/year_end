@@ -151,6 +151,11 @@ ignored `.secrets` directory.
   non-secret `config/webhooks.toml`. Future Microsoft product clients can select
   their own scopes and cache.
 
+Google Drive change dispatches end after migration. Those copies generate
+OneDrive changes, and the OneDrive dispatch owns canonical inspection and Neon
+reconciliation. Scheduled/manual recovery runs may still execute both stages in
+one workflow.
+
 The integrations use credentials from the local secrets mechanism and store
 renewable local tokens under `.secrets/auths/tokens/<provider>/token.json`.
 The existing clients are intentionally read-first; write/move/delete operations

@@ -129,6 +129,7 @@ jobs:
           python run_cloud_migrate.py "${arguments[@]}"
 
       - name: Reconcile OneDrive inventory with Neon
+        if: github.event_name != 'repository_dispatch'
         shell: bash
         run: |
           set -euo pipefail

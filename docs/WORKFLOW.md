@@ -185,16 +185,19 @@ OneDrive change notification. Both workflows share a concurrency group and use
 the same Azure OIDC and Key Vault boundary, with renewable provider tokens kept
 in separate Key Vault secrets. After provider webhooks are reliable, reduce the
 full migration-and-reconciliation schedule to once daily as a recovery sweep;
-Google Drive notifications will invoke the full workflow, while OneDrive
-notifications will invoke only inspection and Neon reconciliation.
+Google Drive notifications will invoke discovery and migration, while the
+resulting OneDrive notifications invoke inspection and Neon reconciliation.
 
 Both workflows accept narrowly named `repository_dispatch` events. The Azure
-webhook host emits `google_drive_changed` for the complete migration and
-reconciliation path, and `onedrive_changed` for inspection only. It batches
-bursts for 10 quiet minutes, forces a dispatch after 30 minutes of continuous
-signals, and leaves failed dispatch state durable for retry. Those timing values
-are deployment policy in `config/webhooks.toml`, not code constants. Deployment
-and provider limitations are documented in `docs/DRIVE_WEBHOOKS.md`.
+webhook host emits `google_drive_changed` for Google discovery and migration,
+and `onedrive_changed` for inspection and reconciliation. The copy therefore
+causes one downstream OneDrive inspection instead of performing it twice.
+Scheduled and manual Google runs retain the complete recovery sequence. The
+webhook host batches bursts for 10 quiet minutes, forces a dispatch after 30
+minutes of continuous signals, and leaves failed dispatch state durable for
+retry. Those timing values are deployment policy in `config/webhooks.toml`, not
+code constants. Deployment and provider limitations are documented in
+`docs/DRIVE_WEBHOOKS.md`.
 
 Repository modules follow a plan/apply/reconcile boundary. `ingest.py` reads
 source and destination metadata and produces migration candidates;
