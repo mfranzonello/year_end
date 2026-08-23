@@ -7,10 +7,10 @@ from unittest.mock import Mock, patch
 
 from pandas import DataFrame
 
-from repositories.inspect import (
+from repositories.cloud_inspect import (
     inspect_onedrive_cloud_contents, inspect_onedrive_folder_shares,
-    summarize_folders,
 )
+from repositories.inspect import summarize_folders
 
 
 class FolderOnlyInspectionTests(TestCase):
@@ -40,11 +40,11 @@ class FolderOnlyInspectionTests(TestCase):
 
 
 class OneDriveFolderShareInspectionTests(TestCase):
-    @patch("repositories.inspect.update_folder_locations_and_shares")
-    @patch("repositories.inspect.get_or_create_onedrive_share_link")
-    @patch("repositories.inspect.list_onedrive_child_folders")
-    @patch("repositories.inspect.find_onedrive_folder_id", return_value="year-id")
-    @patch("repositories.inspect.fetch_project_folders")
+    @patch("repositories.cloud_inspect.update_folder_locations_and_shares")
+    @patch("repositories.cloud_inspect.get_or_create_onedrive_share_link")
+    @patch("repositories.cloud_inspect.list_onedrive_child_folders")
+    @patch("repositories.cloud_inspect.find_onedrive_folder_id", return_value="year-id")
+    @patch("repositories.cloud_inspect.fetch_project_folders")
     def test_dry_run_matches_ids_without_creating_shares(
         self, fetch_folders, find_year, list_children, create_share, update_shares
     ):
@@ -68,12 +68,12 @@ class OneDriveFolderShareInspectionTests(TestCase):
         create_share.assert_not_called()
         update_shares.assert_not_called()
 
-    @patch("repositories.inspect.update_folder_locations_and_shares")
-    @patch("repositories.inspect.get_or_create_onedrive_share_link")
-    @patch("repositories.inspect.get_onedrive_share_link", return_value=None)
-    @patch("repositories.inspect.list_onedrive_child_folders")
-    @patch("repositories.inspect.find_onedrive_folder_id", return_value="year-id")
-    @patch("repositories.inspect.fetch_project_folders")
+    @patch("repositories.cloud_inspect.update_folder_locations_and_shares")
+    @patch("repositories.cloud_inspect.get_or_create_onedrive_share_link")
+    @patch("repositories.cloud_inspect.get_onedrive_share_link", return_value=None)
+    @patch("repositories.cloud_inspect.list_onedrive_child_folders")
+    @patch("repositories.cloud_inspect.find_onedrive_folder_id", return_value="year-id")
+    @patch("repositories.cloud_inspect.fetch_project_folders")
     def test_historical_year_gets_without_creating_missing_shares(
         self, fetch_folders, _find_year, list_children, get_share,
         create_share, update_shares
@@ -100,13 +100,13 @@ class OneDriveFolderShareInspectionTests(TestCase):
 
 
 class OneDriveCloudContentInspectionTests(TestCase):
-    @patch("repositories.inspect.purge_files")
-    @patch("repositories.inspect.fetch_known_files")
-    @patch("repositories.inspect.update_files")
-    @patch("repositories.inspect.update_folders")
-    @patch("repositories.inspect.list_onedrive_descendant_files")
-    @patch("repositories.inspect.list_onedrive_children")
-    @patch("repositories.inspect.find_onedrive_folder_id", return_value="year-id")
+    @patch("repositories.cloud_inspect.purge_files")
+    @patch("repositories.cloud_inspect.fetch_known_files")
+    @patch("repositories.cloud_inspect.update_files")
+    @patch("repositories.cloud_inspect.update_folders")
+    @patch("repositories.cloud_inspect.list_onedrive_descendant_files")
+    @patch("repositories.cloud_inspect.list_onedrive_children")
+    @patch("repositories.cloud_inspect.find_onedrive_folder_id", return_value="year-id")
     def test_applies_cloud_metadata_without_download_only_fields(
         self, find_year, list_children, list_descendants, update_folders, update_files,
         fetch_known_files, purge_files,
@@ -149,13 +149,13 @@ class OneDriveCloudContentInspectionTests(TestCase):
         update_files.assert_called_once()
         purge_files.assert_not_called()
 
-    @patch("repositories.inspect.purge_files")
-    @patch("repositories.inspect.fetch_known_files")
-    @patch("repositories.inspect.update_files")
-    @patch("repositories.inspect.update_folders")
-    @patch("repositories.inspect.list_onedrive_descendant_files")
-    @patch("repositories.inspect.list_onedrive_children")
-    @patch("repositories.inspect.find_onedrive_folder_id", return_value="year-id")
+    @patch("repositories.cloud_inspect.purge_files")
+    @patch("repositories.cloud_inspect.fetch_known_files")
+    @patch("repositories.cloud_inspect.update_files")
+    @patch("repositories.cloud_inspect.update_folders")
+    @patch("repositories.cloud_inspect.list_onedrive_descendant_files")
+    @patch("repositories.cloud_inspect.list_onedrive_children")
+    @patch("repositories.cloud_inspect.find_onedrive_folder_id", return_value="year-id")
     def test_dry_run_does_not_update_database(
         self, _find_year, list_children, list_descendants, update_folders, update_files,
         fetch_known_files, purge_files,
@@ -181,13 +181,13 @@ class OneDriveCloudContentInspectionTests(TestCase):
         update_files.assert_not_called()
         purge_files.assert_not_called()
 
-    @patch("repositories.inspect.purge_files")
-    @patch("repositories.inspect.fetch_known_files")
-    @patch("repositories.inspect.update_files")
-    @patch("repositories.inspect.update_folders")
-    @patch("repositories.inspect.list_onedrive_descendant_files", return_value=[])
-    @patch("repositories.inspect.list_onedrive_children")
-    @patch("repositories.inspect.find_onedrive_folder_id", return_value="year-id")
+    @patch("repositories.cloud_inspect.purge_files")
+    @patch("repositories.cloud_inspect.fetch_known_files")
+    @patch("repositories.cloud_inspect.update_files")
+    @patch("repositories.cloud_inspect.update_folders")
+    @patch("repositories.cloud_inspect.list_onedrive_descendant_files", return_value=[])
+    @patch("repositories.cloud_inspect.list_onedrive_children")
+    @patch("repositories.cloud_inspect.find_onedrive_folder_id", return_value="year-id")
     def test_apply_purges_database_files_absent_from_onedrive(
         self, _find_year, list_children, _list_descendants, _update_folders,
         _update_files, fetch_known_files, purge_files,

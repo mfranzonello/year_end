@@ -9,6 +9,7 @@ from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
 import json
+import os
 import secrets as secure_secrets
 import time
 import webbrowser
@@ -17,7 +18,10 @@ from common.config import read_toml
 
 
 TOKEN_CACHES = {
-    "onedrive": Path(".secrets/auths/tokens/azure/token.json"),
+    "onedrive": Path(os.environ.get(
+        "YEAR_END_ONEDRIVE_TOKEN_FILE",
+        ".secrets/auths/tokens/azure/token.json",
+    )),
 }
 
 

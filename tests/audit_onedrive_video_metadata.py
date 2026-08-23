@@ -10,7 +10,8 @@ from sqlalchemy import text
 from common.config import read_toml
 from common.secret import secrets
 from common.structure import VIDEO_EXTS
-from adobe.bridge import _XMP_END, _XMP_STARTS, _rating_from_xmp, get_resolution
+from adobe.bridge import _XMP_END, _XMP_STARTS, _rating_from_xmp
+from common.video import get_resolution
 from database.db import get_engine
 from repositories.iterate import get_media_locations
 from integrations.microsoft.onedrive.client import (

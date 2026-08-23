@@ -1,0 +1,129 @@
+name: OneDrive cloud inspection
+
+on:
+  workflow_dispatch:
+    inputs:
+      year:
+        description: Project year; leave blank for the current year
+        required: false
+        type: string
+      apply:
+        description: Apply Neon updates and purge stale file records
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: onedrive-cloud-inspection
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Inspect OneDrive
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      PROJECT_YEAR: ${{ inputs.year }}
+      APPLY_CHANGES: ${{ inputs.apply }}
+      AZURE_KEY_VAULT_NAME: ${{ vars.AZURE_KEY_VAULT_NAME }}
+      YEAR_END_SECRETS_FILE: ${{ runner.temp }}/year-end-secrets.toml
+      YEAR_END_ONEDRIVE_TOKEN_FILE: ${{ runner.temp }}/onedrive-token.json
+      ORIGINAL_ONEDRIVE_TOKEN_FILE: ${{ runner.temp }}/onedrive-token-original.json
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Validate hosted configuration
+        shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_KEY_VAULT_NAME; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing production environment variable: ${name}" >&2
+              exit 1
+            fi
+          done
+          if [[ -n "${PROJECT_YEAR}" && ! "${PROJECT_YEAR}" =~ ^[0-9]{4}$ ]]; then
+            echo "Year must be blank or a four-digit number." >&2
+            exit 1
+          fi
+
+      - name: Sign in to Azure with GitHub OIDC
+        uses: azure/login@eec3c95657c1536435858eda1f3ff5437fee8474 # v2.3.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Download cloud credentials
+        id: credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          az keyvault secret download \
+            --vault-name "${AZURE_KEY_VAULT_NAME}" \
+            --name year-end-cloud-secrets \
+            --file "${YEAR_END_SECRETS_FILE}" \
+            --encoding utf-8 \
+            --output none
+          az keyvault secret download \
+            --vault-name "${AZURE_KEY_VAULT_NAME}" \
+            --name onedrive-oauth-token \
+            --file "${YEAR_END_ONEDRIVE_TOKEN_FILE}" \
+            --encoding utf-8 \
+            --output none
+          cp "${YEAR_END_ONEDRIVE_TOKEN_FILE}" "${ORIGINAL_ONEDRIVE_TOKEN_FILE}"
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install cloud dependencies
+        run: python -m pip install --requirement requirements.txt
+
+      - name: Prepare checked-in configuration defaults
+        shell: bash
+        run: |
+          cp config/api.example.toml config/api.toml
+          cp config/drives.example.toml config/drives.toml
+
+      - name: Inspect OneDrive
+        id: inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          year="${PROJECT_YEAR:-$(date +%Y)}"
+          arguments=(--year "${year}" --dry-run)
+          if [[ "${APPLY_CHANGES}" == "true" ]]; then
+            arguments=(--year "${year}" --apply)
+          fi
+          python cloud_inspect.py "${arguments[@]}"
+
+      - name: Preserve refreshed OneDrive token
+        if: always() && steps.credentials.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import json, os; token=json.load(open(os.environ['YEAR_END_ONEDRIVE_TOKEN_FILE'], encoding='utf-8')); assert token.get('refresh_token'), 'Refusing to store a token without refresh_token'"
+          if cmp --silent "${ORIGINAL_ONEDRIVE_TOKEN_FILE}" "${YEAR_END_ONEDRIVE_TOKEN_FILE}"; then
+            echo "OneDrive token was not refreshed; no new Key Vault version is needed."
+            exit 0
+          fi
+          az keyvault secret set \
+            --vault-name "${AZURE_KEY_VAULT_NAME}" \
+            --name onedrive-oauth-token \
+            --file "${YEAR_END_ONEDRIVE_TOKEN_FILE}" \
+            --encoding utf-8 \
+            --output none

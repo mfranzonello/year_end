@@ -127,12 +127,23 @@ python main.py --cloud-only --year 2026 --apply
 ```
 
 This mode walks participant folders recursively through Microsoft Graph and
-records video file names, relative subfolders, and sizes in MiB. It preserves
-download-only metadata such as rating, embedded capture date, duration,
-resolution, and Premiere usage. `--inspect-only --cloud-only` discovers only
-the immediate participant folders. Cloud-only inspection does not yet purge
-database records for items missing from OneDrive; stale-item deletion remains
-part of the established local crawl.
+records video file names, relative subfolders, sizes in MiB, and provider video
+duration/resolution when available. Existing locally derived duration and
+resolution win over provider values because legacy containers have shown
+material Graph duration errors. Rating, embedded capture date, and Premiere
+usage still require local or Adobe-aware inspection.
+
+After a requested OneDrive year path is successfully inventoried, an applied
+cloud run treats OneDrive as authoritative and removes `project.files` records
+that are no longer present. A missing or inaccessible year path never triggers
+purging, and participant `project.folders` records are not deleted. Use
+`--inspect-only --cloud-only` to discover only immediate participant folders.
+
+Hosted inspection uses `cloud_inspect.py` through the manual GitHub Actions
+workflow. It authenticates to Azure with GitHub OIDC, reads only the minimal
+OneDrive/Neon credential bundle from Key Vault, and writes a refreshed OneDrive
+token back to the vault. Hosted runs default to dry-run and are unscheduled
+during initial validation.
 
 ### 2. Collect media from where contributors already are
 

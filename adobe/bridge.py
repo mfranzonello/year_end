@@ -12,6 +12,7 @@ from hachoir.stream.input import NullStreamError
 HachoirConfig.quiet = True
 
 from common.system import file_type, is_file_available
+from common.video import get_resolution
 
 # --- Single mmap scan ---
 
@@ -94,27 +95,6 @@ def get_video_rating(file_path:Path, local_only:bool=True) -> int|None:
         rating = _rating_from_xmp(xmp) if xmp else None
 
         return rating
-
-def get_resolution(width:int, height:int) -> str:
-    no_res = 'xx'
-    resolution_ranges = [((320, 240), 'vhs'), # VHS - 480x320
-                         ((720, 480), 'sd'), # DVD / SD - 720x480
-                         ((1280, 720), 'hd'), # SMS HD - 1280x720
-                         ((1920, 1080), 'fhd'), # full-HD blu-ray - 1920x1080
-                         ((3840, 2160), '4k'), # ultra blu-ray - 3840x2160
-                         ((7680, 4320), '8k')] # 7680 x 4320
-
-    if min(width, height) == 0 or None in (width, height):
-        resolution = no_res
-
-    else:
-        for (h_dim, v_dim), res in resolution_ranges[::-1]:
-            if (max(width, height) >= h_dim) or (min(width, height) >= v_dim):
-                resolution = res
-                break
-            resolution = res
-
-    return resolution
 
 def get_video_cv2_details(file_path:Path, local_only:bool=True) -> list[float, str]:
     no_res = 'xx'

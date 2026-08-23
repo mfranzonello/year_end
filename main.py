@@ -14,11 +14,10 @@ from database.db_project import fetch_project_folder_years
 from repositories.iterate import get_media_locations
 from repositories.migrate import dedupe_one_drive, copy_from_gdrive
 from repositories.ingest import copy_from_web, ingest_google_drive_folder_shares
-from repositories.inspect import (
+from repositories.cloud_inspect import (
     inspect_onedrive_cloud_contents, inspect_onedrive_folder_shares,
-    purge_stale_content, summarize_folders,
-    update_database_images,
 )
+from repositories.inspect import purge_stale_content, summarize_folders, update_database_images
 
 PGSECRETS = secrets['postgresql']['host']
 PGHOST = secrets['postgresql']['host']

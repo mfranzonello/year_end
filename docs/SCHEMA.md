@@ -227,9 +227,9 @@ must preserve them explicitly:
 
 | Field | Stored unit or representation | Producing code |
 | --- | --- | --- |
-| `file_size` | Mebibytes (MiB), rounded to one decimal place (`bytes / 1024^2`) | `repositories/inspect.py` |
-| `video_duration` | Whole seconds | `repositories/inspect.py`, via `adobe/bridge.py` |
-| `video_resolution` | Text resolution category such as the value returned by `adobe.bridge.get_resolution`; not a pixel count | `repositories/inspect.py`, via `adobe/bridge.py` |
+| `file_size` | Mebibytes (MiB), rounded to one decimal place (`bytes / 1024^2`) | `repositories/inspect.py` and `repositories/cloud_inspect.py` |
+| `video_duration` | Whole seconds | Local inspection or Microsoft Graph metadata through `repositories/cloud_inspect.py` |
+| `video_resolution` | Text category from `common.video.get_resolution`; not a pixel count | Local inspection or Microsoft Graph metadata |
 | `video_rating` | Integer rating from 0 through 5 | `repositories/inspect.py` |
 
 Aggregate `file_size` values in `folders_summary` and `years_summary` retain

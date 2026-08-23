@@ -11,7 +11,7 @@ household relationships help plan a fair, balanced Year in Review.
 
 ## What it does today
 
-- Reconciles local, synchronized Google Drive and OneDrive media folders.
+- Reconciles local synchronized folders and cloud-only OneDrive inventories.
 - Finds likely duplicate media and moves it to a quarantine location.
 - Records folders, files, ratings, dates, durations, resolutions, and usage in
   Neon Postgres.
@@ -27,11 +27,9 @@ household relationships help plan a fair, balanced Year in Review.
 
 ## Project direction
 
-The current media path is largely local-first: cloud folders are synchronized
-to disk, then inspected and moved locally. The project is moving toward
-cloud-first operations where possible, while keeping Adobe Bridge/Premiere and
-file-level media inspection local when they require installed desktop software
-or local media files.
+The media path supports cloud-first OneDrive inventory while retaining local
+inspection for Adobe Bridge/Premiere metadata and editing. Google Drive
+collection and cross-provider transfers remain areas of active migration.
 
 Near-term work includes cloud-native folder operations, friend/family
 onboarding, Streamlit/Vimeo improvements, and family-tree refinement. See the
@@ -103,6 +101,41 @@ Inspect the media CLI options:
 ```powershell
 .\.venv\Scripts\python.exe main.py --help
 ```
+
+Run the lightweight OneDrive-only entrypoint locally or in a hosted runner:
+
+```powershell
+.\.venv\Scripts\python.exe cloud_inspect.py --year 2026 --dry-run
+.\.venv\Scripts\python.exe cloud_inspect.py --year 2026 --apply
+```
+
+The checked-in `OneDrive cloud inspection` GitHub Actions workflow is manual
+and dry-run by default. Its `production` environment requires these non-secret
+environment variables:
+
+- `AZURE_CLIENT_ID`: the GitHub workload application's client ID;
+- `AZURE_TENANT_ID`: its Entra directory ID;
+- `AZURE_SUBSCRIPTION_ID`: the Azure subscription ID; and
+- `AZURE_KEY_VAULT_NAME`: the vault containing the hosted credentials.
+
+The workflow authenticates to Azure through GitHub OIDC. Key Vault stores a
+minimal `year-end-cloud-secrets` TOML value and the renewable
+`onedrive-oauth-token` JSON value; GitHub secrets are not used as a mutable
+token cache. Use the guarded bootstrap after installing Azure CLI and signing
+in locally:
+
+```powershell
+az login
+python -m integrations.microsoft.azure.bootstrap_key_vault `
+  --vault-name <vault-name>
+python -m integrations.microsoft.azure.bootstrap_key_vault `
+  --vault-name <vault-name> --apply
+```
+
+The first command validates Azure access and local inputs without uploading.
+The second explicitly creates new Key Vault secret versions without printing
+their contents. Run the GitHub workflow as a dry run before approving an
+applied run; scheduling remains intentionally disabled during initial rollout.
 
 The media CLI defaults to a dry run. Use `--apply` only after reviewing the
 planned work:

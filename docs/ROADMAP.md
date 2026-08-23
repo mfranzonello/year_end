@@ -266,21 +266,20 @@ server-side action/API, not solely by the interface.
 
 ### Cross-cutting: hosted OAuth token management
 
-Before GitHub Actions performs scheduled provider work beyond safe public/read
-operations, design hosted credential management for OneDrive, Google Drive,
-Vimeo, and future integrations. This is a distinct undertaking from creating
-GitHub repository secrets.
+The initial OneDrive implementation uses Azure Key Vault with GitHub OIDC. The
+manual workflow reads a minimal Microsoft/Neon credential bundle and renewable
+OneDrive token, then stores a new token version only after a refresh. GitHub
+holds non-secret Azure identity/resource IDs rather than a mutable token cache.
 
-- Use GitHub environment secrets only for bootstrap configuration and narrowly
-  scoped fallback values—not as a workflow-writable token database.
-- Choose a managed secret store for renewable OAuth state, with encryption,
-  restricted access, auditability, rotation/revocation, and recovery from a
-  failed refresh or revoked authorization.
-- Authenticate Actions to that store through GitHub OIDC and least-privilege
-  policies, avoiding a second long-lived cloud credential in the repository.
-- Define the owner-only authorization/reconnection flow, cloud-safe redirect
-  handling, required provider scopes, and a migration path from the present
-  local token caches.
+Remaining work:
+
+- validate the first dry-run and applied production workflow before scheduling;
+- document and test owner-only OneDrive reauthorization after revocation or a
+  failed refresh;
+- extend the managed-secret pattern deliberately to Google Drive, Vimeo, and
+  future hosted providers, with provider-specific scopes and recovery paths;
+- review audit logs, secret-version retention, and rotation practices after the
+  initial operating period.
 
 Start with read-only/cloud-safe operations and promote each provider to hosted
 writes only after its credentials, refresh behavior, and failure handling have

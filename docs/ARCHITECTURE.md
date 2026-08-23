@@ -151,9 +151,12 @@ remain future work and must use the external-action safeguards in `AGENTS.md`.
 They currently use only the Python standard library and therefore add no
 requirements-file dependency.
 
-Local token caching is a desktop-development mechanism, not the final hosted
-credential model. GitHub Actions will require a separately designed renewable
-token store before it performs provider writes or scheduled work.
+Local token caching remains the desktop-development mechanism. The initial
+hosted OneDrive workflow uses a separate Azure Key Vault credential boundary:
+GitHub Actions authenticates through a federated OIDC identity, downloads a
+minimal Microsoft/Neon TOML bundle and renewable OneDrive token to runner-temp,
+and writes the refreshed token back as a new vault secret version. No mutable
+OAuth token is stored in GitHub secrets.
 
 ### `scraping/`
 
@@ -209,10 +212,12 @@ publication of every local Premiere export.
 3. Shared photo albums may be downloaded through Selenium-based ingestion.
 4. OneDrive folders can be inventoried either from the local synchronized tree
    or through Microsoft Graph. Both paths update `project.folders` and
-   `project.files`; only the local path currently purges stale records.
+   `project.files`; a successful applied cloud inventory also purges stale file
+   records while preserving participant folders.
 5. Available local media receives ratings, date, duration, and resolution
    inspection. Graph-only inspection updates file names, relative subfolders,
-   and sizes while preserving fields that require downloaded media.
+   sizes, and available duration/resolution metadata. Existing local metadata
+   takes precedence where Graph has proven unreliable for legacy containers.
 6. The Premiere workflow uses reviewed media and writes usage/appearance data
    back to Neon. Streamlit then reads database summaries and relationship data.
 
@@ -253,7 +258,7 @@ forcing every operation into one hosted application:
 | Surface | Intended use | Boundary |
 | --- | --- | --- |
 | Authenticated Streamlit | Family-facing data visualizations, including the family tree, and a possible first administrative UI. | Read access and administrative roles must be distinct before broader family access. |
-| GitHub Actions | Scheduled or manually triggered cloud-native ingestion, cleanup, inventory, and reporting jobs. | Jobs use repository/environment secrets and must not attempt local browser-profile or Adobe work. `workflow_dispatch` can provide controlled manual inputs. |
+| GitHub Actions | Scheduled or manually triggered cloud-native ingestion, cleanup, inventory, and reporting jobs. | Jobs use OIDC, managed secrets, and non-secret environment configuration; they must not attempt local browser-profile or Adobe work. `workflow_dispatch` can provide controlled manual inputs. |
 | Local worker | Selenium/browser-profile collection and Adobe Bridge/Premiere operations. | A cloud service may queue or report this work, but cannot migrate the trusted local profiles or desktop applications. |
 
 An administrative GUI for actions such as adding a person or changing a profile
@@ -266,19 +271,18 @@ code.
 
 ### Hosted provider credentials
 
-GitHub environment secrets can bootstrap values such as OAuth client IDs,
-client secrets, and a manually authorized refresh token, but they are not a
-durable mutable token store. A workflow run can refresh an access token in
-memory; it cannot safely rely on silently replacing a rotating refresh token in
-GitHub secrets.
+GitHub repository and environment secrets are not used as a mutable OAuth token
+database. The initial OneDrive implementation uses Azure Key Vault. The
+`production` GitHub environment holds only non-secret Azure resource and
+identity IDs; GitHub OIDC exchanges the workflow identity for short-lived Azure
+access. The job reads its minimal Microsoft/Neon credential bundle and OneDrive
+token from the vault, then creates a new token secret version only when OAuth
+refresh changes the token cache.
 
-The target model is a managed secret store chosen with the hosted runtime. A
-GitHub Actions workflow authenticates to it with tightly scoped GitHub OIDC,
-reads the provider token record, refreshes it as needed, and atomically stores
-the resulting renewable state. The design needs explicit provider scopes,
-encryption, access policy, rotation/revocation, auditability, reauthorization,
-and a failure path that asks the project owner to reconnect rather than leaking
-or improvising credentials.
+The same design requirements apply when other hosted provider integrations are
+added: explicit scopes, encryption, least-privilege access, auditability,
+rotation/revocation, and a failure path that asks the project owner to reconnect
+rather than leaking or improvising credentials.
 
 ## Identity and permissions
 

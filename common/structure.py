@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 
 from common.config import read_toml
+from common.video import VIDEO_EXTS
 from common.locations import (detect_gdrive_base, detect_onedrive_base, detect_app_path, 
                               detect_external_drive, get_browser_data)
 
@@ -31,10 +32,6 @@ def get_scope(folder):
 _drives = read_toml('drives')
 
 # FILETYPES
-VIDEO_EXTS = {
-    ".mp4", ".mov", ".m4v", ".mkv", ".avi", ".wmv", ".flv", ".webm",
-    ".mpg", ".mpeg", ".mts", ".m2ts", ".ts", ".3gp"
-}
 PR_EXT = '.prproj'
 AE_EXT = '.aep'
 PR_LABEL_EX = '.prlabelpreset'
