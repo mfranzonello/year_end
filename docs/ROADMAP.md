@@ -274,6 +274,11 @@ holds non-secret Azure identity/resource IDs rather than a mutable token cache.
 Remaining work:
 
 - validate the first dry-run and applied production workflow before scheduling;
+- deploy an Azure-hosted OneDrive webhook receiver that validates and queues
+  Graph notifications, debounces upload bursts, processes changes through a
+  saved delta cursor, and renews its subscription before expiration;
+- retain manual inspection and a periodic full reconciliation as recovery paths
+  after event-driven OneDrive inspection is enabled;
 - document and test owner-only OneDrive reauthorization after revocation or a
   failed refresh;
 - extend the managed-secret pattern deliberately to Google Drive, Vimeo, and

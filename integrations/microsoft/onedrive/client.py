@@ -65,6 +65,45 @@ def _post(path: str, payload: dict[str, Any], *, access_token: str) -> dict[str,
         raise GraphRequestError(f"Microsoft Graph request failed: {error}") from error
 
 
+def _patch(path: str, payload: dict[str, Any], *, access_token: str) -> dict[str, Any]:
+    """PATCH a JSON payload to Microsoft Graph and return its JSON response."""
+    request = Request(
+        f"{_graph_url()}{path}",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+        method="PATCH",
+    )
+    try:
+        with urlopen(request, timeout=30) as response:
+            return json.load(response)
+    except HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise GraphRequestError(f"Microsoft Graph returned HTTP {error.code}: {body}") from error
+    except Exception as error:
+        raise GraphRequestError(f"Microsoft Graph request failed: {error}") from error
+
+
+def _delete(path: str, *, access_token: str) -> None:
+    """DELETE a Microsoft Graph resource that returns no response body."""
+    request = Request(
+        f"{_graph_url()}{path}",
+        headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
+        method="DELETE",
+    )
+    try:
+        with urlopen(request, timeout=30):
+            return
+    except HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise GraphRequestError(f"Microsoft Graph returned HTTP {error.code}: {body}") from error
+    except Exception as error:
+        raise GraphRequestError(f"Microsoft Graph request failed: {error}") from error
+
+
 def inspect_my_drive(*, force_login: bool = False) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Return root metadata and the first page of root items without changing OneDrive."""
     access_token = get_access_token("onedrive", force_login=force_login)
