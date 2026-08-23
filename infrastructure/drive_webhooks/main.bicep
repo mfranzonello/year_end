@@ -213,7 +213,6 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
     name: 'appsettings'
     properties: {
       FUNCTIONS_EXTENSION_VERSION: '~4'
-      FUNCTIONS_WORKER_RUNTIME: 'python'
       AzureWebJobsFeatureFlags: 'EnableWorkerIndexing'
       AzureWebJobsStorage__accountName: storage.name
       AzureWebJobsStorage__credential: 'managedidentity'
