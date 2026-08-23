@@ -34,7 +34,11 @@ def execute_sql(engine:Engine, sql:str, params:dict|None=None,
 
     elif isinstance(df, DataFrame):
         if not df.empty:
-            rows = df.to_dict(orient="records")
+            rows = (
+                df.astype(object)
+                .where(df.notna(), None)
+                .to_dict(orient="records")
+            )
             with engine.begin() as conn:
                 result = conn.execute(text(sql), rows)
         else:
