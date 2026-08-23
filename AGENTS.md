@@ -4,6 +4,8 @@
 
 - Preserve the author's style and build incrementally. Prefer understandable,
   focused changes over broad rewrites.
+- Open interactive browser pages in the user's external system browser, not the
+  Codex in-app browser.
 - Suggest improvements when they add clear value, but explain unfamiliar
   techniques so the author can understand and maintain the code.
 - Follow the existing folder structure. Put new modules in the appropriate
