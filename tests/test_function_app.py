@@ -16,7 +16,7 @@ class FunctionHttpAdapterTests(TestCase):
     def tearDown(self):
         function_app._store.cache_clear()
 
-    def test_http_binding_names_match_handler_parameters(self):
+    def test_trigger_binding_names_match_handler_parameters(self):
         functions = {
             item.get_function_name(): item
             for item in function_app.app.get_functions()
@@ -28,6 +28,12 @@ class FunctionHttpAdapterTests(TestCase):
                 binding for binding in bindings if binding.type == "httpTrigger"
             )
             self.assertEqual(trigger.name, "request")
+
+        timer_bindings = functions["dispatch_due_batches"].get_bindings()
+        timer_trigger = next(
+            binding for binding in timer_bindings if binding.type == "timerTrigger"
+        )
+        self.assertEqual(timer_trigger.name, "_timer")
 
     def test_onedrive_validation_echoes_token_without_queueing(self):
         request = func.HttpRequest(
