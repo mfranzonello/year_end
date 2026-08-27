@@ -16,6 +16,19 @@ class FunctionHttpAdapterTests(TestCase):
     def tearDown(self):
         function_app._store.cache_clear()
 
+    def test_http_binding_names_match_handler_parameters(self):
+        functions = {
+            item.get_function_name(): item
+            for item in function_app.app.get_functions()
+        }
+
+        for function_name in ("onedrive_webhook", "google_drive_webhook"):
+            bindings = functions[function_name].get_bindings()
+            trigger = next(
+                binding for binding in bindings if binding.type == "httpTrigger"
+            )
+            self.assertEqual(trigger.name, "request")
+
     def test_onedrive_validation_echoes_token_without_queueing(self):
         request = func.HttpRequest(
             method="POST",

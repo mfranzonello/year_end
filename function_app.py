@@ -53,7 +53,11 @@ def _http_response(result) -> func.HttpResponse:
     )
 
 
-@app.route(route="webhooks/onedrive", methods=["GET", "POST"])
+@app.route(
+    route="webhooks/onedrive",
+    methods=["GET", "POST"],
+    trigger_arg_name="request",
+)
 def onedrive_webhook(request: func.HttpRequest) -> func.HttpResponse:
     """Validate and durably acknowledge OneDrive change notifications."""
     try:
@@ -69,7 +73,11 @@ def onedrive_webhook(request: func.HttpRequest) -> func.HttpResponse:
     return _http_response(result)
 
 
-@app.route(route="webhooks/google-drive", methods=["POST"])
+@app.route(
+    route="webhooks/google-drive",
+    methods=["POST"],
+    trigger_arg_name="request",
+)
 def google_drive_webhook(request: func.HttpRequest) -> func.HttpResponse:
     """Validate and durably acknowledge Google Drive push notifications."""
     try:
