@@ -283,10 +283,7 @@ Remaining work:
 
 - monitor webhook-triggered Google Drive migration and OneDrive/Neon
   reconciliation, including hosted token refresh and long transfers;
-- activate the deployed Azure-hosted webhook receiver by deploying the final
-  GitHub Actions table-role assignment and running the provider lifecycle first
-  as a preview and then with explicit apply;
-- observe the implemented daily lifecycle safely renewing the explicit
+- observe the active daily lifecycle safely renewing the explicit
   OneDrive root subscription (with processing limited to `Videos`) and
   replacing the account-wide Google Drive `changes.watch` channel before
   expiration; renewal lead times are versioned in `config/webhooks.toml` and

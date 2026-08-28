@@ -27,25 +27,18 @@ Manual Google Drive runs retain the complete migration plus OneDrive inspection
 sequence as a recovery path. A separate daily recovery workflow is still
 planned.
 
-## What the project owner must configure
+## Active lifecycle and recovery
 
-The receiver infrastructure and code are deployed. The private GitHub App,
-verification values, GitHub OIDC identity, and receiver permissions are already
-configured. Before provider channels are registered, the remaining lifecycle
-deployment steps are:
+The receiver, GitHub App, verification values, GitHub OIDC identity, Azure Table
+role, and both provider registrations are active. The production environment
+contains the non-secret storage-account and callback-base variables used by the
+daily lifecycle.
 
-1. Add the GitHub Actions service principal object ID as
-   `automationPrincipalId` in the ignored Bicep parameter file. Preview and
-   apply the updated template. This grants that identity **Storage Table Data
-   Contributor** on the webhook storage account; it does not create a provider
-   subscription.
-2. In the GitHub `production` environment, add the non-secret variables
-   `AZURE_WEBHOOK_STORAGE_ACCOUNT` and `AZURE_WEBHOOK_BASE_URL`. The base URL is
-   the deployed Function App origin, without a trailing slash.
-3. Deploy this Session 1 code through the normal reviewed Git workflow.
-4. Run `Renew drive webhook subscriptions` manually with `apply` disabled.
-   Review the proposed OneDrive and Google actions. Then run it once with
-   `apply` enabled to create the initial provider subscriptions.
+For recovery or a deliberate callback change, run `Renew drive webhook
+subscriptions` manually with `apply` disabled and review its proposed actions.
+Run it again with `apply` enabled only after that preview is correct. The
+lifecycle creates or replaces provider registrations before persisting the new
+state, and only then attempts to remove a superseded registration.
 
 The Function's own managed identity gets only the data-plane roles needed for
 its host storage, queue/table state, telemetry, and Key Vault secret reads. It

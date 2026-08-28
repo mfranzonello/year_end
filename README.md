@@ -150,14 +150,14 @@ python -m integrations.microsoft.azure.bootstrap_key_vault `
   --vault-name <vault-name> --apply
 ```
 
-The event-driven receiver is deployed but its provider subscriptions are not
-yet active. The Azure Function validates provider notifications, stores them
+The event-driven receiver and both provider subscriptions are active. The Azure
+Function validates provider notifications, stores them
 durably, waits for a 10-minute quiet period (with a 30-minute maximum), and
 dispatches the appropriate existing workflow. Those values live in the
 checked-in, provider-neutral `config/webhooks.toml`, not in the implementation. See
 [Drive webhook deployment](docs/DRIVE_WEBHOOKS.md)
-for the remaining table-role deployment, dry-run activation, and provider-scope
-details. A separate daily workflow maintains the short-lived registrations;
+for the lifecycle, recovery procedure, and provider-scope details. A separate
+daily workflow maintains the short-lived registrations;
 the Google migration workflow has no cron schedule.
 
 The first command validates Azure access and local inputs without uploading.
