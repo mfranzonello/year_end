@@ -211,7 +211,7 @@ class AzureWebhookStore:
 
     def list_batches(self) -> list[PendingBatch]:
         """Return the small set of currently pending provider batches."""
-        entities = self._table.list_entities(
+        entities = self._table.query_entities(
             query_filter=f"PartitionKey eq '{BATCH_PARTITION}'"
         )
         return [batch_from_entity(entity) for entity in entities]

@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 from unittest import TestCase
+from unittest.mock import MagicMock
 
 from integrations.microsoft.azure.webhook_store import (
     AzureWebhookStore, batch_from_entity, batch_to_entity,
@@ -34,3 +35,17 @@ class WebhookStoreSerializationTests(TestCase):
     def test_requires_storage_configuration(self):
         with self.assertRaisesRegex(ValueError, "AzureWebJobsStorage"):
             AzureWebhookStore.from_environment({})
+
+    def test_lists_only_pending_batch_partition_with_query_api(self):
+        batch = PendingBatch(
+            "google_drive", NOW, NOW, NOW + timedelta(minutes=10), 2,
+        )
+        store = AzureWebhookStore.__new__(AzureWebhookStore)
+        store._table = MagicMock()
+        store._table.query_entities.return_value = [batch_to_entity(batch)]
+
+        self.assertEqual(store.list_batches(), [batch])
+        store._table.query_entities.assert_called_once_with(
+            query_filter="PartitionKey eq 'pending-batches'"
+        )
+        store._table.list_entities.assert_not_called()
