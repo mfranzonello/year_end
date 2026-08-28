@@ -19,6 +19,9 @@ param githubAppId string
 @description('Non-secret GitHub App installation identifier.')
 param githubAppInstallationId string
 
+@description('Object ID of the GitHub Actions service principal that renews provider subscriptions.')
+param automationPrincipalId string
+
 @description('Key Vault secret containing the GitHub App PEM private key.')
 param githubPrivateKeySecretName string = 'github-actions-dispatch-private-key'
 
@@ -109,6 +112,16 @@ resource storageTableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' =
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageTableDataContributorRoleId)
     principalId: identity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource automationStorageTableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storage.id, automationPrincipalId, storageTableDataContributorRoleId)
+  scope: storage
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageTableDataContributorRoleId)
+    principalId: automationPrincipalId
     principalType: 'ServicePrincipal'
   }
 }
@@ -231,6 +244,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
     storageBlobRole
     storageQueueRole
     storageTableRole
+    automationStorageTableRole
     keyVaultRole
     applicationInsightsRole
   ]

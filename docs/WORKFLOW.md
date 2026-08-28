@@ -192,12 +192,20 @@ Both workflows accept narrowly named `repository_dispatch` events. The Azure
 webhook host emits `google_drive_changed` for Google discovery and migration,
 and `onedrive_changed` for inspection and reconciliation. The copy therefore
 causes one downstream OneDrive inspection instead of performing it twice.
-Scheduled and manual Google runs retain the complete recovery sequence. The
+Manual Google runs retain the complete recovery sequence. The
 webhook host batches bursts for 10 quiet minutes, forces a dispatch after 30
 minutes of continuous signals, and leaves failed dispatch state durable for
 retry. Those timing values are deployment policy in `config/webhooks.toml`, not
 code constants. Deployment and provider limitations are documented in
 `docs/DRIVE_WEBHOOKS.md`.
+
+The separate `Renew drive webhook subscriptions` workflow runs daily and is
+responsible only for the short-lived provider registrations. It targets the
+configured OneDrive `Videos` folder, while Google's account-wide channel remains
+constrained by the existing configured-folder discovery logic. Manual lifecycle
+runs are previews unless `apply` is explicitly enabled; the schedule applies
+renewals and replacements using the media root and lead times from
+`config/webhooks.toml`.
 
 Repository modules follow a plan/apply/reconcile boundary. `ingest.py` reads
 source and destination metadata and produces migration candidates;

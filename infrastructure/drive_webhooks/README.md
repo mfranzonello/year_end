@@ -40,7 +40,21 @@ az deployment group create `
   --parameters $env:YEAR_END_WEBHOOK_PARAMETERS
 ```
 
-The deployment outputs both callback URLs. Keep the 15-minute reconciliation
-schedule enabled until notification delivery and subscription replacement have
-been observed successfully. Google channels must be replaced at least weekly;
-the OneDrive subscription must be renewed before its expiration.
+The deployment outputs both callback URLs. Provider-triggered processing should
+not replace the planned once-daily full reconciliation recovery run until
+notification delivery and subscription replacement have been observed
+successfully. Google channels must be replaced at least weekly; the OneDrive
+subscription must be renewed before its expiration.
+
+The template's `automationPrincipalId` is the object ID of the service
+principal used by GitHub Actions OIDC, not its application/client ID. The
+template grants that identity **Storage Table Data Contributor** so the renewal
+workflow can retain provider-neutral subscription state. It does not grant
+access to media or create provider subscriptions.
+
+After this role update is deployed, set `AZURE_WEBHOOK_STORAGE_ACCOUNT` and
+`AZURE_WEBHOOK_BASE_URL` as non-secret variables in the GitHub `production`
+environment. Run `Renew drive webhook subscriptions` once without `apply`, then
+once with `apply` after reviewing the preview. Its daily schedule maintains the
+short-lived provider registrations; renewal lead times are configured in
+`config/webhooks.toml`.

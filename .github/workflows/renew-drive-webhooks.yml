@@ -1,0 +1,169 @@
+name: Renew drive webhook subscriptions
+
+on:
+  schedule:
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Create, renew, or replace provider subscriptions
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: drive-webhook-subscriptions
+  cancel-in-progress: false
+
+jobs:
+  renew:
+    name: Reconcile provider subscriptions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      APPLY_CHANGES: ${{ github.event_name == 'schedule' || inputs.apply }}
+      AZURE_KEY_VAULT_NAME: ${{ vars.AZURE_KEY_VAULT_NAME }}
+      AZURE_WEBHOOK_STORAGE_ACCOUNT: ${{ vars.AZURE_WEBHOOK_STORAGE_ACCOUNT }}
+      AZURE_WEBHOOK_BASE_URL: ${{ vars.AZURE_WEBHOOK_BASE_URL }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Configure runner paths
+        shell: bash
+        run: |
+          echo "YEAR_END_SECRETS_FILE=${RUNNER_TEMP}/year-end-secrets.toml" >> "${GITHUB_ENV}"
+          echo "YEAR_END_ONEDRIVE_TOKEN_FILE=${RUNNER_TEMP}/onedrive-token.json" >> "${GITHUB_ENV}"
+          echo "YEAR_END_GOOGLE_DRIVE_TOKEN_FILE=${RUNNER_TEMP}/google-drive-token.json" >> "${GITHUB_ENV}"
+          echo "ORIGINAL_ONEDRIVE_TOKEN_FILE=${RUNNER_TEMP}/onedrive-token-original.json" >> "${GITHUB_ENV}"
+          echo "ORIGINAL_GOOGLE_DRIVE_TOKEN_FILE=${RUNNER_TEMP}/google-drive-token-original.json" >> "${GITHUB_ENV}"
+          echo "ONEDRIVE_CLIENT_STATE_FILE=${RUNNER_TEMP}/onedrive-client-state.txt" >> "${GITHUB_ENV}"
+          echo "GOOGLE_CHANNEL_TOKEN_FILE=${RUNNER_TEMP}/google-channel-token.txt" >> "${GITHUB_ENV}"
+
+      - name: Validate hosted configuration
+        shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          for name in \
+            AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID \
+            AZURE_KEY_VAULT_NAME AZURE_WEBHOOK_STORAGE_ACCOUNT \
+            AZURE_WEBHOOK_BASE_URL; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing production environment variable: ${name}" >&2
+              exit 1
+            fi
+          done
+          if [[ ! "${AZURE_WEBHOOK_BASE_URL}" =~ ^https:// ]]; then
+            echo "AZURE_WEBHOOK_BASE_URL must use HTTPS." >&2
+            exit 1
+          fi
+
+      - name: Sign in to Azure with GitHub OIDC
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Download renewable credentials
+        id: credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          az keyvault secret download \
+            --vault-name "${AZURE_KEY_VAULT_NAME}" \
+            --name year-end-cloud-secrets \
+            --file "${YEAR_END_SECRETS_FILE}" \
+            --encoding utf-8 \
+            --output none
+          az keyvault secret download \
+            --vault-name "${AZURE_KEY_VAULT_NAME}" \
+            --name onedrive-oauth-token \
+            --file "${YEAR_END_ONEDRIVE_TOKEN_FILE}" \
+            --encoding utf-8 \
+            --output none
+          az keyvault secret download \
+            --vault-name "${AZURE_KEY_VAULT_NAME}" \
+            --name google-drive-oauth-token \
+            --file "${YEAR_END_GOOGLE_DRIVE_TOKEN_FILE}" \
+            --encoding utf-8 \
+            --output none
+          az keyvault secret download \
+            --vault-name "${AZURE_KEY_VAULT_NAME}" \
+            --name onedrive-webhook-client-state \
+            --file "${ONEDRIVE_CLIENT_STATE_FILE}" \
+            --encoding utf-8 \
+            --output none
+          az keyvault secret download \
+            --vault-name "${AZURE_KEY_VAULT_NAME}" \
+            --name google-drive-channel-token \
+            --file "${GOOGLE_CHANNEL_TOKEN_FILE}" \
+            --encoding utf-8 \
+            --output none
+          cp "${YEAR_END_ONEDRIVE_TOKEN_FILE}" "${ORIGINAL_ONEDRIVE_TOKEN_FILE}"
+          cp "${YEAR_END_GOOGLE_DRIVE_TOKEN_FILE}" "${ORIGINAL_GOOGLE_DRIVE_TOKEN_FILE}"
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install lifecycle dependencies
+        run: python -m pip install --requirement requirements_webhooks.txt
+
+      - name: Prepare checked-in configuration defaults
+        shell: bash
+        run: |
+          cp config/api.example.toml config/api.toml
+
+      - name: Reconcile subscriptions
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_url="${AZURE_WEBHOOK_BASE_URL%/}"
+          arguments=(--dry-run)
+          if [[ "${APPLY_CHANGES}" == "true" ]]; then
+            arguments=(--apply)
+          fi
+          python run_webhook_subscriptions.py \
+            --storage-account "${AZURE_WEBHOOK_STORAGE_ACCOUNT}" \
+            --onedrive-url "${base_url}/api/webhooks/onedrive" \
+            --google-drive-url "${base_url}/api/webhooks/google-drive" \
+            --onedrive-client-state-file "${ONEDRIVE_CLIENT_STATE_FILE}" \
+            --google-channel-token-file "${GOOGLE_CHANNEL_TOKEN_FILE}" \
+            "${arguments[@]}"
+
+      - name: Preserve refreshed provider tokens
+        if: always() && steps.credentials.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import json, os; token=json.load(open(os.environ['YEAR_END_ONEDRIVE_TOKEN_FILE'], encoding='utf-8')); assert token.get('refresh_token'), 'Refusing to store a OneDrive token without refresh_token'"
+          python -c "import json, os; token=json.load(open(os.environ['YEAR_END_GOOGLE_DRIVE_TOKEN_FILE'], encoding='utf-8')); assert token.get('refresh_token'), 'Refusing to store a Google Drive token without refresh_token'"
+          if ! cmp --silent "${ORIGINAL_ONEDRIVE_TOKEN_FILE}" "${YEAR_END_ONEDRIVE_TOKEN_FILE}"; then
+            az keyvault secret set \
+              --vault-name "${AZURE_KEY_VAULT_NAME}" \
+              --name onedrive-oauth-token \
+              --file "${YEAR_END_ONEDRIVE_TOKEN_FILE}" \
+              --encoding utf-8 \
+              --output none
+          fi
+          if ! cmp --silent "${ORIGINAL_GOOGLE_DRIVE_TOKEN_FILE}" "${YEAR_END_GOOGLE_DRIVE_TOKEN_FILE}"; then
+            az keyvault secret set \
+              --vault-name "${AZURE_KEY_VAULT_NAME}" \
+              --name google-drive-oauth-token \
+              --file "${YEAR_END_GOOGLE_DRIVE_TOKEN_FILE}" \
+              --encoding utf-8 \
+              --output none
+          fi

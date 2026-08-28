@@ -10,8 +10,11 @@ The checked-in `config/webhooks.toml` policy currently specifies a 10-minute
 quiet period with a 30-minute maximum wait measured from the first notification.
 A continuing upload therefore extends the quiet period, but it cannot postpone
 reconciliation indefinitely. Both values are positive minutes, and the quiet
-period cannot exceed the maximum wait. A policy change requires redeploying the
-Function package; it does not require rebuilding Azure infrastructure.
+period cannot exceed the maximum wait. A debounce-policy change requires
+redeploying the Function package; it does not require rebuilding Azure
+infrastructure.
+The same file defines the cloud-media root (`Videos`) used for the OneDrive
+subscription target; it is separate from local mount configuration.
 
 | Signal | GitHub event | Work performed |
 | --- | --- | --- |
@@ -20,49 +23,29 @@ Function package; it does not require rebuilding Azure infrastructure.
 
 Both workflows share their existing concurrency group, so simultaneous batches
 queue behind one another rather than mutating the media inventory concurrently.
-Scheduled and manual Google Drive runs retain the complete migration plus
-OneDrive inspection sequence as a recovery path.
+Manual Google Drive runs retain the complete migration plus OneDrive inspection
+sequence as a recovery path. A separate daily recovery workflow is still
+planned.
 
 ## What the project owner must configure
 
-Do these steps after the receiver code is merged and before provider channels
-are registered:
+The receiver infrastructure and code are deployed. The private GitHub App,
+verification values, GitHub OIDC identity, and receiver permissions are already
+configured. Before provider channels are registered, the remaining lifecycle
+deployment steps are:
 
-1. Create a private GitHub App. Give it only **Contents: read and write**, install
-   it only on this repository, and generate one PEM private key. Record the App
-   ID and installation ID; neither ID is secret.
-2. Run the webhook-secret bootstrap in dry-run mode, then with `--apply`. It
-   stores the PEM key and generates two independent verification values without
-   printing any of them:
-
-   ```powershell
-   python -m integrations.microsoft.azure.bootstrap_webhook_secrets `
-     --vault-name $env:AZURE_KEY_VAULT_NAME `
-     --github-private-key-file $env:YEAR_END_GITHUB_APP_KEY
-
-   python -m integrations.microsoft.azure.bootstrap_webhook_secrets `
-     --vault-name $env:AZURE_KEY_VAULT_NAME `
-     --github-private-key-file $env:YEAR_END_GITHUB_APP_KEY `
-     --apply
-   ```
-
-3. Copy `infrastructure/drive_webhooks/main.example.bicepparam` to a local,
-   ignored parameter file. Fill in a globally unique Function App name and
-   storage account name, the existing vault name, this `owner/repository`, and
-   the GitHub App and installation IDs.
-4. Preview and deploy the Bicep template using the commands in
-   `infrastructure/drive_webhooks/README.md`. This creates a Flex Consumption
-   Function App, storage, managed identity, least-privilege role assignments,
-   and 30-day Application Insights retention. It does not deploy code or create
-   provider subscriptions.
-5. In the GitHub `production` environment, add the non-secret variable
-   `AZURE_FUNCTION_APP_NAME`. On the new Function App, grant the existing GitHub
-   deployment identity **Website Contributor**. Its existing federated
-   credential and Azure login variables can then be reused by the manual
-   `Deploy drive webhook receiver` workflow.
-6. Deploy and test both HTTPS endpoints. Only after the tests succeed, register
-   the provider subscriptions using the existing subscription helpers and the
-   verification values already in Key Vault.
+1. Add the GitHub Actions service principal object ID as
+   `automationPrincipalId` in the ignored Bicep parameter file. Preview and
+   apply the updated template. This grants that identity **Storage Table Data
+   Contributor** on the webhook storage account; it does not create a provider
+   subscription.
+2. In the GitHub `production` environment, add the non-secret variables
+   `AZURE_WEBHOOK_STORAGE_ACCOUNT` and `AZURE_WEBHOOK_BASE_URL`. The base URL is
+   the deployed Function App origin, without a trailing slash.
+3. Deploy this Session 1 code through the normal reviewed Git workflow.
+4. Run `Renew drive webhook subscriptions` manually with `apply` disabled.
+   Review the proposed OneDrive and Google actions. Then run it once with
+   `apply` enabled to create the initial provider subscriptions.
 
 The Function's own managed identity gets only the data-plane roles needed for
 its host storage, queue/table state, telemetry, and Key Vault secret reads. It
@@ -70,13 +53,11 @@ does not receive access to OneDrive, Google Drive, Neon, or media content.
 
 ## Provider scope and renewal
 
-The intended Microsoft Graph target is the configured top-level OneDrive folder;
-folder notifications cover descendants. Graph documents personal-OneDrive
-subfolder subscriptions, but the accepted resource form must still be verified
-against this account during registration. If Graph rejects the subfolder form,
-subscribe to the drive root and keep the same configured-folder filtering in
-the inspection workflow. In either case, the application itself does not search
-unrelated OneDrive content.
+The Microsoft Graph target is the configured top-level OneDrive `Videos`
+folder; folder notifications cover descendants. If this account rejects that
+subfolder subscription during the first applied run, subscribing to the drive
+root is an acceptable activation fallback because the inspection workflow still
+filters to the configured `Videos` hierarchy. The fallback is not automatic.
 
 Google Drive's `changes.watch` channel is user-wide rather than recursively
 scoped to one folder. A Google notice may therefore cause an unnecessary run,
@@ -86,9 +67,12 @@ file ancestors to a project year/person before dispatching.
 
 Google notification channels have a maximum lifetime of seven days and must be
 replaced, not renewed. OneDrive subscriptions also expire and must be renewed.
-Manual full reconciliation remains the recovery path until a separate daily
-recovery schedule is added. The Google migration workflow itself has no cron
-schedule.
+`Renew drive webhook subscriptions` runs daily at 09:17 UTC (the checked-in cron
+time),
+renews OneDrive seven days before expiration, and replaces the Google channel
+two days before expiration. Those lead times live in `config/webhooks.toml`.
+Its manual trigger is a dry run unless `apply` is explicitly enabled; scheduled
+runs apply changes. The Google migration workflow itself has no cron schedule.
 
 ## Failure behavior
 

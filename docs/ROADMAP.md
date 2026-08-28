@@ -283,22 +283,20 @@ Remaining work:
 
 - monitor webhook-triggered Google Drive migration and OneDrive/Neon
   reconciliation, including hosted token refresh and long transfers;
-- deploy the implemented Azure-hosted webhook receiver and its managed-identity
-  infrastructure; it already validates and durably queues Graph/Google signals,
-  uses a 10-minute quiet/30-minute maximum debounce, and dispatches the
-  provider-appropriate GitHub workflow without processing media in HTTP; the
-  timing policy is versioned in `config/webhooks.toml`;
-- register the implemented OneDrive subscription and Google Drive
-  `changes.watch` helpers against the deployed HTTPS endpoints, then persist and
-  advance their implemented delta/page cursors to filter changes to the
-  configured project hierarchy before dispatch;
-- replace the Google Drive notification channel before its one-week maximum
-  lifetime, allowing a brief channel overlap so notifications are not missed;
+- activate the deployed Azure-hosted webhook receiver by deploying the final
+  GitHub Actions table-role assignment and running the provider lifecycle first
+  as a preview and then with explicit apply;
+- observe the implemented daily lifecycle safely renewing the configured
+  OneDrive `Videos` subscription and replacing the account-wide Google Drive
+  `changes.watch` channel before expiration; renewal lead times are versioned in
+  `config/webhooks.toml` and replacement allows a brief overlap;
+- persist and advance Google delta/page cursors to filter account-wide notices
+  to the configured `Videos` project hierarchy before dispatch;
 - retain manual inspection and a periodic full reconciliation as recovery paths
   after event-driven OneDrive and Google Drive processing is enabled;
 - add a separate once-daily full reconciliation recovery workflow after both
-  provider notification paths are reliable; the Google migration workflow has
-  no cron schedule;
+  provider notification paths are reliable; the provider-subscription lifecycle
+  is scheduled daily, but the Google migration workflow has no cron schedule;
 - document and test owner-only OneDrive reauthorization after revocation or a
   failed refresh;
 - extend the managed-secret pattern deliberately to Vimeo and future hosted

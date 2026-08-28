@@ -132,6 +132,10 @@ environment variables:
 - `AZURE_SUBSCRIPTION_ID`: the Azure subscription ID; and
 - `AZURE_KEY_VAULT_NAME`: the vault containing the hosted credentials.
 
+The webhook lifecycle additionally uses `AZURE_WEBHOOK_STORAGE_ACCOUNT` for
+provider-neutral subscription state and `AZURE_WEBHOOK_BASE_URL` for the
+deployed HTTPS callbacks. Both are non-secret production environment variables.
+
 The workflows authenticate to Azure through GitHub OIDC. Key Vault stores a
 minimal `year-end-cloud-secrets` TOML value plus renewable
 `onedrive-oauth-token` and `google-drive-oauth-token` JSON values; GitHub
@@ -146,14 +150,15 @@ python -m integrations.microsoft.azure.bootstrap_key_vault `
   --vault-name <vault-name> --apply
 ```
 
-The event-driven layer is implemented but remains deliberately undeployed. An
-Azure Function validates provider notifications, stores them durably, waits for
-a 10-minute quiet period (with a 30-minute maximum), and dispatches the
-appropriate existing workflow. Those values live in the checked-in,
-provider-neutral `config/webhooks.toml`, not in the implementation. See
+The event-driven receiver is deployed but its provider subscriptions are not
+yet active. The Azure Function validates provider notifications, stores them
+durably, waits for a 10-minute quiet period (with a 30-minute maximum), and
+dispatches the appropriate existing workflow. Those values live in the
+checked-in, provider-neutral `config/webhooks.toml`, not in the implementation. See
 [Drive webhook deployment](docs/DRIVE_WEBHOOKS.md)
-for the owner setup, infrastructure preview, deployment, and provider-scope
-details. The Google migration workflow has no cron schedule.
+for the remaining table-role deployment, dry-run activation, and provider-scope
+details. A separate daily workflow maintains the short-lived registrations;
+the Google migration workflow has no cron schedule.
 
 The first command validates Azure access and local inputs without uploading.
 The second explicitly creates new Key Vault secret versions without printing

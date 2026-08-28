@@ -3,3 +3,10 @@
 [drive_changes.debounce]
 quiet_minutes = 10
 maximum_wait_minutes = 30
+
+[drive_changes.scope]
+media_root = "Videos"
+
+[drive_changes.subscriptions]
+onedrive_renew_before_days = 7
+google_drive_replace_before_days = 2
