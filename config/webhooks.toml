@@ -6,6 +6,7 @@ maximum_wait_minutes = 30
 
 [drive_changes.scope]
 media_root = "Videos"
+onedrive_subscription_target = "root"
 
 [drive_changes.subscriptions]
 onedrive_renew_before_days = 7

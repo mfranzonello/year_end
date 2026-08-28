@@ -11,6 +11,7 @@ from repositories.webhook_subscriptions import (
     reconcile_google_drive_channel,
     reconcile_onedrive_subscription,
 )
+from run_webhook_subscriptions import _onedrive_subscription_folder_id
 
 
 NOW = datetime(2026, 8, 27, 12, tzinfo=timezone.utc)
@@ -216,6 +217,35 @@ class GoogleDriveLifecycleTests(TestCase):
 
         self.assertEqual(result.external_id, "new-channel")
         self.assertEqual(action.action, "replaced")
+
+
+class OneDriveSubscriptionScopeTests(TestCase):
+    @patch("run_webhook_subscriptions.find_folder_id")
+    @patch("run_webhook_subscriptions.read_toml")
+    def test_uses_explicit_root_fallback(self, read_config, find_folder):
+        read_config.return_value = {
+            "drive_changes": {
+                "scope": {"onedrive_subscription_target": "root"},
+            },
+        }
+
+        self.assertIsNone(_onedrive_subscription_folder_id())
+        find_folder.assert_not_called()
+
+    @patch("run_webhook_subscriptions.find_folder_id", return_value="folder-id")
+    @patch("run_webhook_subscriptions.read_toml")
+    def test_can_target_configured_media_root(self, read_config, find_folder):
+        read_config.return_value = {
+            "drive_changes": {
+                "scope": {
+                    "media_root": "Videos",
+                    "onedrive_subscription_target": "media_root",
+                },
+            },
+        }
+
+        self.assertEqual(_onedrive_subscription_folder_id(), "folder-id")
+        find_folder.assert_called_once_with("Videos")
 
 
 if __name__ == "__main__":

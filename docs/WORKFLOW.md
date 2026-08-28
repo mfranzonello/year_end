@@ -201,11 +201,11 @@ code constants. Deployment and provider limitations are documented in
 
 The separate `Renew drive webhook subscriptions` workflow runs daily and is
 responsible only for the short-lived provider registrations. It targets the
-configured OneDrive `Videos` folder, while Google's account-wide channel remains
-constrained by the existing configured-folder discovery logic. Manual lifecycle
-runs are previews unless `apply` is explicitly enabled; the schedule applies
-renewals and replacements using the media root and lead times from
-`config/webhooks.toml`.
+explicit OneDrive root fallback required by this personal account, while both
+OneDrive processing and Google's account-wide channel remain constrained by the
+existing configured `Videos` discovery logic. Manual lifecycle runs are
+previews unless `apply` is explicitly enabled; the schedule applies renewals
+and replacements using the scope and lead times from `config/webhooks.toml`.
 
 Repository modules follow a plan/apply/reconcile boundary. `ingest.py` reads
 source and destination metadata and produces migration candidates;

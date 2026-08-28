@@ -13,8 +13,8 @@ reconciliation indefinitely. Both values are positive minutes, and the quiet
 period cannot exceed the maximum wait. A debounce-policy change requires
 redeploying the Function package; it does not require rebuilding Azure
 infrastructure.
-The same file defines the cloud-media root (`Videos`) used for the OneDrive
-subscription target; it is separate from local mount configuration.
+The same file defines the cloud-media root (`Videos`) and the explicit OneDrive
+subscription target; both are separate from local mount configuration.
 
 | Signal | GitHub event | Work performed |
 | --- | --- | --- |
@@ -53,11 +53,12 @@ does not receive access to OneDrive, Google Drive, Neon, or media content.
 
 ## Provider scope and renewal
 
-The Microsoft Graph target is the configured top-level OneDrive `Videos`
-folder; folder notifications cover descendants. If this account rejects that
-subfolder subscription during the first applied run, subscribing to the drive
-root is an acceptable activation fallback because the inspection workflow still
-filters to the configured `Videos` hierarchy. The fallback is not automatic.
+Microsoft Graph rejected an item-scoped subscription for this personal
+OneDrive. `config/webhooks.toml` therefore explicitly selects the drive root as
+the notification target. The inspection workflow still filters every resulting
+signal to the configured `Videos` hierarchy, so unrelated content is never
+inventoried. The rejected `media_root` target remains a supported configuration
+choice for accounts where Graph accepts it; fallback is never inferred silently.
 
 Google Drive's `changes.watch` channel is user-wide rather than recursively
 scoped to one folder. A Google notice may therefore cause an unnecessary run,

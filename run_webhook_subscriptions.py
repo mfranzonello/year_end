@@ -37,6 +37,28 @@ def _media_root() -> str:
     return value.strip()
 
 
+def _onedrive_subscription_folder_id() -> str | None:
+    """Resolve the configured Graph subscription target without guessing."""
+    try:
+        target = read_toml("webhooks")["drive_changes"]["scope"][
+            "onedrive_subscription_target"
+        ]
+    except (KeyError, TypeError) as error:
+        raise ValueError(
+            "config/webhooks.toml is missing "
+            "drive_changes.scope.onedrive_subscription_target"
+        ) from error
+    match target:
+        case "root":
+            return None
+        case "media_root":
+            return find_folder_id(_media_root())
+        case _:
+            raise ValueError(
+                "onedrive_subscription_target must be 'root' or 'media_root'"
+            )
+
+
 def reconcile(
     storage_account: str,
     onedrive_url: str,
@@ -50,7 +72,7 @@ def reconcile(
     store = AzureSubscriptionStore.from_account_name(storage_account)
     if apply:
         store.ensure_table()
-    folder_id = find_folder_id(_media_root())
+    folder_id = _onedrive_subscription_folder_id()
     client_state = _secret_text(
         onedrive_client_state_file, "OneDrive client state"
     )

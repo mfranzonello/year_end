@@ -286,10 +286,11 @@ Remaining work:
 - activate the deployed Azure-hosted webhook receiver by deploying the final
   GitHub Actions table-role assignment and running the provider lifecycle first
   as a preview and then with explicit apply;
-- observe the implemented daily lifecycle safely renewing the configured
-  OneDrive `Videos` subscription and replacing the account-wide Google Drive
-  `changes.watch` channel before expiration; renewal lead times are versioned in
-  `config/webhooks.toml` and replacement allows a brief overlap;
+- observe the implemented daily lifecycle safely renewing the explicit
+  OneDrive root subscription (with processing limited to `Videos`) and
+  replacing the account-wide Google Drive `changes.watch` channel before
+  expiration; renewal lead times are versioned in `config/webhooks.toml` and
+  replacement allows a brief overlap;
 - persist and advance Google delta/page cursors to filter account-wide notices
   to the configured `Videos` project hierarchy before dispatch;
 - retain manual inspection and a periodic full reconciliation as recovery paths
