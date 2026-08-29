@@ -18,7 +18,7 @@ from integrations.google.google_calendar.sync import AnnualEvent
 PERSON_A = UUID("00000000-0000-0000-0000-000000000001")
 PERSON_B = UUID("00000000-0000-0000-0000-000000000002")
 PERSON_C = UUID("00000000-0000-0000-0000-000000000003")
-MARRIAGE = UUID("00000000-0000-0000-0000-000000000004")
+UNION = UUID("00000000-0000-0000-0000-000000000004")
 
 
 def person_rows() -> DataFrame:
@@ -54,11 +54,11 @@ def person_rows() -> DataFrame:
 @patch("calendar_sync.build_tree")
 @patch("calendar_sync.fetch_persons")
 @patch("calendar_sync.fetch_display_names")
-@patch("calendar_sync.fetch_marriages")
+@patch("calendar_sync.fetch_partnerships")
 class BuildFamilyEventPlanTests(TestCase):
     def test_uses_db_family_membership_and_exact_dates(
         self,
-        fetch_marriages,
+        fetch_partnerships,
         fetch_names,
         fetch_persons,
         build_tree,
@@ -72,14 +72,15 @@ class BuildFamilyEventPlanTests(TestCase):
                 "full_name": ["Person A", "Person B", "Person C"],
             }
         )
-        fetch_marriages.return_value = DataFrame(
+        fetch_partnerships.return_value = DataFrame(
             [
                 {
-                    "marriage_id": MARRIAGE,
-                    "husband_id": PERSON_A,
-                    "wife_id": PERSON_B,
-                    "wedding_date": datetime(2001, 9, 10),
-                    "wedding_date_precision": "day",
+                    "union_id": UNION,
+                    "partner_id_1": PERSON_A,
+                    "partner_id_2": PERSON_B,
+                    "union_date": datetime(2001, 9, 10),
+                    "union_date_precision": "day",
+                    "union_type": "marriage",
                 }
             ]
         )
@@ -98,9 +99,9 @@ class BuildFamilyEventPlanTests(TestCase):
         self.assertEqual(build_tree.call_args.kwargs["include_animals"], False)
         self.assertEqual(build_tree.call_args.kwargs["include_deceased"], True)
 
-    def test_excludes_marriage_when_both_spouses_are_not_in_family(
+    def test_excludes_partnership_when_both_partners_are_not_in_family(
         self,
-        fetch_marriages,
+        fetch_partnerships,
         fetch_names,
         fetch_persons,
         build_tree,
@@ -114,14 +115,15 @@ class BuildFamilyEventPlanTests(TestCase):
                 "full_name": ["Person A", "Person B", "Person C"],
             }
         )
-        fetch_marriages.return_value = DataFrame(
+        fetch_partnerships.return_value = DataFrame(
             [
                 {
-                    "marriage_id": MARRIAGE,
-                    "husband_id": PERSON_A,
-                    "wife_id": PERSON_B,
-                    "wedding_date": datetime(2001, 9, 10),
-                    "wedding_date_precision": "day",
+                    "union_id": UNION,
+                    "partner_id_1": PERSON_A,
+                    "partner_id_2": PERSON_B,
+                    "union_date": datetime(2001, 9, 10),
+                    "union_date_precision": "day",
+                    "union_type": "marriage",
                 }
             ]
         )
@@ -185,14 +187,14 @@ class ExistingEventAuditTests(TestCase):
     ):
         desired = AnnualEvent(
             "anniversary",
-            str(MARRIAGE),
+            str(UNION),
             "Person A & Person B's Anniversary",
             date(2001, 11, 1),
         )
         private = {
             "yearEndManaged": "true",
             "sourceType": "anniversary",
-            "sourceId": str(MARRIAGE),
+            "sourceId": str(UNION),
         }
         list_managed.return_value = [
             {"extendedProperties": {"private": private}}

@@ -8,7 +8,7 @@ from collections import deque
 from graphviz import Graph
 from pandas import notnull, concat, DataFrame
 
-from database.db_family import fetch_persons, fetch_animals, fetch_parents, fetch_pets, fetch_marriages
+from database.db_family import fetch_persons, fetch_animals, fetch_parents, fetch_pets, fetch_partnerships
 from family_tree.ancestry import create_maps, get_lineage, get_ancestors_and_descendants, nearest_common_lineage, get_relatives
 from family_tree.cloudinary_lite import get_image_url
 
@@ -17,17 +17,17 @@ def get_tree_data(engine):
     animals = fetch_animals(engine)
     parents = fetch_parents(engine)
     pets = fetch_pets(engine)
-    marriages = fetch_marriages(engine)
-    return persons, animals, parents, pets, marriages
+    partnerships = fetch_partnerships(engine)
+    return persons, animals, parents, pets, partnerships
 
-def get_spouses(marriages:DataFrame) -> DataFrame:
-    spouses = concat([marriages[['husband_id', 'wife_id', 'marriage_id']].rename(columns={'husband_id': 'person_id', 'wife_id': 'spouse_id'}),
-                      marriages[['wife_id', 'husband_id', 'marriage_id']].rename(columns={'wife_id': 'person_id', 'husband_id': 'spouse_id'})])
+def get_spouses(partnerships: DataFrame) -> DataFrame:
+    spouses = concat([partnerships[['partner_id_1', 'partner_id_2', 'union_id']].rename(columns={'partner_id_1': 'person_id', 'partner_id_2': 'spouse_id'}),
+                      partnerships[['partner_id_2', 'partner_id_1', 'union_id']].rename(columns={'partner_id_2': 'person_id', 'partner_id_1': 'spouse_id'})])
     return spouses
 
 def get_unit_spouses(unit:list[UUID], spouses:DataFrame):
     unit_sorting = {u: unit.index(u) for u in unit}
-    unit_spouses = spouses.sort_values(by='person_id', key=lambda x: x.map(unit_sorting)).groupby('marriage_id').first().reset_index()
+    unit_spouses = spouses.sort_values(by='person_id', key=lambda x: x.map(unit_sorting)).groupby('union_id').first().reset_index()
     return unit_spouses
 
 def get_bloodline(member_id:UUID, relatives_found:list[UUID]):
@@ -46,7 +46,7 @@ def get_node(member_id:UUID, parents:DataFrame, pets:DataFrame, spouses:DataFram
     # has at least one parent or owner, check if married
     if potential_id in spouses['person_id'].values:
         # parent is married
-        node_id = spouses.query('person_id == @potential_id')['marriage_id'].iloc[0]
+        node_id = spouses.query('person_id == @potential_id')['union_id'].iloc[0]
     else:
         # parent is single
         node_id = potential_id
@@ -179,7 +179,7 @@ def get_animal_name(animal_s:DataFrame) -> str:
     species_name = animal_s['species'].iloc[0]
     return f'{first_name}'
 
-def sort_family_tree(founder_id:UUID, persons:DataFrame, animals:DataFrame, parents:DataFrame, pets:DataFrame, marriages:DataFrame,
+def sort_family_tree(founder_id:UUID, persons:DataFrame, animals:DataFrame, parents:DataFrame, pets:DataFrame, partnerships:DataFrame,
                      cloud_name:str) -> Graph:
     ## choose whether to allow 'rooted', 'founder', 'born', 'married', 'pet' and 'preborn'
     SHAPE_PERSON = 'rectangle'
@@ -194,7 +194,7 @@ def sort_family_tree(founder_id:UUID, persons:DataFrame, animals:DataFrame, pare
 
     ## deceased indicator?
 
-    spouses = get_spouses(marriages)
+    spouses = get_spouses(partnerships)
     
     relatives_found = get_relatives(founder_id, parents, pets, spouses)
     nodes = get_nodes(persons, animals, parents, pets, spouses)
@@ -232,8 +232,8 @@ def sort_family_tree(founder_id:UUID, persons:DataFrame, animals:DataFrame, pare
             # add nodes for weddings after first spouse
             if member_id in unit_spouses['person_id'].values: # <- only need to add only_once
                 spouse = spouses.query('person_id == @member_id')
-                marriage_id = spouses['marriage_id'].iloc[0]
-                subtree_a.node(str(marriage_id), **hidden_attributes)
+                union_id = spouses['union_id'].iloc[0]
+                subtree_a.node(str(union_id), **hidden_attributes)
 
                 ### consider adding spouses here
                 # # spouse_id = spouses['spouse_id'].iloc[0]
@@ -243,28 +243,28 @@ def sort_family_tree(founder_id:UUID, persons:DataFrame, animals:DataFrame, pare
 
             # add nodes for weddings after first spouse
             if member_id in unit_spouses['person_id'].values: # <- only need to add only_once
-                marriage_id = unit_spouses.query('person_id == @member_id')['marriage_id'].iloc[0]
-                subtree_a.node(str(marriage_id), **hidden_attributes)
+                union_id = unit_spouses.query('person_id == @member_id')['union_id'].iloc[0]
+                subtree_a.node(str(union_id), **hidden_attributes)
 
             subtree.subgraph(subtree_a)
             subtree.subgraph(subtree_b)
 
-        # add edges for marriages and siblings
+        # add edges for partnerships and siblings
         for i, member_id in enumerate(unit[:-1]):
 
             ### change to just spouses
             if member_id in unit_spouses['person_id'].values: #<- only do this for the first spouse
 
                 ### consider dropping this for below
-                marriage_id = unit_spouses.query('person_id == @member_id')['marriage_id'].iloc[0]
-                subtree.edge(str(member_id), str(marriage_id))
-                subtree.edge(str(marriage_id), str(unit[i+1]))
+                union_id = unit_spouses.query('person_id == @member_id')['union_id'].iloc[0]
+                subtree.edge(str(member_id), str(union_id))
+                subtree.edge(str(union_id), str(unit[i+1]))
 
                 ### consider this instead, if in-laws are not in unit
                 # # spouse = spouses.query('person_id == @member_id')
-                # # spouse_id, marriage_id = spouse[['spouse_id', 'marriage_id']].iloc[0]
-                # # subtree.edge(str(member_id), str(marriage_id))
-                # # subtree.edge(str(marriage_id), str(spouse_id))
+                # # spouse_id, union_id = spouse[['spouse_id', 'union_id']].iloc[0]
+                # # subtree.edge(str(member_id), str(union_id))
+                # # subtree.edge(str(union_id), str(spouse_id))
                 # # subtree.edge(str(spouse_id), str(unit[i+1]), style='invis')
 
             else:
@@ -297,8 +297,8 @@ def sort_family_tree(founder_id:UUID, persons:DataFrame, animals:DataFrame, pare
     return tree
 
 def create_tree(engine, founder_id:UUID, cloud_name:str):
-    persons, animals, parents, pets, marriages = get_tree_data(engine)
+    persons, animals, parents, pets, partnerships = get_tree_data(engine)
 
-    tree = sort_family_tree(founder_id, persons, animals, parents, pets, marriages, cloud_name)
+    tree = sort_family_tree(founder_id, persons, animals, parents, pets, partnerships, cloud_name)
 
     return tree

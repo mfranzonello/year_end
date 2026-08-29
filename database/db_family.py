@@ -34,16 +34,18 @@ def fetch_pets(engine:Engine) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-def fetch_marriages(engine:Engine) -> DataFrame:
-    sql = f'''SELECT husband_id, wife_id, marriage_id,
-    wedding_date, wedding_date_precision
-    FROM marriages
+def fetch_partnerships(engine: Engine) -> DataFrame:
+    """Return pairwise marriage and civil-union records for family consumers."""
+    sql = '''SELECT union_id, partner_id_1, partner_id_2,
+    union_date, union_date_precision, union_type
+    FROM tree.partnerships
     ;'''
     return read_sql(engine, sql)
 
-def fetch_spouses(engine:Engine) -> DataFrame:
-    sql = f'''SELECT person_id, spouse_id, marriage_id
-    FROM tree.marrieds
+def fetch_partners(engine: Engine) -> DataFrame:
+    """Return directional partner relationships for tree traversal."""
+    sql = '''SELECT person_id, spouse_id, union_id, union_type
+    FROM tree.partners
     ;'''
     return read_sql(engine, sql)
 

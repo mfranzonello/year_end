@@ -17,7 +17,7 @@ from sqlalchemy import Engine
 from common.secret import secrets
 from database.db import get_engine
 from database.db_display import fetch_display_names
-from database.db_family import fetch_founder, fetch_marriages, fetch_persons
+from database.db_family import fetch_founder, fetch_partnerships, fetch_persons
 from database.db_messaging import upsert_calendar_event_mappings
 from family_tree.ancestry import build_tree
 from integrations.google.google_calendar.sync import AnnualEvent, sync_annual_events
@@ -96,7 +96,7 @@ def build_family_event_plan(
     *,
     as_of: date | None = None,
 ) -> FamilyEventPlan:
-    """Build exact-date events for DB-defined family members and marriages."""
+    """Build exact-date events for DB-defined family members and partnerships."""
     cutoff = as_of or date.today()
     founder_id = fetch_founder(engine)
     family = build_tree(
@@ -138,41 +138,44 @@ def build_family_event_plan(
             )
         )
 
-    marriages = fetch_marriages(engine)
-    marriages = marriages[
-        marriages["husband_id"].isin(family_ids)
-        & marriages["wife_id"].isin(family_ids)
+    partnerships = fetch_partnerships(engine)
+    partnerships = partnerships[
+        partnerships["partner_id_1"].isin(family_ids)
+        & partnerships["partner_id_2"].isin(family_ids)
     ]
-    for marriage in marriages.itertuples(index=False):
-        marriage_id = str(marriage.marriage_id)
-        wedding_date = _as_date(marriage.wedding_date)
-        if marriage.wedding_date_precision != "day" or wedding_date is None:
-            skipped.append(SkippedFamilyEvent("anniversary", marriage_id, "wedding date is not day-precise"))
+    for partnership in partnerships.itertuples(index=False):
+        union_id = str(partnership.union_id)
+        union_date = _as_date(partnership.union_date)
+        if partnership.union_date_precision != "day" or union_date is None:
+            skipped.append(SkippedFamilyEvent("anniversary", union_id, "union date is not day-precise"))
             continue
-        if wedding_date > cutoff:
-            skipped.append(SkippedFamilyEvent("anniversary", marriage_id, "wedding date is in the future"))
+        if union_date > cutoff:
+            skipped.append(SkippedFamilyEvent("anniversary", union_id, "union date is in the future"))
             continue
 
-        spouses = [people_by_id.loc[marriage.husband_id], people_by_id.loc[marriage.wife_id]]
+        partners = [
+            people_by_id.loc[partnership.partner_id_1],
+            people_by_id.loc[partnership.partner_id_2],
+        ]
         death_limits = []
         death_error = None
-        for spouse in spouses:
-            limit, error = _death_limit(spouse)
+        for partner in partners:
+            limit, error = _death_limit(partner)
             if error:
                 death_error = error
                 break
             if limit is not None:
                 death_limits.append(limit)
         if death_error:
-            skipped.append(SkippedFamilyEvent("anniversary", marriage_id, death_error))
+            skipped.append(SkippedFamilyEvent("anniversary", union_id, death_error))
             continue
 
         events.append(
             AnnualEvent(
                 "anniversary",
-                marriage_id,
-                f"{spouses[0].full_name} & {spouses[1].full_name}'s Anniversary",
-                wedding_date,
+                union_id,
+                f"{partners[0].full_name} & {partners[1].full_name}'s Anniversary",
+                union_date,
                 min(death_limits) if death_limits else None,
             )
         )

@@ -6,7 +6,7 @@ This document is a curated map of the Neon Postgres database used by Year End
 and the family-tree work. It records database structure and application-facing
 relationships, not family records, credentials, tokens, or database exports.
 
-The inventory was verified against the primary `main` branch on 2026-08-15 via
+The inventory was verified against the primary `main` branch on 2026-08-29 via
 the connected Neon Postgres integration. It is intentionally not a raw DDL
 dump: migrations and database changes must update this document when they alter
 an application-facing contract.
@@ -32,8 +32,8 @@ an application-facing contract.
 erDiagram
   PERSONS ||--o{ PARENTS : "is parent of"
   PERSONS ||--o{ PARENTS : "is child of"
-  PERSONS ||--o{ MARRIAGES : "husband role"
-  PERSONS ||--o{ MARRIAGES : "wife role"
+  PERSONS ||--o{ UNION_MEMBERS : "participates in"
+  UNIONS ||--|{ UNION_MEMBERS : "has two members"
   ANIMALS ||--o{ PETS : "is pet"
   PERSONS ||--o{ PETS : "is owner"
   PERSONS ||--o{ CONTACTS : "has contact record"
@@ -102,29 +102,24 @@ selection/rule rather than discarding additional relationship data. A deferred
 trigger could enforce a maximum of two only if that restricted data policy is
 deliberately chosen.
 
-### `marriages`
+### `unions` and `union_members`
 
-Marriage record with `marriage_id`, `husband_id`, `wife_id`, `wedding_date`,
-and `wedding_date_precision`. The current schema encodes spouse roles in column
-names and has a primary key on `marriage_id`.
+`unions` is the provider-neutral pair-relationship record. It has `union_id`,
+`union_date`, `union_date_precision`, `union_type`, `last_name_person_id`, and
+`last_name_hyphen`. Current union types are `marriage`, `civil`, and `friends`.
+The optional last-name fields describe presentation behavior without assigning
+sex-specific partner roles.
 
-This is a known database-modernization candidate. A future model could use a
-`unions` record (`union_id`, type, start/end dates, and date precision) with a
-`union_participants` junction table linking exactly two `person_id` values to
-each union. That makes partner order/sex irrelevant, supports a broader set of
-pair relationships, and makes a marriage-only spouse view a simple derived
-interface.
+`union_members` links each union to its people through `person_id` and
+`union_id`. Its composite primary key is `(person_id, union_id)`, both columns
+have foreign keys to their parent records, and a deferred constraint trigger
+enforces the cross-row membership limit at transaction commit. Code that
+creates a union must create the union and both memberships in one transaction.
 
-The junction table needs a composite primary key on `(union_id, person_id)` to
-prevent duplicate participants. The "exactly two" cardinality is a cross-row
-rule and cannot be safely expressed with a normal `CHECK`; enforce it with a
-deferred constraint trigger that validates affected unions at transaction
-commit, including a newly created union with zero participants. Creation and
-migration must insert the union and both participants in one transaction.
-
-Do not alter the existing model without a migration plan for the
-`tree.marrieds` view and every dependent consumer, a parallel derived-view
-comparison, and validation of the end-date/relationship-type semantics.
+Consumers should use `tree.partnerships` for one row per marriage or civil
+union, `tree.partners` for directional partner traversal, and the corresponding
+friend views for friendship relationships. They must not infer identity or
+roles from partner order.
 
 ### `animals` and `pets`
 
@@ -142,10 +137,6 @@ a semantic question for a later review, not a reason to change its cardinality.
 
 ### Other `public` objects
 
-- `friendships` records person-to-person friendship relationships. It currently
-  contains zero rows. Its nullable ordered pair is a less normalized predecessor
-  of the proposed `unions`/`union_participants` model; if pairwise friendship
-  becomes a union type, retire it only after a full database dependency audit.
 - `display_names` is the display-facing view used by dashboards and profile
   image workflows.
 - `founder_id`, `generation_to_text`, and `suffix_to_text` are helper
@@ -157,7 +148,12 @@ a semantic question for a later review, not a reason to change its cardinality.
 
 - `members`: family/tree membership attributes, dates, member type, and related
   data used by `family_tree.ancestry`.
-- `marrieds`: spouse-pair projection used by relationship traversal.
+- `partnerships`: one row per `marriage` or `civil` union, with
+  `partner_id_1`, `partner_id_2`, union date/precision, and union type.
+- `partners`: directional partner projection with `person_id`, `spouse_id`,
+  `union_id`, and union type, used by relationship traversal.
+- `friendships` and `friends`: corresponding pairwise and directional
+  projections for `friends` unions.
 - `households` and `clans`: current and birth/household grouping for display and
   representation logic.
 - `heads`, `apexes`, and `nodes`: derived structural views used by tree layout
@@ -287,9 +283,9 @@ retain seconds unless a consuming query or display converts them.
 - `templates`: an initial project-year message-template scaffold. Its content,
   versioning, and message-purpose fields still need to be designed before the
   drafting workflow depends on it.
-- `calendar_events`: maps exactly one `person_id` birthday or `marriage_id`
+- `calendar_events`: maps exactly one `person_id` birthday or `union_id`
   anniversary to one opaque recurring-master `external_event_id`. Partial
-  uniqueness rules permit at most one mapping per person or marriage, while the
+  uniqueness rules permit at most one mapping per person or union, while the
   external ID is also unique. Event titles, dates, and recurrence rules remain
   live derivations from the family record rather than duplicated state.
 
@@ -327,7 +323,7 @@ historical sender address into a current contact method.
 | `repositories/assemble.py`, `compile.py` | `project`, `config`, and `publishing` |
 | `scraping/`, `repositories/ingest.py` | `ingestion` source and album views |
 | Streamlit `pages/` | `project` summary/appearance views, `tree` views, `public.display_names`, and `config` enums |
-| `family_tree/` | `public` relationship tables plus `tree` membership/household/spouse views |
+| `family_tree/` | `public` relationship tables plus `tree` membership, household, and partner views |
 | Future onboarding/reference API | `public`, `tree`, and `messaging`; must use scoped access controls |
 
 ## Documentation and migration rules
@@ -350,5 +346,5 @@ historical sender address into a current contact method.
   eventually support multiple typed contact methods and history?
 - Should `project.folder_locations` enforce one current location per folder and
   repository, or deliberately retain multiple historical locations?
-- Which relationship events beyond marriage should the future model capture,
-  such as separation/divorce, remarriage, and partnership dates?
+- Should unions eventually represent end dates or statuses such as separation,
+  divorce, or dissolution, and how should those affect tree and Calendar views?

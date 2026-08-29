@@ -57,7 +57,7 @@ def upsert_calendar_event_mappings(
     engine: Engine,
     results: Iterable[SyncResult],
 ) -> int:
-    """Persist verified recurring-master IDs for person or marriage sources."""
+    """Persist verified recurring-master IDs for person or union sources."""
     mapped = 0
     with engine.begin() as connection:
         for result in results:
@@ -84,12 +84,12 @@ def upsert_calendar_event_mappings(
                     statement = text(
                         """
                         INSERT INTO messaging.calendar_events (
-                            marriage_id, external_event_id, last_verified_at
+                            union_id, external_event_id, last_verified_at
                         )
                         VALUES (
                             CAST(:source_id AS uuid), :external_event_id, CURRENT_TIMESTAMP
                         )
-                        ON CONFLICT (marriage_id) WHERE marriage_id IS NOT NULL
+                        ON CONFLICT (union_id) WHERE union_id IS NOT NULL
                         DO UPDATE SET
                             external_event_id = EXCLUDED.external_event_id,
                             last_verified_at = CURRENT_TIMESTAMP

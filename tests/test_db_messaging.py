@@ -8,12 +8,12 @@ from integrations.google.google_calendar.sync import SyncResult
 
 
 class CalendarEventMappingTests(TestCase):
-    def test_persists_person_and_marriage_master_ids(self):
+    def test_persists_person_and_union_master_ids(self):
         engine = MagicMock()
         connection = engine.begin.return_value.__enter__.return_value
         results = [
             SyncResult(("birthday", "person-id"), "created", "birthday-master"),
-            SyncResult(("anniversary", "marriage-id"), "updated", "anniversary-master"),
+            SyncResult(("anniversary", "union-id"), "updated", "anniversary-master"),
             SyncResult(("birthday", "stale-person"), "stale", "stale-master"),
         ]
 

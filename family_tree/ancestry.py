@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from pandas import concat, DataFrame, isna, notna
 from sqlalchemy import Engine
 
-from database.db_family import fetch_members, fetch_parents, fetch_pets, fetch_spouses
+from database.db_family import fetch_members, fetch_parents, fetch_partners, fetch_pets
 
 def get_member_data(engine:Engine) -> DataFrame:
     members = fetch_members(engine)
@@ -14,7 +14,7 @@ def get_member_data(engine:Engine) -> DataFrame:
 def get_map_data(engine:Engine) -> tuple[DataFrame, DataFrame, DataFrame]:
     parents = fetch_parents(engine)
     pets = fetch_pets(engine)
-    spouses = fetch_spouses(engine)
+    spouses = fetch_partners(engine)
     return parents, pets, spouses
 
 def create_maps(parents:DataFrame, pets:DataFrame, spouses:DataFrame) -> tuple[dict, dict, dict]:
