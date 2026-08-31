@@ -4,9 +4,9 @@ from datetime import date, timedelta
 import streamlit as st
 
 from database.db import get_engine
-from database.db_display import fetch_display_names, fetch_member_information
+from database.db_display import fetch_member_information
 from database.db_adobe import fetch_timeline_years, fetch_actor_spans, fetch_markers
-from database.db_family import fetch_founder, fetch_members
+from database.db_family import fetch_founder
 from charting.charts import timeline_chart
 from charting.general import set_sidebar, plot_altair_chart
 from family_tree.ancestry import build_tree

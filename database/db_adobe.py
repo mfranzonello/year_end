@@ -63,7 +63,7 @@ def fetch_timeline_years(engine:Engine) -> DataFrame:
 def fetch_actor_spans(engine:Engine, year:int) -> DataFrame:
     sql = f'''
     SELECT member_id, start_time, end_time, span
-    FROM project.appearance_spans
+    FROM dashboard.appearance_spans
     WHERE project_year = {year}
     ;'''
     return read_sql(engine, sql)

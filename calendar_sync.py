@@ -107,7 +107,7 @@ def build_family_event_plan(
         include_deceased=True,
     )
     family_ids = set(family["member_id"])
-    persons = _person_names(fetch_persons(engine), fetch_display_names(engine))
+    persons = _person_names(fetch_persons(engine), fetch_display_names(engine, schema_name='dashboard'))
     persons = persons[persons["person_id"].isin(family_ids)]
     if persons["full_name"].isna().any():
         raise ValueError("A family person is missing a display name")

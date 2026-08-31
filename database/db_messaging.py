@@ -16,12 +16,12 @@ def fetch_kickoff_folder_links(engine: Engine, project_year: int):
         SELECT DISTINCT
             folders.person_id,
             contacts.email_address,
-            display_names.full_name,
+            dashboard.display_names.full_name,
             repositories.repository_name,
             folder_locations.is_canonical,
             shares.share_url
         FROM project.folders AS folders
-        JOIN public.display_names AS display_names
+        JOIN dashboard.display_names AS display_names
           ON display_names.member_id = folders.member_id
         JOIN messaging.contacts AS contacts
           ON contacts.person_id = folders.person_id

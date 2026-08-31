@@ -522,7 +522,7 @@ def summarize_folders(
         
 def update_database_images(engine:Engine, cloud_name:str, api_key:str, api_secret:str, dry_run=False):
     configure_cloud(cloud_name, api_key, api_secret)
-    display_names = fetch_display_names(engine)
+    display_names = fetch_display_names(engine, schema_name='dashboard')
 
     if not dry_run:
         fill_in_temp_pictures(display_names)
