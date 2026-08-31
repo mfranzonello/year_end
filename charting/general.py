@@ -2,6 +2,8 @@ from pathlib import Path
 
 import streamlit as st
 
+from streamlit_auth import current_identity, render_account_controls
+
 pages = [('yir_count', 'YIR Status'),
          ('yir_growth', 'YIR Growth'),
          ('yir_time', 'YIR Timeline'),
@@ -11,12 +13,21 @@ existing_pages = [(page, n) for (p, n) in pages if (page := f'pages/{p}.py') and
 # set up page
 def set_sidebar():
     st.set_page_config(page_title='Franzonello Family')
+    identity = current_identity()
     with st.sidebar:
         st.page_link('display.py', label='Home')
         for page_py, page_name in existing_pages:
             st.page_link(page_py, label=page_name)
+        if identity.is_admin:
+            st.page_link(
+                'pages/admin.py',
+                label='Administration',
+                icon=':material/admin_panel_settings:',
+            )
+        st.divider()
+        render_account_controls(identity)
 
 # plot altair chart
 def plot_altair_chart(chart):
     if chart:
-        st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart)

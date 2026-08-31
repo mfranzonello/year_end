@@ -96,6 +96,16 @@ Start the dashboard:
 .\.venv\Scripts\streamlit.exe run display.py
 ```
 
+The public dashboards remain available without signing in. Administrator access
+uses Streamlit's OpenID Connect support and an explicit owner allowlist. Copy the
+`[auth]` and `[authorization]` sections from
+`.streamlit/secrets.example.toml` into the ignored
+`.streamlit/secrets.toml`, configure the OAuth client for the environment's
+`/oauth2callback` URL, and start with an empty `admin_subjects` list. After the
+owner signs in, the sidebar displays that account's stable authorization
+subject; add that value to `admin_subjects` and restart the app. Email addresses
+are deliberately not used as authorization identifiers.
+
 Inspect the media CLI options:
 
 ```powershell

@@ -19,7 +19,7 @@ database operations; Adobe Bridge and Premiere remain local-only.
 | --- | --- | --- | --- |
 | Media lifecycle CLI | `main.py` | Copy, inspect, deduplicate, purge, and summarize submitted media; update profile images. | Primarily local today. |
 | Premiere/audio CLI | `compile.py` | Prepare review projects, import rated clips, set labels, record appearances/chapters, and obtain music/captions. | Local-only; depends on Adobe/Premiere and local files. |
-| Streamlit app | `display.py`, `pages/` | Family-facing dashboard home, YIR status, growth, timeline, and the future relationship explorer. | Cloud-capable; authentication is a future requirement. |
+| Streamlit app | `display.py`, `pages/` | Anonymous family-facing dashboards plus OIDC-authenticated, owner-authorized administration. | Cloud-capable; administrative actions require server-side authorization. |
 | Tree exploration | `tree.py` | Exploratory developer script for inspecting relationships and resolving Graphviz layout issues; not a long-term CLI. | Local/developer tool. |
 | Provider checks | `tests/integration/check_onedrive.py`, `tests/integration/check_google_drive.py` | Explicit OAuth and read-only connectivity checks. | Local OAuth bootstrap. |
 | Local scratch | `test.py` | Ignored, disposable database checks. | Local only. |
