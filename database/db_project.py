@@ -10,7 +10,7 @@ from database.db import read_sql, execute_sql, build_values
 def fetch_project_years(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT DISTINCT project_year
-    FROM project.folders_summary
+    FROM dashboard.folders_summary
     ORDER BY project_year ASC
     ;'''
     return read_sql(engine, sql)
@@ -20,7 +20,7 @@ def fetch_folder_summaries(engine:Engine, year:int) -> DataFrame:
     SELECT project_year, folder_name, media_type, full_name, member_id,
     video_count, video_duration, file_size,
     rating_count, resolution_count
-    FROM project.folders_summary
+    FROM dashboard.folders_summary
     WHERE project_year = {year}
     ;'''
     return read_sql(engine, sql)
@@ -174,7 +174,7 @@ def fetch_years_summary(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT project_year, total_folders, total_videos, total_duration, total_file_size,
     video_resolutions, video_status 
-    FROM project.years_summary
+    FROM dashboard.years_summary
     ;'''
     return read_sql(engine, sql)
 
