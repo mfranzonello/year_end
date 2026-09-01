@@ -15,8 +15,8 @@ def fetch_display_names(engine:Engine, schema_name='demo') -> DataFrame:
 def fetch_member_information(engine:Engine, schema_name='demo', cut_date=date.today()) -> DataFrame:
     sql = f'''
     SELECT member_id, full_name,
-    CASE WHEN clan_date_1 IS NULL or clan_date_1 <= '{cut_date}'::date THEN clan_id_1 ELSE clan_id_2 END AS clan_id,
-    CASE WHEN clan_date_1 IS NULL or clan_date_1 <= '{cut_date}'::date THEN clan_name_1 ELSE clan_name_2 END AS clan_name,
+    CASE WHEN clan_date IS NULL or clan_date <= '{cut_date}'::date THEN clan_id_1 ELSE clan_id_2 END AS clan_id,
+    CASE WHEN clan_date IS NULL or clan_date <= '{cut_date}'::date THEN clan_name_1 ELSE clan_name_2 END AS clan_name,
     birth_date, birth_date_precision, death_date, death_date_precision,
     entry_date, entry_date_precision, member_type
     birth_date, birth_date_precision, death_date, death_date_precision,
