@@ -27,7 +27,7 @@ def fetch_member_information(engine:Engine, schema_name='demo', cut_date=date.to
 
 def fetch_relationships_summary(engine:Engine, schema_name='demo') -> DataFrame:
     sql = f'''
-    SELECT member_id_1, member_id_2, relationship_type,
+    SELECT member_id_1, member_id_2, relation_type,
     entry_date, entry_date_precision, relationship
     FROM {schema_name}.relationships_summary
     ;'''

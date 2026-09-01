@@ -136,11 +136,11 @@ def build_tree_dashboard(members_df, relationships_df, founder_id:UUID, include_
     members = members_df[['member_id', 'member_type', 'birth_date', 'birth_date_precision',
                           'death_date', 'death_date_precision', 'entry_date', 'entry_date_precision']]
 
-    parents_q = relationships_df.query("relationship_type == 'child'")
+    parents_q = relationships_df.query("relation_type == 'child'")
     parents = parents_q.rename(columns={'member_id_1': 'child_id', 'member_id_2': 'parent_id'})
-    pets_q = relationships_df.query("relationship_type == 'pet'")
+    pets_q = relationships_df.query("relation_type == 'pet'")
     pets = pets_q.rename(columns={'member_id_1': 'pet_id', 'member_id_2': 'owner_id'})
-    spouses_q = relationships_df.query("relationship_type == 'spouse'")
+    spouses_q = relationships_df.query("relation_type == 'spouse'")
     spouses = concat([spouses_q.rename(columns={'member_id_1': 'person_id', 'member_id_2': 'spouse_id'}),
                       spouses_q.rename(columns={'member_id_2': 'person_id', 'member_id_1': 'spouse_id'})])
 
