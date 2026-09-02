@@ -6,7 +6,7 @@ This document is a curated map of the Neon Postgres database used by Year End
 and the family-tree work. It records database structure and application-facing
 relationships, not family records, credentials, tokens, or database exports.
 
-The inventory was verified against the primary `main` branch on 2026-08-29 via
+The inventory was verified against the primary `main` branch on 2026-09-02 via
 the connected Neon Postgres integration. It is intentionally not a raw DDL
 dump: migrations and database changes must update this document when they alter
 an application-facing contract.
@@ -18,6 +18,8 @@ an application-facing contract.
 | `public` | Core people, animals, and direct relationship records. | Documented here. |
 | `tree` | Relationship-derived views used for family membership and tree traversal. | Documented here. |
 | `project` | Year-in-Review folders, files, sources, shares, appearances, and summaries. | Documented here. |
+| `dashboard` | Read-only application views and functions backed by the authoritative family/project data. | Documented here. |
+| `demo` | Synthetic tables matching the public Streamlit data contract without exposing family data. | Documented at a domain level. |
 | `config` | Media and Adobe/project reference data. | Documented at a domain level. |
 | `ingestion` | Submission-source, browser, repository, album, and contact metadata. | Documented at a domain level. |
 | `publishing` | Reviews and their music/publishing metadata. | Documented at a domain level. |
@@ -75,7 +77,7 @@ Current database checks constrain birth precision to `day`, `month`, `year`,
 the existing `sex` field to `m` or `f`. These are current physical constraints,
 not an endorsement of their suitability for future family modeling.
 
-When `uses_middle` is true, `public.display_names` intentionally appends only
+When `uses_middle` is true, `dashboard.display_names` intentionally appends only
 the first semicolon-delimited value from `middle_names` to the displayed given
 name. This is a presentation preference used by all consumers of the shared
 view, including Calendar event titles.
@@ -137,8 +139,6 @@ a semantic question for a later review, not a reason to change its cardinality.
 
 ### Other `public` objects
 
-- `display_names` is the display-facing view used by dashboards and profile
-  image workflows.
 - `founder_id`, `generation_to_text`, and `suffix_to_text` are helper
   functions used by the relationship/display layer.
 
@@ -166,6 +166,32 @@ The current `tree` view definitions have no direct reference to the configured
 founder. Founder selection remains outside this schema, allowing tree structure
 to remain relationship-agnostic; trace indirect helper/view dependencies before
 changing the `nello.founder` configuration.
+
+## `dashboard` and `demo`: application-facing data contract
+
+Streamlit reads application-facing relations from either `dashboard` or `demo`.
+The `dashboard` schema contains views over authoritative records; `demo`
+contains synthetic tables with the matching columns needed for public pages.
+Public application code must not combine the two schemas in one request.
+
+- `display_names` provides presentation-only member names.
+- `founder` exposes the configured family root without moving that configuration
+  out of `nello`.
+- `member_information` combines display names, current and prior clans,
+  clan-effective dates, member dates/types, and `is_clan_1_head`. Every member
+  has a current `clan_id_1`; `clan_id_2` is optional and represents a clan from
+  which the member came. A member cannot be a head of `clan_id_2`.
+- `folders_summary`, `years_summary`, `resolution_order`, and
+  `appearance_spans` provide chart-ready Year-in-Review data.
+- `relations_summary` provides display-oriented relationship descriptions.
+- `family_members(start_member_id, cut_date, traversal_mode,
+  include_partner_branches)` returns every dashboard member once. Related
+  members receive a calculated generation and traversal metadata; unrelated
+  members receive `NULL`. Supported traversal modes are `up`, `down`,
+  `up_down`, and `bidirectional`.
+
+The reproducible definition and rollback command for `family_members` live in
+`database/dashboard_family_members.sql`.
 
 ## `project`: media and Year-in-Review state
 
@@ -252,8 +278,8 @@ repeatedly searching storage by name/path.
   upgrades a missing permission.
 - `appearances` and `chapters`: Premiere-derived editorial output.
 - `duplicates` and `duplicates_summary`: duplicate-detection views.
-- `folders_summary` and `years_summary`: dashboard-facing aggregate views.
-- `appearance_spans`: timeline-facing appearance view.
+- Dashboard-facing folder, year, resolution, and appearance projections are
+  exposed through the corresponding `dashboard` views.
 
 Premiere-derived time positions in `appearances` and `chapters` are stored in
 seconds. Duration aggregates exposed by the project summary views likewise
@@ -322,7 +348,7 @@ historical sender address into a current contact method.
 | `repositories/inspect.py`, `repositories/migrate.py` | `project` tables/views and `config.media` |
 | `repositories/assemble.py`, `compile.py` | `project`, `config`, and `publishing` |
 | `scraping/`, `repositories/ingest.py` | `ingestion` source and album views |
-| Streamlit `pages/` | `project` summary/appearance views, `tree` views, `public.display_names`, and `config` enums |
+| Streamlit `pages/` | The selected `dashboard` or `demo` application contract; remaining direct operational-table reads are being retired |
 | `family_tree/` | `public` relationship tables plus `tree` membership, household, and partner views |
 | Future onboarding/reference API | `public`, `tree`, and `messaging`; must use scoped access controls |
 
