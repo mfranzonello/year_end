@@ -12,7 +12,7 @@
 
 CREATE OR REPLACE FUNCTION dashboard.family_members(
     p_start_member_id uuid,
-    p_cut_date date,
+    p_cut_date date DEFAULT CURRENT_DATE,
     p_traversal_mode text DEFAULT 'up_down',
     p_include_partner_branches boolean DEFAULT true
 )
@@ -28,13 +28,10 @@ STABLE
 AS $function$
 DECLARE
     v_anchor_clan_id uuid;
+    v_cut_date date := COALESCE(p_cut_date, CURRENT_DATE);
 BEGIN
     IF p_start_member_id IS NULL THEN
         RAISE EXCEPTION 'A starting dashboard member is required.';
-    END IF;
-
-    IF p_cut_date IS NULL THEN
-        RAISE EXCEPTION 'A family traversal cutoff date is required.';
     END IF;
 
     IF p_traversal_mode NOT IN ('up', 'down', 'up_down', 'bidirectional') THEN
@@ -45,7 +42,7 @@ BEGIN
 
     SELECT CASE
                WHEN information.clan_date IS NULL
-                    OR information.clan_date <= p_cut_date
+                    OR information.clan_date <= v_cut_date
                    THEN information.clan_id_1
                ELSE information.clan_id_2
            END
@@ -61,7 +58,7 @@ BEGIN
         RAISE EXCEPTION
             'Dashboard member % has no clan at cutoff date %.',
             p_start_member_id,
-            p_cut_date;
+            v_cut_date;
     END IF;
 
     IF NOT EXISTS (
@@ -71,13 +68,13 @@ BEGIN
            AND information.is_clan_1_head
            AND (
                information.clan_date IS NULL
-               OR information.clan_date <= p_cut_date
+               OR information.clan_date <= v_cut_date
            )
     ) THEN
         RAISE EXCEPTION
             'Clan % has no discoverable head at cutoff date %.',
             v_anchor_clan_id,
-            p_cut_date;
+            v_cut_date;
     END IF;
 
     RETURN QUERY
@@ -92,7 +89,7 @@ BEGIN
          WHERE information.clan_id_1 IS NOT NULL
            AND (
                information.clan_date IS NULL
-               OR information.clan_date <= p_cut_date
+               OR information.clan_date <= v_cut_date
            )
 
         UNION

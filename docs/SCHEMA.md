@@ -188,7 +188,8 @@ Public application code must not combine the two schemas in one request.
   include_partner_branches)` returns every dashboard member once. Related
   members receive a calculated generation and traversal metadata; unrelated
   members receive `NULL`. Supported traversal modes are `up`, `down`,
-  `up_down`, and `bidirectional`.
+  `up_down`, and `bidirectional`. An omitted or `NULL` cutoff date uses the
+  database server's `CURRENT_DATE`.
 - `family_members_2` exposes the same traversal modes using direct parent,
   pet-owner, and dated marriage/civil-union edges. It additionally identifies
   the relationship type and whether the selected path entered through a
@@ -196,7 +197,8 @@ Public application code must not combine the two schemas in one request.
   determine whether nodes and edges existed at the requested cutoff. Parent
   rows have no relationship date, so the child entry date is their only
   historical boundary. This function is intentionally parallel to the clan
-  implementation while their results are evaluated.
+  implementation while their results are evaluated. It uses the same cutoff
+  default as `family_members`.
 
 The reproducible definitions and rollback commands live in
 `database/dashboard_family_members.sql` and

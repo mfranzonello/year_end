@@ -13,7 +13,7 @@
 
 CREATE OR REPLACE FUNCTION dashboard.family_members_2(
     p_start_member_id uuid,
-    p_cut_date date,
+    p_cut_date date DEFAULT CURRENT_DATE,
     p_traversal_mode text DEFAULT 'up_down',
     p_include_partner_branches boolean DEFAULT true
 )
@@ -29,13 +29,11 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 STABLE
 AS $function$
+DECLARE
+    v_cut_date date := COALESCE(p_cut_date, CURRENT_DATE);
 BEGIN
     IF p_start_member_id IS NULL THEN
         RAISE EXCEPTION 'A starting dashboard member is required.';
-    END IF;
-
-    IF p_cut_date IS NULL THEN
-        RAISE EXCEPTION 'A family traversal cutoff date is required.';
     END IF;
 
     IF p_traversal_mode NOT IN ('up', 'down', 'up_down', 'bidirectional') THEN
@@ -102,7 +100,7 @@ BEGIN
     present_members AS (
         SELECT member.member_id, member.member_type
           FROM members AS member
-         WHERE member.entry_date <= p_cut_date
+         WHERE member.entry_date <= v_cut_date
     ),
     effective_pet_relationships AS (
         SELECT
@@ -123,7 +121,7 @@ BEGIN
                            + interval '1 month - 1 day'
                        )::date
                    ELSE pet.gotcha_date::date
-               END <= p_cut_date
+               END <= v_cut_date
     ),
     effective_unions AS (
         SELECT union_record.union_id, union_record.union_type
@@ -142,7 +140,7 @@ BEGIN
                            + interval '1 month - 1 day'
                        )::date
                    ELSE union_record.union_date::date
-               END <= p_cut_date
+               END <= v_cut_date
     ),
     partner_pairs AS (
         SELECT DISTINCT
