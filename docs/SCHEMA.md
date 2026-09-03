@@ -209,10 +209,13 @@ Public application code must not combine the two schemas in one request.
   upward traversal; opening members and descendants retain an empty array.
 
 - `family_members_display` wraps `family_members` for the flattened timeline.
-  It assigns each related member to a UUIDv5 display unit, derives a
-  breadth-first display-unit lineage and depth, and supplies the member's role
-  and stable order inside that unit. Active childless partnerships can form
-  display units without adding timeline-specific logic to the traversal.
+  It assigns each related member to a UUIDv5 display unit, derives the unit's
+  generation, lineage, ancestry, depth, and global order, and supplies the
+  member's role and stable order inside that unit. Active childless
+  partnerships and unmarried adults age 30 or older can form display units
+  without adding timeline-specific logic to the traversal. Dependents are
+  redirected into a head's selected unit when that choice is unambiguous, so
+  pets remain grouped after their owners.
 
 The reproducible definitions and rollback commands currently live in
 `database/dashboard_family_members.sql` for `_family_members_old`,

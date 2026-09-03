@@ -26,8 +26,11 @@ RETURNS TABLE (
     lineage integer[],
     ancestry integer[],
     display_unit_key uuid,
+    display_unit_generation integer,
     display_unit_lineage integer[],
+    display_unit_ancestry integer[],
     display_unit_depth integer,
+    display_unit_order integer,
     display_role text,
     display_order integer
 )
@@ -120,9 +123,31 @@ unit_candidates AS (
         headed_node.node_key,
         1 AS unit_priority,
         NULL::date AS effective_date
-      FROM family
+     FROM family
       CROSS JOIN LATERAL unnest(family.headed_node_keys) AS headed_node(node_key)
      WHERE family.generation IS NOT NULL
+
+    UNION ALL
+
+    SELECT
+        family.member_id,
+        public.uuid_generate_v5(
+            '6ba7b811-9dad-11d1-80b4-00c04fd430c8'::uuid,
+            'dashboard.family-node:v1:heads:' || family.member_id::text
+        ),
+        2 AS unit_priority,
+        (information.birth_date + interval '30 years')::date AS effective_date
+      FROM family
+      JOIN dashboard.member_information AS information
+        ON information.member_id = family.member_id
+      CROSS JOIN settings
+     WHERE family.generation IS NOT NULL
+       AND information.member_type = 'person'
+       AND (
+           information.birth_date::date + interval '30 years' <= settings.cut_date
+           OR information.birth_date_precision = 'past'
+           OR information.birth_date_precision IS NULL
+       )
 ),
 selected_own_units AS (
     SELECT DISTINCT ON (candidate.member_id)
@@ -135,12 +160,33 @@ selected_own_units AS (
         candidate.effective_date DESC NULLS LAST,
         candidate.unit_key
 ),
+parent_unit_options AS (
+    SELECT
+        dependent.member_id,
+        head_unit.unit_key
+      FROM family AS dependent
+      CROSS JOIN LATERAL unnest(dependent.parent_node_head_ids) AS head(member_id)
+      JOIN selected_own_units AS head_unit
+        ON head_unit.member_id = head.member_id
+     WHERE dependent.generation IS NOT NULL
+),
+parent_unit_redirects AS (
+    SELECT
+        option.member_id,
+        CASE
+            WHEN count(DISTINCT option.unit_key) = 1
+                THEN (array_agg(DISTINCT option.unit_key))[1]
+        END AS unit_key
+      FROM parent_unit_options AS option
+     GROUP BY option.member_id
+),
 assigned_units AS (
     SELECT
         family.*,
         own_unit.unit_key AS own_unit_key,
         COALESCE(
             own_unit.unit_key,
+            parent_redirect.unit_key,
             family.parent_node_key,
             public.uuid_generate_v5(
                 '6ba7b811-9dad-11d1-80b4-00c04fd430c8'::uuid,
@@ -155,17 +201,24 @@ assigned_units AS (
         ON information.member_id = family.member_id
       LEFT JOIN selected_own_units AS own_unit
         ON own_unit.member_id = family.member_id
+      LEFT JOIN parent_unit_redirects AS parent_redirect
+        ON parent_redirect.member_id = family.member_id
      WHERE family.generation IS NOT NULL
 ),
 unit_anchors AS (
     SELECT DISTINCT ON (assigned.unit_key)
         assigned.unit_key,
         CASE
+            WHEN assigned.own_unit_key = assigned.unit_key THEN assigned.generation
+            ELSE assigned.generation - 1
+        END AS unit_generation,
+        CASE
             WHEN assigned.own_unit_key = assigned.unit_key THEN assigned.lineage
             WHEN cardinality(assigned.lineage) > 0
                 THEN assigned.lineage[1:cardinality(assigned.lineage) - 1]
             ELSE ARRAY[]::integer[]
-        END AS unit_lineage
+        END AS unit_lineage,
+        assigned.ancestry AS unit_ancestry
       FROM assigned_units AS assigned
      ORDER BY
         assigned.unit_key,
@@ -174,10 +227,25 @@ unit_anchors AS (
         cardinality(assigned.lineage),
         assigned.member_id
 ),
+unit_rankings AS (
+    SELECT
+        anchor.*,
+        row_number() OVER (
+            ORDER BY
+                anchor.unit_generation,
+                anchor.unit_lineage,
+                anchor.unit_ancestry,
+                anchor.unit_key
+        )::integer AS unit_order
+      FROM unit_anchors AS anchor
+),
 display_members AS (
     SELECT
         assigned.*,
-        anchor.unit_lineage,
+        unit.unit_generation,
+        unit.unit_lineage,
+        unit.unit_ancestry,
+        unit.unit_order,
         CASE
             WHEN assigned.member_type = 'animal' THEN 'animal'
             WHEN assigned.own_unit_key = assigned.unit_key AND assigned.in_law
@@ -186,8 +254,8 @@ display_members AS (
             ELSE 'dependent'
         END AS unit_role
       FROM assigned_units AS assigned
-      JOIN unit_anchors AS anchor
-        ON anchor.unit_key = assigned.unit_key
+      JOIN unit_rankings AS unit
+        ON unit.unit_key = assigned.unit_key
 )
 SELECT
     display.member_id,
@@ -205,8 +273,11 @@ SELECT
     display.lineage,
     display.ancestry,
     display.unit_key AS display_unit_key,
+    display.unit_generation AS display_unit_generation,
     display.unit_lineage AS display_unit_lineage,
+    display.unit_ancestry AS display_unit_ancestry,
     cardinality(display.unit_lineage)::integer AS display_unit_depth,
+    display.unit_order AS display_unit_order,
     display.unit_role AS display_role,
     row_number() OVER (
         PARTITION BY display.unit_key
@@ -223,10 +294,9 @@ SELECT
     )::integer AS display_order
   FROM display_members AS display
  ORDER BY
-    cardinality(display.unit_lineage),
-    display.unit_lineage,
+    display.unit_order,
     display_order;
 $function$;
 
 COMMENT ON FUNCTION dashboard.family_members_display(uuid, date, text, boolean) IS
-'Adds UUIDv5 display-unit identity, breadth-first unit paths, roles, and within-unit ordering to dashboard.family_members for the flattened timeline.';
+'Adds UUIDv5 display-unit identity, generation-aware unit paths, roles, and stable unit/member ordering to dashboard.family_members for the flattened timeline.';
