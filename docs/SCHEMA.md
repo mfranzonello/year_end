@@ -205,7 +205,9 @@ Public application code must not combine the two schemas in one request.
   member, sibling order, and integer-array `lineage`. One-head nodes are
   `solo`, two-head nodes are `pair`, and larger sets are reported as `multiple`
   rather than silently truncated. The canonical key can later be converted to
-  UUIDv5 without changing unit membership.
+  UUIDv5 without changing unit membership. Its integer-array `ancestry` records
+  the opening-member branch followed by each stable parent position during
+  upward traversal; opening members and descendants retain an empty array.
 
 The reproducible definitions and rollback commands currently live in
 `database/dashboard_family_members.sql` for `_family_members_old` and

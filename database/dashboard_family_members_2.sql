@@ -2,7 +2,8 @@
 -- inferring relationships from clans. Every dashboard member is returned once;
 -- unrelated or not-yet-present members have a NULL generation. Parent/owner
 -- sets form deterministic node keys, and downward traversal appends each
--- dependent's sibling order to an integer-array lineage.
+-- dependent's sibling order to an integer-array lineage. Upward traversal
+-- appends opening-branch and parent positions to an ancestry array.
 --
 -- Date handling uses the latest possible date for month/year precision. A
 -- missing date with no precision is treated as unknown and therefore active;
@@ -34,7 +35,8 @@ RETURNS TABLE (
     parent_node_head_ids uuid[],
     headed_node_keys text[],
     sibling_order integer,
-    lineage integer[]
+    lineage integer[],
+    ancestry integer[]
 )
 LANGUAGE plpgsql
 STABLE
@@ -322,6 +324,16 @@ BEGIN
          WHERE p_include_partner_branches
            AND partner.member_id_1 = p_start_member_id
     ),
+    ordered_opening_members AS (
+        SELECT
+            opening.member_id,
+            row_number() OVER (
+                ORDER BY
+                    CASE WHEN opening.member_id = p_start_member_id THEN 0 ELSE 1 END,
+                    opening.member_id
+            )::integer AS opening_order
+          FROM opening_members AS opening
+    ),
     seeds AS (
         SELECT
             opening.member_id,
@@ -335,9 +347,11 @@ BEGIN
             'seed'::text AS discovery_direction,
             'opening'::text AS relation_type,
             false AS in_law,
+            opening.opening_order,
             ARRAY[]::integer[] AS lineage,
+            ARRAY[]::integer[] AS ancestry,
             ARRAY[opening.member_id]::uuid[] AS member_path
-          FROM opening_members AS opening
+          FROM ordered_opening_members AS opening
           CROSS JOIN LATERAL (
               SELECT 'up'::text AS direction
                WHERE p_traversal_mode = 'up_down'
@@ -371,6 +385,7 @@ BEGIN
                          WHERE opening.member_id = edge.target_id
                     )
                 ),
+            walk.opening_order,
             CASE edge.edge_direction
                 WHEN 'down' THEN
                     walk.lineage || COALESCE(target_node.sibling_order, 0)
@@ -382,12 +397,35 @@ BEGIN
                     END
                 ELSE walk.lineage
             END,
+            CASE edge.edge_direction
+                WHEN 'up' THEN
+                    walk.ancestry
+                    || CASE
+                           WHEN cardinality(walk.ancestry) = 0 THEN
+                               ARRAY[
+                                   walk.opening_order,
+                                   COALESCE(
+                                       array_position(source_node.head_ids, edge.target_id),
+                                       0
+                                   )
+                               ]
+                           ELSE ARRAY[
+                               COALESCE(
+                                   array_position(source_node.head_ids, edge.target_id),
+                                   0
+                               )
+                           ]
+                       END
+                ELSE walk.ancestry
+            END,
             walk.member_path || edge.target_id
           FROM walk
           JOIN edges AS edge
             ON edge.source_id = walk.member_id
           LEFT JOIN node_members AS target_node
             ON target_node.member_id = edge.target_id
+          LEFT JOIN node_members AS source_node
+            ON source_node.member_id = walk.member_id
          WHERE edge.target_id <> ALL(walk.member_path)
            AND (
                walk.walk_direction = 'bidirectional'
@@ -405,6 +443,7 @@ BEGIN
             walk.relation_type,
             walk.in_law,
             walk.lineage,
+            walk.ancestry,
             row_number() OVER (
                 PARTITION BY walk.member_id
                 ORDER BY
@@ -430,7 +469,8 @@ BEGIN
         node_member.head_ids,
         headed_node.node_keys,
         node_member.sibling_order,
-        ranked.lineage
+        ranked.lineage,
+        ranked.ancestry
       FROM dashboard.member_information AS information
       LEFT JOIN ranked
        ON ranked.member_id = information.member_id
@@ -447,4 +487,4 @@ END;
 $function$;
 
 COMMENT ON FUNCTION dashboard.family_members(uuid, date, text, boolean) IS
-'Calculates generations, family-tree node classifications, sibling order, and lineage from dated parent, pet-owner, and partner edges. Modes are up, down, up_down, and bidirectional; unrelated dashboard members have NULL generation.';
+'Calculates generations, family-tree node classifications, sibling order, descendant lineage, and branch-aware ancestry from dated parent, pet-owner, and partner edges. Modes are up, down, up_down, and bidirectional; unrelated dashboard members have NULL generation.';
