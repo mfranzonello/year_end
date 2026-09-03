@@ -1,7 +1,7 @@
 -- Traverse direct parent, pet-owner, and partner relationships instead of
 -- inferring relationships from clans. Every dashboard member is returned once;
 -- unrelated or not-yet-present members have a NULL generation. Parent/owner
--- sets form deterministic node keys, and downward traversal appends each
+-- sets form deterministic UUIDv5 node keys, and downward traversal appends each
 -- dependent's sibling order to an integer-array lineage. Upward traversal
 -- appends opening-branch and parent positions to an ancestry array.
 --
@@ -14,9 +14,7 @@
 -- Rollback:
 --   DROP FUNCTION dashboard.family_members(uuid, date, text, boolean);
 
-DROP FUNCTION IF EXISTS dashboard.family_members(uuid, date, text, boolean);
-
-CREATE FUNCTION dashboard.family_members(
+CREATE OR REPLACE FUNCTION dashboard.family_members(
     p_start_member_id uuid,
     p_cut_date date DEFAULT CURRENT_DATE,
     p_traversal_mode text DEFAULT 'up_down',
@@ -30,10 +28,10 @@ RETURNS TABLE (
     discovery_direction text,
     relation_type text,
     in_law boolean,
-    parent_node_key text,
+    parent_node_key uuid,
     parent_node_type text,
     parent_node_head_ids uuid[],
-    headed_node_keys text[],
+    headed_node_keys uuid[],
     sibling_order integer,
     lineage integer[],
     ancestry integer[]
@@ -198,7 +196,11 @@ BEGIN
     classified_nodes AS (
         SELECT
             head_set.dependent_id AS member_id,
-            'node:v1:heads:' || array_to_string(head_set.head_ids, ':') AS node_key,
+            public.uuid_generate_v5(
+                '6ba7b811-9dad-11d1-80b4-00c04fd430c8'::uuid,
+                'dashboard.family-node:v1:heads:'
+                || array_to_string(head_set.head_ids, ':')
+            ) AS node_key,
             CASE cardinality(head_set.head_ids)
                 WHEN 1 THEN 'solo'
                 WHEN 2 THEN 'pair'
