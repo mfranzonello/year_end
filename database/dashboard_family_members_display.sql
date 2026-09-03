@@ -107,6 +107,17 @@ partner_units AS (
      GROUP BY effective_union.union_id, effective_union.effective_date
     HAVING count(*) >= 2
 ),
+human_parent_units AS (
+    SELECT DISTINCT
+        head.member_id,
+        dependent.parent_node_key AS unit_key
+      FROM family AS dependent
+      JOIN dashboard.member_information AS information
+        ON information.member_id = dependent.member_id
+      CROSS JOIN LATERAL unnest(dependent.parent_node_head_ids) AS head(member_id)
+     WHERE dependent.generation IS NOT NULL
+       AND information.member_type = 'person'
+),
 unit_candidates AS (
     SELECT
         partner.member_id,
@@ -119,13 +130,11 @@ unit_candidates AS (
     UNION ALL
 
     SELECT
-        family.member_id,
-        headed_node.node_key,
+        parent.member_id,
+        parent.unit_key,
         1 AS unit_priority,
         NULL::date AS effective_date
-     FROM family
-      CROSS JOIN LATERAL unnest(family.headed_node_keys) AS headed_node(node_key)
-     WHERE family.generation IS NOT NULL
+      FROM human_parent_units AS parent
 
     UNION ALL
 
@@ -180,7 +189,7 @@ parent_unit_redirects AS (
       FROM parent_unit_options AS option
      GROUP BY option.member_id
 ),
-assigned_units AS (
+initial_assignments AS (
     SELECT
         family.*,
         own_unit.unit_key AS own_unit_key,
@@ -192,7 +201,7 @@ assigned_units AS (
                 '6ba7b811-9dad-11d1-80b4-00c04fd430c8'::uuid,
                 'dashboard.family-node:v1:heads:' || family.member_id::text
             )
-        ) AS unit_key,
+        ) AS provisional_unit_key,
         information.member_type,
         information.birth_date,
         information.entry_date
@@ -204,6 +213,39 @@ assigned_units AS (
       LEFT JOIN parent_unit_redirects AS parent_redirect
         ON parent_redirect.member_id = family.member_id
      WHERE family.generation IS NOT NULL
+),
+animal_unit_options AS (
+    SELECT
+        animal.member_id,
+        owner.provisional_unit_key AS unit_key
+      FROM initial_assignments AS animal
+      CROSS JOIN LATERAL unnest(animal.parent_node_head_ids) AS head(member_id)
+      JOIN initial_assignments AS owner
+        ON owner.member_id = head.member_id
+       AND owner.member_type = 'person'
+     WHERE animal.member_type = 'animal'
+),
+animal_unit_redirects AS (
+    SELECT
+        option.member_id,
+        CASE
+            WHEN count(DISTINCT option.unit_key) = 1
+                THEN (array_agg(DISTINCT option.unit_key))[1]
+        END AS unit_key
+      FROM animal_unit_options AS option
+     GROUP BY option.member_id
+),
+assigned_units AS (
+    SELECT
+        initial.*,
+        CASE
+            WHEN initial.member_type = 'animal'
+                THEN COALESCE(animal_redirect.unit_key, initial.provisional_unit_key)
+            ELSE initial.provisional_unit_key
+        END AS unit_key
+      FROM initial_assignments AS initial
+      LEFT JOIN animal_unit_redirects AS animal_redirect
+        ON animal_redirect.member_id = initial.member_id
 ),
 unit_anchors AS (
     SELECT DISTINCT ON (assigned.unit_key)

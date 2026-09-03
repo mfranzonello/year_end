@@ -213,9 +213,10 @@ Public application code must not combine the two schemas in one request.
   generation, lineage, ancestry, depth, and global order, and supplies the
   member's role and stable order inside that unit. Active childless
   partnerships and unmarried adults age 30 or older can form display units
-  without adding timeline-specific logic to the traversal. Dependents are
-  redirected into a head's selected unit when that choice is unambiguous, so
-  pets remain grouped after their owners.
+  without adding timeline-specific logic to the traversal. Human parenthood,
+  but not animal ownership alone, also forms a timeline unit. Dependents are
+  redirected into a head's selected unit when that choice is unambiguous; an
+  animal inherits its owner's resolved unit and sorts after its human members.
 
 The reproducible definitions and rollback commands currently live in
 `database/dashboard_family_members.sql` for `_family_members_old`,
