@@ -184,13 +184,13 @@ Public application code must not combine the two schemas in one request.
 - `folders_summary`, `years_summary`, `resolution_order`, and
   `appearance_spans` provide chart-ready Year-in-Review data.
 - `relations_summary` provides display-oriented relationship descriptions.
-- `family_members(start_member_id, cut_date, traversal_mode,
+- `_family_members_old(start_member_id, cut_date, traversal_mode,
   include_partner_branches)` returns every dashboard member once. Related
   members receive a calculated generation and traversal metadata; unrelated
   members receive `NULL`. Supported traversal modes are `up`, `down`,
   `up_down`, and `bidirectional`. An omitted or `NULL` cutoff date uses the
   database server's `CURRENT_DATE`.
-- `family_members_2` exposes the same traversal modes using direct parent,
+- `family_members` exposes the same traversal modes using direct parent,
   pet-owner, and dated marriage/civil-union edges. It additionally identifies
   the relationship type and whether the selected path entered through a
   non-opening partner. Member birth dates, pet gotcha dates, and union dates
@@ -198,11 +198,18 @@ Public application code must not combine the two schemas in one request.
   rows have no relationship date, so the child entry date is their only
   historical boundary. This function is intentionally parallel to the clan
   implementation while their results are evaluated. It uses the same cutoff
-  default as `family_members`.
+  default as `_family_members_old`.
+- The preferred `family_members` also classifies each member's parent/owner
+  node from the complete sorted set of parent or owner UUIDs. It returns a
+  deterministic `parent_node_key`, node type, head IDs, nodes headed by the
+  member, sibling order, and integer-array `lineage`. One-head nodes are
+  `solo`, two-head nodes are `pair`, and larger sets are reported as `multiple`
+  rather than silently truncated. The canonical key can later be converted to
+  UUIDv5 without changing unit membership.
 
-The reproducible definitions and rollback commands live in
-`database/dashboard_family_members.sql` and
-`database/dashboard_family_members_2.sql`.
+The reproducible definitions and rollback commands currently live in
+`database/dashboard_family_members.sql` for `_family_members_old` and
+`database/dashboard_family_members_2.sql` for the preferred `family_members`.
 
 ## `project`: media and Year-in-Review state
 

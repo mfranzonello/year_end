@@ -8,9 +8,9 @@
 --   bidirectional unrestricted walking that may change direction
 --
 -- Rollback:
---   DROP FUNCTION dashboard.family_members(uuid, date, text, boolean);
+--   DROP FUNCTION dashboard._family_members_old(uuid, date, text, boolean);
 
-CREATE OR REPLACE FUNCTION dashboard.family_members(
+CREATE OR REPLACE FUNCTION dashboard._family_members_old(
     p_start_member_id uuid,
     p_cut_date date DEFAULT CURRENT_DATE,
     p_traversal_mode text DEFAULT 'up_down',
@@ -260,5 +260,5 @@ BEGIN
 END;
 $function$;
 
-COMMENT ON FUNCTION dashboard.family_members(uuid, date, text, boolean) IS
+COMMENT ON FUNCTION dashboard._family_members_old(uuid, date, text, boolean) IS
 'Calculates family generations relative to resolved clan heads. Modes are up, down, up_down, and bidirectional; unrelated dashboard members have NULL generation.';
