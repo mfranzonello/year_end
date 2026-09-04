@@ -64,6 +64,12 @@
 - Before any schema migration or destructive database change, identify affected
   tables, views, queries, and integrations; provide an impact check, validation,
   and rollback plan.
+- Do not add standalone SQL definitions under production packages merely to
+  validate or inspect live database changes. Reusable SQL checks and fixtures
+  belong under `tests/database/`; one-off SQL artifacts should remain untracked
+  or be gitignored. Commit schema or migration SQL only when the project owner
+  requests it or an established migration/deployment workflow consumes it, and
+  document how it is applied and kept synchronized with the live database.
 - The agent may add or remove non-constraint convenience indexes after checking
   actual query shapes, plans, and index usage. Discuss indexes that enforce a
   primary key, uniqueness, exclusion, or another data-integrity constraint with
