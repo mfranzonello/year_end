@@ -96,6 +96,10 @@ def get_tree_members(member_id:UUID, members:DataFrame, parents:DataFrame, pets:
                                         columns=['generation', 'in-law']).reset_index(names='member_id')
                     .merge(members, on='member_id')
     )
+
+    print('HEREEE')
+    input(f'{relatives=}')
+
     if not include_animals:
         relatives = relatives[relatives['member_type']!='animal']
     if cut_date:
@@ -130,19 +134,4 @@ def build_tree(engine:Engine, founder_id:UUID, include_animals=False, cut_date:d
     relatives = get_tree_members(founder_id, members, parents, pets, spouses,
                                  include_animals=include_animals, cut_date=cut_date, include_deceased=include_deceased)
     return relatives
-
-def build_tree_dashboard(members_df, relationships_df, founder_id:UUID, include_animals=False,
-                         cut_date:date|None=None, include_deceased=False) -> DataFrame:
-    members = members_df[['member_id', 'member_type', 'birth_date', 'birth_date_precision',
-                          'death_date', 'death_date_precision', 'entry_date', 'entry_date_precision']]
-
-    parents_q = relationships_df.query("relation_type == 'child'")
-    parents = parents_q.rename(columns={'member_id_1': 'child_id', 'member_id_2': 'parent_id'})
-    pets_q = relationships_df.query("relation_type == 'pet'")
-    pets = pets_q.rename(columns={'member_id_1': 'pet_id', 'member_id_2': 'owner_id'})
-    spouses_q = relationships_df.query("relation_type == 'spouse'")
-    spouses = concat([spouses_q.rename(columns={'member_id_1': 'person_id', 'member_id_2': 'spouse_id'}),
-                      spouses_q.rename(columns={'member_id_2': 'person_id', 'member_id_1': 'spouse_id'})])
-
-    relatives = get_tree_members(founder_id, members, parents, pets, spouses,
-                                 include_animals=include_animals, cut_date=cut_date, include_deceased=include_deceased)
+        
