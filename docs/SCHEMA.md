@@ -208,6 +208,12 @@ Public application code must not combine the two schemas in one request.
   opening-member branch followed by each parent's birth-ordered position during
   upward traversal; unknown or equal birth dates use UUID as a stable
   tie-breaker. Opening members and descendants retain an empty array.
+- `family_members_graph` wraps `family_members` without repeating its recursive
+  traversal. For each member with a parent/owner node, it classifies the
+  preferred results for that node's heads: non-in-law heads produce `core`,
+  in-law heads produce `partner`, a mixture produces `shared`, and an
+  unclassifiable or absent head set produces `NULL`. This founder-relative
+  branch value is intended for Graphviz-specific organization.
 
 - `family_members_display` wraps `family_members` for the flattened timeline.
   It assigns each related member to a UUIDv5 display unit, derives the unit's
@@ -218,11 +224,6 @@ Public application code must not combine the two schemas in one request.
   but not animal ownership alone, also forms a timeline unit. Dependents are
   redirected into a head's selected unit when that choice is unambiguous; an
   animal inherits its owner's resolved unit and sorts after its human members.
-
-The reproducible definitions and rollback commands currently live in
-`database/dashboard_family_members_old.sql` for `_family_members_old`,
-`database/dashboard_family_members.sql` for the preferred `family_members`,
-and `database/dashboard_family_members_display.sql` for its timeline wrapper.
 
 ## `project`: media and Year-in-Review state
 
