@@ -209,11 +209,13 @@ Public application code must not combine the two schemas in one request.
   upward traversal; unknown or equal birth dates use UUID as a stable
   tie-breaker. Opening members and descendants retain an empty array.
 - `family_members_graph` wraps `family_members` without repeating its recursive
-  traversal. For each member with a parent/owner node, it classifies the
-  preferred results for that node's heads: non-in-law heads produce `core`,
-  in-law heads produce `partner`, a mixture produces `shared`, and an
-  unclassifiable or absent head set produces `NULL`. This founder-relative
-  branch value is intended for Graphviz-specific organization.
+  traversal. A node with two parent/owner heads is `shared`; a one-head node is
+  `core` when that head occupies the first side and `partner` when the head
+  occupies the second side. The seed is first and its opening partner is
+  second; descendant sides use non-in-law/in-law status, while ancestor sides
+  use the birth-ordered position already encoded by `ancestry`. Apex nodes,
+  nodes with more than two heads, and unclassifiable one-head nodes return
+  `NULL`. This branch value is intended for Graphviz-specific organization.
 
 - `family_members_display` wraps `family_members` for the flattened timeline.
   It assigns each related member to a UUIDv5 display unit, derives the unit's
