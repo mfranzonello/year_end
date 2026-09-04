@@ -204,9 +204,10 @@ Public application code must not combine the two schemas in one request.
   deterministic UUIDv5 `parent_node_key`, node type, head IDs, nodes headed by the
   member, sibling order, and integer-array `lineage`. One-head nodes are
   `solo`, two-head nodes are `pair`, and larger sets are reported as `multiple`
-  rather than silently truncated. Its integer-array `ancestry` records
-  the opening-member branch followed by each stable parent position during
-  upward traversal; opening members and descendants retain an empty array.
+  rather than silently truncated. Its integer-array `ancestry` records the
+  opening-member branch followed by each parent's birth-ordered position during
+  upward traversal; unknown or equal birth dates use UUID as a stable
+  tie-breaker. Opening members and descendants retain an empty array.
 
 - `family_members_display` wraps `family_members` for the flattened timeline.
   It assigns each related member to a UUIDv5 display unit, derives the unit's
@@ -219,8 +220,8 @@ Public application code must not combine the two schemas in one request.
   animal inherits its owner's resolved unit and sorts after its human members.
 
 The reproducible definitions and rollback commands currently live in
-`database/dashboard_family_members.sql` for `_family_members_old`,
-`database/dashboard_family_members_2.sql` for the preferred `family_members`,
+`database/dashboard_family_members_old.sql` for `_family_members_old`,
+`database/dashboard_family_members.sql` for the preferred `family_members`,
 and `database/dashboard_family_members_display.sql` for its timeline wrapper.
 
 ## `project`: media and Year-in-Review state
