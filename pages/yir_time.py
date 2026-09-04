@@ -36,4 +36,4 @@ markers = fetch_markers(engine, year)
 
 # gantt chart of appearances
 chart = timeline_chart(actor_spans, markers, cloud_name=CLOUDINARY_CLOUD)
-plot_altair_chart(chart)s
+plot_altair_chart(chart)
