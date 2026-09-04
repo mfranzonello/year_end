@@ -323,35 +323,19 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str) -> 
 
     bar_height = 50
 
-    actor_spans['birth_date'] = actor_spans['birth_date'].astype('datetime64[ns]')
-    actor_spans['sort_date'] = actor_spans.apply(lambda x: x['birth_date'] if (not x['in-law'] and not (x['member_type']=='animal')) else x['entry_date'],
-                                                 axis=1)
     actor_spans['clan_name'] = actor_spans['clan_name'].mask(actor_spans['clan_id']==UUID(int=0), 'Friends')
 
-    first_born = (actor_spans[(~actor_spans['in-law']) & (actor_spans['birth_date'].notna())]
-                  .groupby('clan_id')['birth_date'].min()
-                  .reset_index().rename(columns={'birth_date': 'clan_first_born'}))
-    first_gen = (actor_spans
-                 .groupby('clan_id')['generation'].min()
-                 .reset_index().rename(columns={'generation': 'clan_generation'}))
-
-    actor_spans['clan_first_born'] = actor_spans.merge(first_born, how='left', on='clan_id')['clan_first_born']
-    actor_spans['clan_generation'] = actor_spans.merge(first_gen, how='left', on='clan_id')['clan_generation']
-
-    clans = actor_spans[actor_spans['clan_id'].notna()].drop_duplicates('clan_id')[['clan_id', 'clan_name']]
-
+    clans = actor_spans.drop_duplicates('clan_id')[['clan_id', 'clan_name', 'display_unit_order']]
     clans['full_name'] = clans['clan_name']
     clans['boundary'] = True
-    clans['clan_first_born'] = clans.merge(first_born, how='left', on='clan_id')['clan_first_born'].tolist()
-    clans['clan_generation'] = clans.merge(first_gen, how='left', on='clan_id')['clan_generation'].tolist()
+    clans['display_order'] = -1
 
     combined = concat([actor_spans, clans]).fillna({'boundary': False})
     combined['friends'] = combined['clan_id'] == UUID(int=0)
     combined['y_label'] = combined.apply(lambda x: ' ' if x['boundary'] else x['full_name'], axis=1)
 
     spans_sorted = concat([DataFrame({'full_name': '', 'clan_id': UUID(int=0xffffffffffffffffffffffffffffffff), 'y_label': ' ', 'boundary': True}, index=[0]),
-                           combined.sort_values(by=['friends', 'clan_generation', 'clan_first_born', 'boundary', 'generation', 'sort_date'],
-                                                na_position='last')
+                           combined.sort_values(by=['display_unit_order', 'display_order'])
                            ]
     )
     spans_sorted['sort_order'] = range(len(spans_sorted))

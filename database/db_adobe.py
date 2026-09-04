@@ -60,7 +60,7 @@ def fetch_timeline_years(engine:Engine) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-def fetch_actor_spans(engine:Engine, year:int) -> DataFrame:
+def fetch_appearance_spans(engine:Engine, year:int) -> DataFrame:
     sql = f'''
     SELECT member_id, start_time, end_time, span
     FROM dashboard.appearance_spans

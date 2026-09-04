@@ -64,9 +64,9 @@ def fetch_households(engine:Engine) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-def fetch_founder(engine:Engine) -> UUID:
+def fetch_founder(engine:Engine, schema_name:str) -> UUID:
     sql = f'''
     SELECT founder_id
-    FROM nello.founder
+    FROM {schema_name}.founder
     ;'''
     return read_sql(engine, sql).squeeze()

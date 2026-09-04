@@ -96,6 +96,10 @@ def get_tree_members(member_id:UUID, members:DataFrame, parents:DataFrame, pets:
                                         columns=['generation', 'in-law']).reset_index(names='member_id')
                     .merge(members, on='member_id')
     )
+
+    print('HEREEE')
+    input(f'{relatives=}')
+
     if not include_animals:
         relatives = relatives[relatives['member_type']!='animal']
     if cut_date:
@@ -130,3 +134,4 @@ def build_tree(engine:Engine, founder_id:UUID, include_animals=False, cut_date:d
     relatives = get_tree_members(founder_id, members, parents, pets, spouses,
                                  include_animals=include_animals, cut_date=cut_date, include_deceased=include_deceased)
     return relatives
+        
