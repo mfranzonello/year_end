@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy import Engine
@@ -70,3 +71,25 @@ def fetch_founder(engine:Engine, schema_name:str) -> UUID:
     FROM {schema_name}.founder
     ;'''
     return read_sql(engine, sql).squeeze()
+
+def fetch_family_graph(engine:Engine, founder_id:UUID,
+                       cut_date:date|None=None,
+                       traversal_mode:str='up_down',
+                       include_partner_branches:bool=True) -> DataFrame:
+    """Return the database-classified nodes and canonical graph connections."""
+    sql = '''
+    SELECT node_id, node_type, generation, unit_order, unit_position, x_order,
+        parent_head_id, tail_id, tail_type, branch, lineage, ancestry,
+        union_type, union_date, union_date_precision
+    FROM dashboard.family_graph(
+        :founder_id, :cut_date, :traversal_mode, :include_partner_branches
+    )
+    ORDER BY generation, x_order, node_id
+    ;'''
+    params = {
+        'founder_id': founder_id,
+        'cut_date': cut_date,
+        'traversal_mode': traversal_mode,
+        'include_partner_branches': include_partner_branches,
+    }
+    return read_sql(engine, sql, params=params)

@@ -195,6 +195,10 @@ Streamlit presentation layer.
 
 ### `family_tree/`
 
+- `graph.py` converts the single-table `dashboard.family_graph` contract into a
+  strict, duplicate-safe Graphviz DOT graph. Creating DOT needs the pinned Python
+  package; rendering it needs the separate Graphviz `dot` executable on PATH.
+
 Relationship traversal and rendering work built on the same Neon family data.
 
 - `ancestry.py` constructs parent/pet/spouse maps, identifies relatives from a
