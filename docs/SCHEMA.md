@@ -226,6 +226,10 @@ Public application code must not combine the two schemas in one request.
   junction rows retain `union_type`, `union_date`, and `union_date_precision` for
   optional visible dots and anniversary hover text. `generation`, `unit_order`,
   `unit_position`, and `x_order` provide the database-classified placement order.
+  Every descendant occupies its own lineage-ordered placement unit; a partner
+  and union junction share that unit when present. This keeps married and
+  unmarried siblings interleaved by sibling order, with animals after people
+  belonging to the same parental node.
 
 - `family_members_display` wraps `family_members` for the flattened timeline.
   It assigns each related member to a UUIDv5 display unit, derives the unit's
