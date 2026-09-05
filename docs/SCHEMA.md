@@ -229,7 +229,12 @@ Public application code must not combine the two schemas in one request.
   Every descendant occupies its own lineage-ordered placement unit; a partner
   and union junction share that unit when present. This keeps married and
   unmarried siblings interleaved by sibling order, with animals after people
-  belonging to the same parental node.
+  belonging to the same parental node. Its internal graph-order lineage follows
+  the selected discovery path and appends a `[branch_order, sibling_order]` pair
+  for every downward step (`core`, `shared`, `partner`, then unclassified).
+  This prevents sibling numbers calculated for overlapping one-head and
+  two-head parent nodes from colliding, while leaving the returned semantic
+  `lineage` unchanged.
 
 - `family_members_display` wraps `family_members` for the flattened timeline.
   It assigns each related member to a UUIDv5 display unit, derives the unit's
