@@ -1,8 +1,10 @@
 from math import ceil
+from itertools import pairwise
 from uuid import UUID
 
 from graphviz import Graph
 from pandas import DataFrame
+from pandas.api.types import is_list_like
 from webcolors import name_to_hex
 
 from family_tree.cloudinary_lite import get_image_url, get_image_path
