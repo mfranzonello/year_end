@@ -6,6 +6,12 @@ from pandas import DataFrame
 
 from database.db import read_sql
 
+def fetch_founder_id(engine:Engine, schema_name:str='demo') -> UUID:
+    sql = f'''
+    select founder_id from nello.founder_id()
+    ;'''
+    return read_sql(engine, sql).squeeze()
+
 def fetch_display_names(engine:Engine, schema_name:str='demo') -> DataFrame:
     sql = f'''
     SELECT member_id, full_name

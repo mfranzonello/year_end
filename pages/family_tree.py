@@ -4,7 +4,7 @@ from datetime import date, timedelta
 import streamlit as st
 
 from database.db import get_engine
-from database.db_display import fetch_member_information, fetch_member_birth_date, fetch_family_tree
+from database.db_display import fetch_member_information, fetch_member_birth_date, fetch_family_tree, fetch_founder_id
 from charting.charts_family import tree_chart
 from charting.general import set_sidebar, plot_graphviz_chart
 
@@ -28,10 +28,12 @@ st.set_page_config(page_title='Franzonello Family YIR Appearances',
 members = fetch_member_information(engine, schema_name=SCHEMA_NAME)
 persons = members[members['member_type'] == 'person'].sort_values(by='full_name')
 
-cols = st.columns(5)
+cols = st.columns(4)
 with cols[0]:
+    founder_id = fetch_founder_id(engine, schema_name=SCHEMA_NAME)
     person_id:UUID = st.selectbox('Person to Center', persons['member_id'],
                                   format_func=lambda x: persons[persons['member_id']==x]['full_name'].iloc[0],
+                                  ##index = persons[persons['member_id'] == founder_id].index[0],
                                   width=400)
 
 with cols[1]:
@@ -51,9 +53,10 @@ with cols[3]:
                           format_func=lambda x: {True: 'Images', False: 'Text'}[x],
                           help='Show the graph with images or text-only')
     
-with cols[4]:
-    extended = st.checkbox('Extended Tree', value=False, help='Include all known family members, even if not directly related to the selected person.')
-    direction = 'bidirectional' if extended else 'up_down'
+# # with cols[4]:
+# #     extended = st.checkbox('Extended Tree', value=False, help='Include all known family members, even if not directly related to the selected person.')
+# #     direction = 'bidirectional' if extended else 'up_down'
+direction = 'up_down'  # default to up_down for now, can add extended option later
 
 st.title(f'Family Tree')
 
