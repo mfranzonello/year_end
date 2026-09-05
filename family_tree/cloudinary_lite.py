@@ -35,4 +35,4 @@ def get_image_url(cloud_name:str, profile_id:str, grayscale=False, border_color=
                     (f'bo_{border_width}px_solid_{border_color}', border_color),
                     ]
                     
-        return url_start + '/'.join(m for m, b in url_mids if b) + f'/{profile_id}'
+        return (url_start + '/'.join(m for m, b in url_mids if b) + f'/{profile_id}').replace('//', '/')

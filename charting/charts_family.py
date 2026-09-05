@@ -75,7 +75,7 @@ def tree_chart(tree_data:DataFrame, cloud_name:str) -> Graph:
                     label = get_person_label(node)
                 else:
                     label = get_animal_label(node)
-                image = get_image_url(str(node['node_id']), cloud_name)
+                image = get_image_url(cloud_name, str(node['node_id']))
                 print(f'{image=}')
 
             else:
