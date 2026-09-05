@@ -33,6 +33,9 @@ def plot_altair_chart(chart):
     if chart:
         st.altair_chart(chart)
 
-def plot_graphviz_chart(graph:Graph):
+def plot_graphviz_chart(graph:Graph, use_images=False):
     if graph:
-        st.graphviz_chart(graph)
+        if use_images:
+            st.image(graph.pipe(format="png"))
+        else:
+            st.graphviz_chart(graph)

@@ -22,7 +22,7 @@ def get_animal_label(node) -> str:
 def get_union_label(node) -> str:
     return
 
-def get_attributes(node) -> str:
+def get_attributes(node, use_images=False) -> str:
     SHAPE_PERSON = 'rectangle'
     SHAPE_ANIMAL = 'ellipse'
 
@@ -30,32 +30,37 @@ def get_attributes(node) -> str:
     COLOR_FEMALE = 'deeppink1'
     COLOR_NEUTER = 'azure3'
 
-    if node['node_type'] == 'union':
-        attributes = {'shape': 'point', 'width': '0', 'height': '0', 'pendwidth': '0'}
-        
-    else:
-        match node['node_type']:
-            case 'person':
-                shape = SHAPE_PERSON
-            case 'animal':
-                shape = SHAPE_ANIMAL
-            case _:
-                shape = 'point'
+    match node['node_type']:
+        case 'junction':
+            attributes = {'shape': 'point', 'width': '0', 'height': '0', 'pendwidth': '0'}
+        case 'person' | 'animal':
+            if use_images:
+                shape = 'square'
+                #attributes = {'shape': 'square', 'width': '1'}
 
-        match node['sex']:
-            case 'm':
-                color = COLOR_MALE
-            case 'f':
-                color = COLOR_FEMALE
-            case _:
-                color = COLOR_NEUTER
+            else:
+                match node['node_type']:
+                    case 'person':
+                        shape = SHAPE_PERSON
+                    case 'animal':
+                        shape = SHAPE_ANIMAL
+                    case _:
+                        shape = 'point'
 
-        attributes = {'shape': shape, 'color': color}
+            match node['sex']:
+                case 'm':
+                    color = COLOR_MALE
+                case 'f':
+                    color = COLOR_FEMALE
+                case _:
+                    color = COLOR_NEUTER
+
+            attributes = {'shape': shape, 'color': color}
 
     return attributes
 
-''' main status review charts '''
-def tree_chart(tree_data:DataFrame, cloud_name:str) -> Graph:
+''' main family tree charts '''
+def tree_chart(tree_data:DataFrame, cloud_name:str, use_images=False) -> Graph:
     GENERATION_LIMIT = 20
 
     tree = Graph()
@@ -63,28 +68,39 @@ def tree_chart(tree_data:DataFrame, cloud_name:str) -> Graph:
     ##tree.attr(splines='polyline')
 
     for generation in tree_data['generation'].unique():
-        subtree = Graph()
-        subtree.attr(rank='same')
-
         tree_data_g = tree_data[tree_data['generation']==generation]
+        generation_size = len(tree_data_g)
+        gx = ceil(generation_size / GENERATION_LIMIT)
 
-        for _, node in tree_data_g.iterrows():
-            node_type = node['node_type']
-            if node_type in ['person', 'animal']:
-                if node_type == 'person':
-                    label = get_person_label(node)
+        for i in range(gx + 1):
+            subtree = Graph()
+            subtree.attr(rank='same')
+
+            for _, node in tree_data_g.iterrows():
+                node_type = node['node_type']
+                if node_type in ['person', 'animal']:
+                    if use_images:
+                        image = get_image_path(cloud_name, str(node['node_id']))
+                        label = ''
+                    else:
+                        image = None
+                        if node_type == 'person':
+                            label = get_person_label(node)
+                        else:
+                            label = get_animal_label(node)
+
                 else:
-                    label = get_animal_label(node)
-                image = get_image_path(cloud_name, str(node['node_id']))
+                    if use_images:
+                        label = ''
+                    else:
+                        label = node['clan_name']
+                    image = None
 
-            else:
-                label = 'union'
-                image = None
+                attributes = get_attributes(node, use_images)
 
-            attributes = get_attributes(node)
-            subtree.node(str(node['node_id']), label=label, image=image, **attributes)
+                subtree.node(str(node['node_id']), label=label, image=image, tooltip=label, **attributes)
 
-        tree.subgraph(subtree)
+            tree.subgraph(subtree)
 
     # add horizontal edges
     for _, node in tree_data[tree_data['tail_id'].notna()].iterrows():

@@ -28,17 +28,24 @@ st.set_page_config(page_title='Franzonello Family YIR Appearances',
 members = fetch_member_information(engine, schema_name=SCHEMA_NAME)
 persons = members[members['member_type'] == 'person'].sort_values(by='full_name')
 
-person_id:UUID = st.selectbox('Person to Center', persons['member_id'],
-                              format_func=lambda x: persons[persons['member_id']==x]['full_name'].iloc[0],
-                              width=400)
+col1, col2 = st.columns(2)
+with col1:
+    person_id:UUID = st.selectbox('Person to Center', persons['member_id'],
+                                  format_func=lambda x: persons[persons['member_id']==x]['full_name'].iloc[0],
+                                  width=400)
+
+with col2:
+    choices = ['Images', 'Text']
+    view_style = st.radio('View Style', choices, horizontal=True)
+    use_images = view_style==choices[0]
 
 ##years = fetch_timeline_years(engine)
 ##year:int = st.selectbox('Year to Review', years, len(years) - 1, width=100)
-st.title(f'Franzonello Family Tree')
+st.title(f'Family Tree')
 
 tree_data = fetch_family_tree(engine, person_id, schema_name=SCHEMA_NAME)
 ##cut_date = date(year + 1, 1, 1) - timedelta(days=1)
 
 # gantt chart of appearances
-graph = tree_chart(tree_data, cloud_name=CLOUDINARY_CLOUD)
-plot_graphviz_chart(graph)
+graph = tree_chart(tree_data, cloud_name=CLOUDINARY_CLOUD, use_images=use_images)
+plot_graphviz_chart(graph, use_images=use_images)
