@@ -28,7 +28,7 @@ st.set_page_config(page_title='Franzonello Family YIR Appearances',
 members = fetch_member_information(engine, schema_name=SCHEMA_NAME)
 persons = members[members['member_type'] == 'person'].sort_values(by='full_name')
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 with col1:
     person_id:UUID = st.selectbox('Person to Center', persons['member_id'],
                                   format_func=lambda x: persons[persons['member_id']==x]['full_name'].iloc[0],
@@ -39,11 +39,15 @@ with col2:
     view_style = st.radio('View Style', choices, horizontal=True)
     use_images = view_style==choices[0]
 
+with col3:
+    traversal = st.checkbox('Include Extended Family')
+    direction = 'bidirectional' if traversal else 'up_down'
+
 ##years = fetch_timeline_years(engine)
 ##year:int = st.selectbox('Year to Review', years, len(years) - 1, width=100)
 st.title(f'Family Tree')
 
-tree_data = fetch_family_tree(engine, person_id, schema_name=SCHEMA_NAME)
+tree_data = fetch_family_tree(engine, person_id, schema_name=SCHEMA_NAME, direction=direction)
 ##cut_date = date(year + 1, 1, 1) - timedelta(days=1)
 
 # gantt chart of appearances

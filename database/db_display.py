@@ -94,6 +94,7 @@ def fetch_family_tree(engine: Engine, founder_id:UUID, schema_name:str='demo', c
     COALESCE(p.death_date_precision, a.death_date_precision) AS death_date_precision,
     u.union_type, u.union_date, u.union_date_precision, clan_name,
     generation, unit_order, unit_position, x_order,
+    parent_head_ids as parent_ids,
     CASE WHEN parent_head_id IN (SELECT node_id FROM dfg) THEN parent_head_id END AS head_id,
     tail_id, tail_type, branch, lineage, ancestry
     FROM dfg
