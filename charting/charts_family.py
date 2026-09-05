@@ -1,6 +1,4 @@
 from math import ceil
-from tracemalloc import start
-from turtle import st
 from uuid import UUID
 
 from graphviz import Graph
