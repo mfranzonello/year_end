@@ -235,6 +235,10 @@ Public application code must not combine the two schemas in one request.
   This prevents sibling numbers calculated for overlapping one-head and
   two-head parent nodes from colliding, while leaving the returned semantic
   `lineage` unchanged.
+  Member rows also expose `parent_head_ids` immediately before
+  `parent_head_id`; the array preserves the underlying parent/owner set for
+  display-time family-boundary detection, while `parent_head_id` remains the
+  single Graphviz edge endpoint. Junction rows return `NULL` for the array.
 
 - `family_members_display` wraps `family_members` for the flattened timeline.
   It assigns each related member to a UUIDv5 display unit, derives the unit's
