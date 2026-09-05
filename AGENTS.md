@@ -81,6 +81,10 @@
 
 - List comprehensions are welcome; use explicit or nested loops when clearer.
 - Prefer `match`/`case` to long `if`/`elif` chains when it fits the domain.
+- Mutate a DataFrame passed to a transformation function when adding intended
+  derived columns. Use `.loc` correctly for assignment; do not add `.copy()`
+  merely to suppress pandas chained-assignment warnings. Copy only when the
+  caller's original DataFrame must remain unchanged.
 - Do not add `from __future__ import annotations`.
 - Add a module docstring explaining purpose and responsibility. Add concise
   docstrings to functions and useful type hints, without commenting every line.
@@ -104,6 +108,15 @@
 - Keep family-tree membership distinct from broader people or contributor data;
   a person in the database must not appear in the tree unless intentionally
   included.
+- For family-tree layout limits, count visually substantial member nodes rather
+  than junction nodes that render only as small points.
+- Treat calculated family units and display generations as layout metadata.
+  Graphviz rank/subgraph construction must explicitly enforce display
+  generations; different numeric values alone do not guarantee different rows.
+- Preserve the established left-to-right invisible tail chain when staggering
+  family-tree rows unless rerouting is demonstrably required. Diagonal invisible
+  edges are acceptable, and unnecessary tail reconstruction can disturb the
+  intended node order.
 - Do not impose a permanent family/friend/contributor classification merely to
   drive a yearly workflow. Preserve founder-relative and appearance-derived
   scope; model folder provision and reminder eligibility as explicit,
