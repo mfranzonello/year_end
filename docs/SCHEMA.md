@@ -190,7 +190,9 @@ Public application code must not combine the two schemas in one request.
   members receive `NULL`. Supported traversal modes are `up`, `down`,
   `up_down`, and `bidirectional`. An omitted or `NULL` cutoff date uses the
   database server's `CURRENT_DATE`.
-- `family_members` exposes the same traversal modes using direct parent,
+- `family_members(start_member_id, cut_date, traversal_mode,
+  include_partner_branches, pet_visibility, living_people_only)` exposes the
+  same traversal modes using direct parent,
   pet-owner, and dated marriage/civil-union edges. It additionally identifies
   the relationship type and whether the selected path entered through a
   non-opening partner. Member birth dates, pet gotcha dates, and union dates
@@ -198,7 +200,13 @@ Public application code must not combine the two schemas in one request.
   rows have no relationship date, so the child entry date is their only
   historical boundary. This function is intentionally parallel to the clan
   implementation while their results are evaluated. It uses the same cutoff
-  default as `_family_members_old`.
+  default as `_family_members_old`. `pet_visibility` accepts `all`, `living`,
+  or `none`; `living_people_only` is boolean and defaults to `false`. The
+  provisional living-person filter excludes a person when their death date
+  precedes the effective cutoff or their death-date precision is `past`.
+  Filtering is applied to the initial member universe, and the function returns
+  that filtered universe rather than reintroducing omitted members as unrelated
+  rows at the end.
 - The preferred `family_members` also classifies each member's parent/owner
   node from the complete sorted set of parent or owner UUIDs. It returns a
   deterministic UUIDv5 `parent_node_key`, node type, head IDs, nodes headed by the
@@ -208,7 +216,7 @@ Public application code must not combine the two schemas in one request.
   opening-member branch followed by each parent's birth-ordered position during
   upward traversal; unknown or equal birth dates use UUID as a stable
   tie-breaker. Opening members and descendants retain an empty array.
-- `family_members_graph` wraps `family_members` without repeating its recursive
+- `family_branches` wraps `family_members` without repeating its recursive
   traversal. A node with two parent/owner heads is `shared`; a one-head node is
   `core` when that head occupies the first side and `partner` when the head
   occupies the second side. The seed is first and its opening partner is
@@ -226,14 +234,19 @@ Public application code must not combine the two schemas in one request.
   junction rows retain `union_type`, `union_date`, and `union_date_precision` for
   optional visible dots and anniversary hover text. `generation`, `unit_order`,
   `unit_position`, and `x_order` provide the database-classified placement order.
-  Its final `pet_visibility` input accepts `all`, `living`, or `none` and defaults
-  to `all`, preserving calls that omit the argument. The `living` mode excludes
-  animals whose death date precedes the effective cutoff date or whose death-date
-  precision is `past`; `none` excludes every animal. This filtering happens
-  before junction, ordering, and tail rows are calculated. The former
+  Its `pet_visibility` input accepts `all`, `living`, or `none` and defaults
+  to `all`, preserving calls that omit the argument. Its final
+  `living_people_only` input is boolean and defaults to `false`. The `living`
+  pet mode excludes animals whose death date precedes the effective cutoff date
+  or whose death-date precision is `past`; `none` excludes every animal. Human
+  living-only mode applies the equivalent provisional death rule to people.
+  This filtering happens before junction, ordering, and tail rows are
+  calculated. The former
   `dashboard.tree_nodes` convenience view was unused and has been removed.
 
-- `family_members_display` wraps `family_members` for the flattened timeline.
+- `family_timeline` wraps `family_members` for the flattened timeline and
+  explicitly requests all people and all pets, preserving its existing public
+  signature and behavior.
   It assigns each related member to a UUIDv5 display unit, derives the unit's
   generation, lineage, ancestry, depth, and global order, and supplies the
   member's role and stable order inside that unit. Active childless
