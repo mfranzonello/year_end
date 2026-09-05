@@ -4,7 +4,7 @@ import streamlit as st
 from database.db import get_engine
 from database.db_project import fetch_project_years, fetch_folder_summaries, fetch_years_summary
 from database.db_display import fetch_resolution_order
-from charting.charts import submission_chart, review_pie
+from charting.charts_yir import submission_chart, review_pie
 from charting.general import set_sidebar, plot_altair_chart
 
 PGHOST = st.secrets['postgresql']['host']

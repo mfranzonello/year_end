@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import streamlit as st
+from graphviz import Graph
 
 from streamlit_auth import current_identity, render_account_controls
 
@@ -31,3 +32,7 @@ def set_sidebar():
 def plot_altair_chart(chart):
     if chart:
         st.altair_chart(chart)
+
+def plot_graphviz_chart(graph:Graph):
+    if graph:
+        st.graphviz_chart(graph)

@@ -1,9 +1,10 @@
 from datetime import date
+from uuid import UUID
 
 from sqlalchemy import Engine
 from pandas import DataFrame
 
-from database.db import read_sql, execute_sql, build_values
+from database.db import read_sql
 
 def fetch_display_names(engine:Engine, schema_name:str='demo') -> DataFrame:
     sql = f'''
@@ -36,7 +37,7 @@ def fetch_actor_spans(engine:Engine, project_year:int, schema_name:str='demo', c
     sql = f'''
     WITH relatives AS (
     SELECT member_id, display_unit_key, display_unit_order, display_order
-    FROM {schema_name}.family_members_display{parameters}
+    FROM {schema_name}.family_timeline{parameters}
     JOIN dashboard.member_information USING (member_id)
     WHERE (death_date IS NULL OR death_date > '{cut_date}'::date)
     AND (death_date_precision IS NULL OR death_date_precision != 'past')
@@ -66,10 +67,36 @@ def fetch_actor_spans(engine:Engine, project_year:int, schema_name:str='demo', c
 
     return read_sql(engine, sql)
 
+def fetch_family_tree(engine: Engine, founder_id:UUID, schema_name:str='demo', cut_date:date=date.today(),
+                      direction:str='up_down', partner_branches:bool=True) -> DataFrame:
+    if schema_name == 'dashboard':
+        parameters = f"('{founder_id}'::uuid, '{cut_date}'::date, '{direction}', {partner_branches})"
+    else:
+        parameters = ''
+    sql = f'''
+
+    SELECT node_id, node_type,
+    COALESCE(p.first_name, a.first_name) AS first_name,
+    COALESCE(p.middle_names, a.middle_names) AS middle_names,
+    COALESCE(p.nick_name, a.nick_name) AS nick_name,
+    p.last_name, p.prefix, suffix_to_text(p.suffix) AS suffix,
+    COALESCE(p.sex, a.sex) AS sex, a.species,
+    COALESCE(p.birth_date, a.birth_date) AS birth_date,
+    COALESCE(p.birth_date_precision, a.birth_date_precision) AS birth_date_precision,
+    COALESCE(p.death_date, a.death_date) AS death_date,
+    COALESCE(p.death_date_precision, a.death_date_precision) AS death_date_precision,
+    u.union_type, u.union_date, u.union_date_precision,
+    generation, unit_order, unit_position, x_order,
+    parent_head_id, tail_id, tail_type, branch, lineage, ancestry
+    FROM {schema_name}.family_graph{parameters}
+    LEFT JOIN persons p ON node_id = person_id
+    LEFT JOIN animals a ON node_id = animal_id
+    LEFT JOIN unions u ON node_id = u.union_id
+    ;'''
+    return read_sql(engine, sql)
+
 def fetch_resolution_order(engine:Engine) -> list[str]:
     sql = f'''
     SELECT resolution FROM dashboard.resolution_order
     ;'''
     return read_sql(engine, sql)['resolution'].tolist()
-
-
