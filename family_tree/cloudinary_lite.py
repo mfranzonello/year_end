@@ -1,5 +1,7 @@
 from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from pandas import isnull
 
@@ -28,11 +30,22 @@ def border_image(image_url: str, border_color:str) -> str|None:
 # #     else:
 # #         return image_url
 
-def get_image_url(cloud_name:str, profile_id:str, grayscale=False, border_color=None, border_width=5) -> str|None:
+def get_image_url(cloud_name:str, profile_id:str, grayscale=False,
+                  border_color=None, border_width=5, pixels=None) -> str|None:
     if profile_id:
         url_start = f'{cloudinary_domain}/{cloud_name}/image/upload/'
         url_mids = [('e_grayscale', grayscale),
                     (f'bo_{border_width}px_solid_{border_color}', border_color),
+                    (f'w_{pixels}', pixels)
                     ]
                     
-        return (url_start + '/'.join(m for m, b in url_mids if b) + f'/{profile_id}').replace('//', '/')
+        return url_start + ('/'.join(m for m, b in url_mids if b) + f'/{profile_id}').replace('//', '/')
+
+def get_image_path(cloud_name: str, node_id) -> str:
+    image_url = get_image_url(cloud_name, node_id, pixels=100)
+
+    if not url_is_404(image_url):
+        with TemporaryDirectory() as directory:
+            image_path = Path(directory) / f'{node_id}.png'
+            image_path.write_bytes(urlopen(image_url, timeout=10).read())
+            return str(image_path)

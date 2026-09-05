@@ -5,7 +5,7 @@ from graphviz import Graph
 from pandas import DataFrame
 from webcolors import name_to_hex
 
-from family_tree.cloudinary_lite import get_image_url
+from family_tree.cloudinary_lite import get_image_url, get_image_path
 
 def get_color_hexes(color_names:list[str]) -> list[str]:
     return [name_to_hex(c) for c in color_names]
@@ -75,8 +75,7 @@ def tree_chart(tree_data:DataFrame, cloud_name:str) -> Graph:
                     label = get_person_label(node)
                 else:
                     label = get_animal_label(node)
-                image = get_image_url(cloud_name, str(node['node_id']))
-                print(f'{image=}')
+                image = get_image_path(cloud_name, str(node['node_id']))
 
             else:
                 label = 'union'
