@@ -134,6 +134,18 @@ product/UI focused rather than a local-to-cloud migration.
 Potential areas include clearer dashboard outputs, better navigation and
 presentation, and more complete Vimeo metadata or publishing workflows.
 
+Near-term Streamlit usability and cache work:
+
+- Add a configurable TTL to the local Cloudinary image cache so updated profile
+  images eventually replace stale downloaded copies without depending on the
+  hosting environment to clear its filesystem.
+- Add an explicit image-cache purge action for immediate refreshes while profile
+  images and placeholders are being replaced. Keep the action appropriately
+  restricted once authentication and administrative permissions are enabled.
+- Show a chart-specific spinner or status message around expensive data loading,
+  layout, image preparation, and rendering so users can distinguish active chart
+  construction from Streamlit's general running state.
+
 The Vimeo publishing workflow should be explicit and revision-safe:
 
 - Create the yearly placeholder video at the appropriate point in the cycle,
