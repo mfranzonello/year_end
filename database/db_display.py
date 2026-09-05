@@ -13,7 +13,9 @@ def fetch_display_names(engine:Engine, schema_name:str='demo') -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-def fetch_member_information(engine:Engine, schema_name:str='demo', cut_date:date=date.today()) -> DataFrame:
+def fetch_member_information(engine:Engine, schema_name:str='demo', cut_date:date|None=None) -> DataFrame:
+    if cut_date is None:
+        cut_date = 'infinity'
     sql = f'''
     SELECT member_id, full_name,
     CASE WHEN clan_date IS NULL or clan_date <= '{cut_date}'::date THEN clan_id_1 ELSE clan_id_2 END AS clan_id,
@@ -67,13 +69,18 @@ def fetch_actor_spans(engine:Engine, project_year:int, schema_name:str='demo', c
 
     return read_sql(engine, sql)
 
-def fetch_family_tree(engine: Engine, founder_id:UUID, schema_name:str='demo', cut_date:date=date.today(),
+def fetch_family_tree(engine: Engine, founder_id:UUID, schema_name:str='demo', cut_date:date|None=None,
                       direction:str='up_down', partner_branches:bool=True) -> DataFrame:
+    if cut_date is None:
+        cut_date = 'infinity'
     if schema_name == 'dashboard':
         parameters = f"('{founder_id}'::uuid, '{cut_date}'::date, '{direction}', {partner_branches})"
     else:
         parameters = ''
     sql = f'''
+    WITH dfg AS (
+    SELECT * FROM {schema_name}.family_graph{parameters}
+    )
 
     SELECT node_id, node_type,
     COALESCE(p.first_name, a.first_name) AS first_name,
@@ -87,8 +94,9 @@ def fetch_family_tree(engine: Engine, founder_id:UUID, schema_name:str='demo', c
     COALESCE(p.death_date_precision, a.death_date_precision) AS death_date_precision,
     u.union_type, u.union_date, u.union_date_precision,
     generation, unit_order, unit_position, x_order,
-    parent_head_id, tail_id, tail_type, branch, lineage, ancestry
-    FROM {schema_name}.family_graph{parameters}
+    CASE WHEN parent_head_id IN (SELECT node_id FROM dfg) THEN parent_head_id END AS head_id,
+    tail_id, tail_type, branch, lineage, ancestry
+    FROM dfg
     LEFT JOIN persons p ON node_id = person_id
     LEFT JOIN animals a ON node_id = animal_id
     LEFT JOIN unions u ON node_id = u.union_id

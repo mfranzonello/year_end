@@ -99,7 +99,7 @@ def tree_chart(tree_data:DataFrame, cloud_name:str) -> Graph:
         tree.edge(str(node['node_id']), str(node['tail_id']), style=style)
 
     # add vertical edges
-    for _, node in tree_data[tree_data['parent_head_id'].notna()].iterrows():       
-        tree.edge(str(node['parent_head_id']), str(node['node_id']))
+    for _, node in tree_data[tree_data['head_id'].notna()].iterrows():       
+        tree.edge(str(node['head_id']), str(node['node_id']))
 
     return tree
