@@ -216,7 +216,7 @@ Public application code must not combine the two schemas in one request.
   use the birth-ordered position already encoded by `ancestry`. Apex nodes,
   nodes with more than two heads, and unclassifiable one-head nodes return
   `NULL`. This branch value is intended for Graphviz-specific organization.
-- `family_graph` calls `family_members_graph` once and returns the complete
+- `family_graph` calls `family_branches` once and returns the complete
   Graphviz contract as one table. Every person, animal, official union junction,
   and synthetic multi-head junction has one universal UUID `node_id`. A row has
   at most one vertical `parent_head_id` and one left-to-right `tail_id`, so Python
@@ -226,6 +226,12 @@ Public application code must not combine the two schemas in one request.
   junction rows retain `union_type`, `union_date`, and `union_date_precision` for
   optional visible dots and anniversary hover text. `generation`, `unit_order`,
   `unit_position`, and `x_order` provide the database-classified placement order.
+  Its final `pet_visibility` input accepts `all`, `living`, or `none` and defaults
+  to `all`, preserving calls that omit the argument. The `living` mode excludes
+  animals whose death date precedes the effective cutoff date or whose death-date
+  precision is `past`; `none` excludes every animal. This filtering happens
+  before junction, ordering, and tail rows are calculated. The former
+  `dashboard.tree_nodes` convenience view was unused and has been removed.
 
 - `family_members_display` wraps `family_members` for the flattened timeline.
   It assigns each related member to a UUIDv5 display unit, derives the unit's
