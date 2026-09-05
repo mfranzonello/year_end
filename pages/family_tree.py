@@ -16,6 +16,8 @@ PGPASSWORD = st.secrets['postgresql']['password']
 
 CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
 
+GENERATION_LIMIT = 20
+
 engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 SCHEMA_NAME = 'dashboard' # demo if not logged in
@@ -33,7 +35,7 @@ with cols[0]:
     founder_id = fetch_founder_id(engine, schema_name=SCHEMA_NAME)
     person_id:UUID = st.selectbox('Person to Center', persons['member_id'],
                                   format_func=lambda x: persons[persons['member_id']==x]['full_name'].iloc[0],
-                                  ##index = persons[persons['member_id'] == founder_id].index[0],
+                                  index = int(persons[persons['member_id'] == founder_id].index[0]),
                                   width=400)
 
 with cols[1]:
@@ -64,5 +66,6 @@ tree_data = fetch_family_tree(engine, person_id, schema_name=SCHEMA_NAME, cut_da
                               include_animals=include_animals)
 
 # graph with nodes and edges
-graph = tree_chart(tree_data, cloud_name=CLOUDINARY_CLOUD, use_images=use_images)
+graph = tree_chart(tree_data, cloud_name=CLOUDINARY_CLOUD, use_images=use_images,
+                              generation_limit=GENERATION_LIMIT)
 plot_graphviz_chart(graph, use_images=use_images)

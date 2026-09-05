@@ -1,4 +1,6 @@
 from math import ceil
+from tracemalloc import start
+from turtle import st
 from uuid import UUID
 
 from graphviz import Graph
@@ -87,7 +89,6 @@ def find_boundaries(tree_data:DataFrame) -> DataFrame:
 
     return tree_data
 
-
 def _visible_parent_ids(value:object, visible_ids:set[UUID]) -> set[UUID]:
     """Normalize a PostgreSQL UUID array and omit undiscovered parents."""
     if value is None:
@@ -103,10 +104,14 @@ def find_display_generations(tree_data:DataFrame, generation_limit:int) -> DataF
 
     tree_data['display_generation'] = tree_data['generation'].astype(float)
 
-    for generation_value in tree_data['generation'].drop_duplicates():
+    subgenerations = []
+    for generation_value in tree_data['generation'].unique():
         generation = tree_data[(tree_data['generation'] == generation_value)
                                & (tree_data['node_type'] != 'junction')]
-        family_ids = generation.sort_values('x_order')['family_unit'].drop_duplicates().tolist()
+        if len(generation) > generation_limit:
+            subgenerations.append(generation_value)
+
+        family_ids = generation.sort_values('x_order')['family_unit'].unique() #.drop_duplicates().tolist()
         display_rows = max(1, ceil(len(generation) / generation_limit))
         family_rows = {
             family_id: position % display_rows
@@ -116,33 +121,70 @@ def find_display_generations(tree_data:DataFrame, generation_limit:int) -> DataF
         for family_id, display_row in family_rows.items():
             mask = ((tree_data['generation'] == generation_value)
                     & (tree_data['family_unit'] == family_id))
-            tree_data.loc[mask, 'display_generation'] = (
+            tree_data.loc[mask, 'sub_generation'] = (
                 float(generation_value) + (display_row / display_rows)
             )
 
+    tree_data['is_subgeneration'] = tree_data['generation'].isin(subgenerations)
+    tree_data['display_generation'] = tree_data['sub_generation'].rank(method='dense').astype(int)
+
     ##tree_data.loc[tree_data['node_type'] == 'animal', 'display_generation'] += 1/(2*display_rows)
-    tree_data['edge_constraint'] = True #tree_data['display_generation'] == tree_data['display_generation'].shift(-1)
+    ##tree_data['edge_constraint'] = tree_data['display_generation'] == tree_data['display_generation'].shift(-1)
 
     return tree_data
 
-''' main family tree charts '''
-def tree_chart(tree_data:DataFrame, cloud_name:str, use_images=False) -> Graph:
-    GENERATION_LIMIT = 20
+def find_parent_nodes(subgeneration_nodes):
+    return set(node['head_id'] for _, node in subgeneration_nodes.iterrows() if node['head_id'] is not None)
 
+def find_filler_nodes(all_parent_nodes, found_parent_nodes):
+    return set(node_id for node_id in all_parent_nodes if node_id not in found_parent_nodes)
+
+def find_vertical_route(start_node, end_node, style:str=None):
+    g_range = range(start_node['display_generation'] - 1, end_node['display_generation'] + 1)
+    
+    start_str = str(start_node['node_id'])
+    middle_str = [f'{g}:{end_node["node_id"]}' for g in g_range]
+    end_str = str(end_node['node_id'])
+    
+    connectors = [start_str] + middle_str + [end_str]
+    edges = [(connectors[i], connectors[i+1], style) for i in range(len(connectors)-1)]
+
+    return edges
+
+def find_horizontal_route(start_node, end_node, parent_nodes, style:str=None):
+    p_range = parent_nodes[parent_nodes.index(start_node['head_id']) + 1 : parent_nodes.index(end_node['head_id'])]
+
+    start_str = str(start_node['node_id'])
+    middle_str = [f'{start_node["display_generation"]}:{p}' for p in p_range]
+    end_str = str(end_node['node_id'])
+
+    connectors = [start_str] + middle_str + [end_str]
+    edges = [(connectors[i], connectors[i+1], style) for i in range(len(connectors)-1)]
+
+    return edges
+
+''' main family tree charts '''
+def tree_chart(tree_data:DataFrame, cloud_name:str, use_images=False, generation_limit:int=None) -> Graph:
+    
     tree = Graph()
-    ##tree.attr(splines='False')
-    ##tree.attr(splines='polyline')
     ##tree.attr(splines='ortho')
+    tree.graph_attr['bgcolor'] = 'transparent'
+    ##tree.graph_attr['rankdir'] = 'LR'
 
     tree_data = find_boundaries(tree_data)
-    tree_data = find_display_generations(tree_data, GENERATION_LIMIT)
+    tree_data = find_display_generations(tree_data, generation_limit)
+    subgeneration_mapping = tree_data[['display_generation', 'generation', 'is_subgeneration']]\
+        .groupby(['display_generation']).first().to_dict()
 
-    for generation in tree_data['display_generation'].unique():
-        tree_data_g = tree_data[tree_data['display_generation']==generation]
+    print(f'{subgeneration_mapping=}')
+    
+    for g in tree_data['display_generation'].unique():
+        tree_data_g = tree_data[tree_data['display_generation']==g]
 
         subtree = Graph()
         subtree.attr(rank='same')
 
+        # add normal nodes
         for _, node in tree_data_g.iterrows():
             node_type = node['node_type']
             if node_type in ['person', 'animal']:
@@ -167,7 +209,21 @@ def tree_chart(tree_data:DataFrame, cloud_name:str, use_images=False) -> Graph:
 
             subtree.node(str(node['node_id']), label=label, image=image, tooltip=label, **attributes)
 
+        # add routing nodes
+        if subgeneration_mapping['is_subgeneration'][g]:
+            original_g = subgeneration_mapping['generation'][g]
+            all_parent_nodes = find_parent_nodes(tree_data[tree_data['generation']==original_g])
+            found_parent_nodes = find_parent_nodes(tree_data_g)
+            routing_nodes = find_filler_nodes(all_parent_nodes, found_parent_nodes)
+             
+            for node in routing_nodes:
+                subtree.node(f'{g}:{node}', shape='point', width='0', height='0', style='invis')
+                pass
+
         tree.subgraph(subtree)
+
+    # add edges
+    edges = []
 
     # add horizontal edges
     for _, node in tree_data[tree_data['tail_id'].notna()].iterrows():
@@ -178,13 +234,18 @@ def tree_chart(tree_data:DataFrame, cloud_name:str, use_images=False) -> Graph:
                 style = None
             case _:
                 style = 'invis'
-        tree.edge(str(node['node_id']), str(node['tail_id']),
-                  #constraint='True',
-                  constraint=str(node['edge_constraint']),
-                  style=style)
+
+        edges.append((str(node['node_id']), str(node['tail_id']), style))
 
     # add vertical edges
-    for _, node in tree_data[tree_data['head_id'].notna()].iterrows():       
-        tree.edge(str(node['head_id']), str(node['node_id']))
+    for _, node in tree_data[tree_data['head_id'].notna()].iterrows():
+        ##edges.append(find_vertical_route(node, tree_data[tree_data['node_id']==node['head_id']].iloc[0], style=None))
+        edges.append((str(node['head_id']), str(node['node_id']), None))
+
+    # replace problematic edges
+
+    # add edges
+    for edge in edges:
+        tree.edge(edge[0], edge[1], style=edge[2]) # constraint = True?
 
     return tree
