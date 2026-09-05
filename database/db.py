@@ -20,9 +20,9 @@ def build_values(df: DataFrame, cols:list[str]) -> tuple[str, dict[str, object]]
 
     return values, params
 
-def read_sql(engine:Engine, sql:str) -> DataFrame:
+def read_sql(engine:Engine, sql:str, params:dict|None=None) -> DataFrame:
     with engine.begin() as conn:
-        df = read_sql_query(text(sql), conn)
+        df = read_sql_query(text(sql), conn, params=params)
 
     return df
 

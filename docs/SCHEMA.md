@@ -204,9 +204,28 @@ Public application code must not combine the two schemas in one request.
   deterministic UUIDv5 `parent_node_key`, node type, head IDs, nodes headed by the
   member, sibling order, and integer-array `lineage`. One-head nodes are
   `solo`, two-head nodes are `pair`, and larger sets are reported as `multiple`
-  rather than silently truncated. Its integer-array `ancestry` records
-  the opening-member branch followed by each stable parent position during
-  upward traversal; opening members and descendants retain an empty array.
+  rather than silently truncated. Its integer-array `ancestry` records the
+  opening-member branch followed by each parent's birth-ordered position during
+  upward traversal; unknown or equal birth dates use UUID as a stable
+  tie-breaker. Opening members and descendants retain an empty array.
+- `family_members_graph` wraps `family_members` without repeating its recursive
+  traversal. A node with two parent/owner heads is `shared`; a one-head node is
+  `core` when that head occupies the first side and `partner` when the head
+  occupies the second side. The seed is first and its opening partner is
+  second; descendant sides use non-in-law/in-law status, while ancestor sides
+  use the birth-ordered position already encoded by `ancestry`. Apex nodes,
+  nodes with more than two heads, and unclassifiable one-head nodes return
+  `NULL`. This branch value is intended for Graphviz-specific organization.
+- `family_graph` calls `family_members_graph` once and returns the complete
+  Graphviz contract as one table. Every person, animal, official union junction,
+  and synthetic multi-head junction has one universal UUID `node_id`. A row has
+  at most one vertical `parent_head_id` and one left-to-right `tail_id`, so Python
+  can create each edge once without reverse spouse or parent duplicates.
+  `tail_type = 'union'` identifies a visible partner-to-junction connection;
+  `tail_type = 'order'` identifies an invisible ordering connection. Official
+  junction rows retain `union_type`, `union_date`, and `union_date_precision` for
+  optional visible dots and anniversary hover text. `generation`, `unit_order`,
+  `unit_position`, and `x_order` provide the database-classified placement order.
 
 - `family_members_display` wraps `family_members` for the flattened timeline.
   It assigns each related member to a UUIDv5 display unit, derives the unit's
@@ -217,11 +236,6 @@ Public application code must not combine the two schemas in one request.
   but not animal ownership alone, also forms a timeline unit. Dependents are
   redirected into a head's selected unit when that choice is unambiguous; an
   animal inherits its owner's resolved unit and sorts after its human members.
-
-The reproducible definitions and rollback commands currently live in
-`database/dashboard_family_members.sql` for `_family_members_old`,
-`database/dashboard_family_members_2.sql` for the preferred `family_members`,
-and `database/dashboard_family_members_display.sql` for its timeline wrapper.
 
 ## `project`: media and Year-in-Review state
 
