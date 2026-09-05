@@ -28,7 +28,7 @@ st.set_page_config(page_title='Franzonello Family YIR Appearances',
                    layout='wide')
 
 members = fetch_member_information(engine, schema_name=SCHEMA_NAME)
-persons = members[members['member_type'] == 'person'].sort_values(by='full_name')
+persons = members[members['member_type'] == 'person'].sort_values(by='full_name').reset_index(drop=True)
 
 cols = st.columns(4)
 with cols[0]:
