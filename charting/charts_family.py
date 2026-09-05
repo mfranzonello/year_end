@@ -175,8 +175,6 @@ def tree_chart(tree_data:DataFrame, cloud_name:str, use_images=False, generation
     tree_data = find_display_generations(tree_data, generation_limit)
     subgeneration_mapping = tree_data[['display_generation', 'generation', 'is_subgeneration']]\
         .groupby(['display_generation']).first().to_dict()
-
-    print(f'{subgeneration_mapping=}')
     
     for g in tree_data['display_generation'].unique():
         tree_data_g = tree_data[tree_data['display_generation']==g]
