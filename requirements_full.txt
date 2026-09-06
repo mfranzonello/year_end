@@ -7,7 +7,6 @@ selenium==4.38.0
 # distutils compatibility shim below for Python 3.12+.
 pymiere==1.4.1
 opencv-python==4.13.0.92
-cloudinary==1.44.1
 graphviz==0.21
 hachoir==3.3.0
 PyVimeo==1.1.2
