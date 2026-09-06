@@ -6,7 +6,7 @@ import streamlit as st
 from database.db import get_engine
 from database.db_display import fetch_member_information, fetch_member_birth_date, fetch_family_tree, fetch_founder_id
 from charting.charts_family import tree_chart
-from charting.general import set_sidebar, plot_graphviz_chart
+from pages.general import set_sidebar, plot_graphviz_chart
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')

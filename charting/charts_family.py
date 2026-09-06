@@ -144,7 +144,7 @@ def find_vertical_route(start_node, end_node, style:str=None):
     middle_str = [f'{g}:{end_node["node_id"]}' for g in g_range]
     end_str = str(end_node['node_id'])
     
-    connectors = [start_str] + middle_str + [end_str]
+    connectors = [end_str] + middle_str + [start_str]
     edges = [(connectors[i], connectors[i+1], style) for i in range(len(connectors)-1)]
 
     return edges
@@ -214,7 +214,6 @@ def tree_chart(tree_data:DataFrame, cloud_name:str, use_images=False, generation
              
             for node in routing_nodes:
                 subtree.node(f'{g}:{node}', shape='point', width='0', height='0', style='invis')
-                pass
 
         tree.subgraph(subtree)
 
@@ -235,13 +234,13 @@ def tree_chart(tree_data:DataFrame, cloud_name:str, use_images=False, generation
 
     # add vertical edges
     for _, node in tree_data[tree_data['head_id'].notna()].iterrows():
-        ##edges.append(find_vertical_route(node, tree_data[tree_data['node_id']==node['head_id']].iloc[0], style=None))
+        #edges.extend(find_vertical_route(node, tree_data[tree_data['node_id']==node['head_id']].iloc[0], style=None))
         edges.append((str(node['head_id']), str(node['node_id']), None))
 
     # replace problematic edges
 
     # add edges
-    for edge in edges:
+    for edge in list(set(edges)):
         tree.edge(edge[0], edge[1], style=edge[2]) # constraint = True?
 
     return tree

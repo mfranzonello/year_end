@@ -4,7 +4,7 @@ from database.db import get_engine
 from database.db_display import fetch_resolution_order
 from database.db_project import fetch_years_summary
 from charting.charts_yir import growth_charts
-from charting.general import set_sidebar, plot_altair_chart
+from pages.general import set_sidebar, plot_altair_chart
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')

@@ -8,7 +8,8 @@ from streamlit_auth import current_identity, render_account_controls
 pages = [('yir_count', 'YIR Status'),
          ('yir_growth', 'YIR Growth'),
          ('yir_time', 'YIR Timeline'),
-         ('family_tree', 'Family Tree')]
+         ('family_tree', 'Family Tree'),
+         ('family_member', 'Family Member')]
 existing_pages = [(page, n) for (p, n) in pages if (page := f'pages/{p}.py') and Path(page).exists()]
 
 # set up page

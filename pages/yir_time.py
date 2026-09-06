@@ -7,7 +7,7 @@ from database.db import get_engine
 from database.db_display import fetch_actor_spans
 from database.db_adobe import fetch_timeline_years, fetch_markers
 from charting.charts_yir import timeline_chart
-from charting.general import set_sidebar, plot_altair_chart
+from pages.general import set_sidebar, plot_altair_chart
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')

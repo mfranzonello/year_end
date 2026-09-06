@@ -93,3 +93,69 @@ def fetch_family_graph(engine:Engine, founder_id:UUID,
         'include_partner_branches': include_partner_branches,
     }
     return read_sql(engine, sql, params=params)
+
+def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
+    sql = f'''
+    WITH
+    children AS (
+    SELECT ARRAY_AGG(full_name ORDER BY birth_date) AS children_names
+    FROM parents JOIN dashboard.display_names ON member_id = child_id
+    JOIN persons ON child_id = person_id
+    WHERE parent_id = '{person_id}'::uuid
+    ),
+
+    folks AS (
+    SELECT ARRAY_AGG(full_name ORDER BY birth_date) AS parent_names
+    FROM parents JOIN dashboard.display_names ON member_id = parent_id
+    JOIN persons ON parent_id = person_id
+    WHERE child_id = '{person_id}'::uuid
+    ),
+  
+    furries AS (
+    SELECT ARRAY_AGG(full_name ORDER BY birth_date) AS pet_names
+    FROM pets JOIN dashboard.display_names ON member_id = pet_id
+    JOIN animals ON pet_id = animal_id
+    WHERE owner_id = '{person_id}'::uuid
+    ),
+
+    spouse AS (
+    SELECT full_name AS spouse_name,
+    union_date, union_date_precision
+    FROM tree.partners JOIN dashboard.display_names ON member_id = spouse_id
+    JOIN unions USING (union_id)
+    WHERE person_id = '{person_id}'::uuid
+    )
+
+    SELECT person_id, first_name, middle_names, last_name, nick_name,
+    sex, prefix, suffix_to_text(suffix) AS suffix,
+    parent_names, spouse_name, children_names, pet_names,
+    birth_date, birth_date_precision, union_date, union_date_precision, death_date, death_date_precision
+    FROM persons
+    CROSS JOIN folks
+    LEFT JOIN spouse ON TRUE
+    CROSS JOIN children
+    CROSS JOIN furries
+    WHERE person_id = '{person_id}'::uuid
+    ;'''
+    return read_sql(engine, sql)
+
+def fetch_animal_information(engine:Engine, animal_id:UUID) -> DataFrame:
+    sql = f'''
+    WITH owners AS (
+    SELECT ARRAY_AGG(full_name ORDER BY birth_date) AS owner_names
+    FROM pets JOIN dashboard.display_names ON member_id = owner_id
+    JOIN persons ON owner_id = person_id
+    WHERE pet_id = '{animal_id}'::uuid
+    )
+
+    SELECT animal_id, first_name, middle_names, nick_name,
+    sex, species, owner_names,
+    birth_date, birth_date_precision, 
+    gotcha_date, gotcha_date_precision, 
+    death_date, death_date_precision
+    FROM animals
+    LEFT JOIN pets ON pet_id = animal_id
+    CROSS JOIN owners
+    WHERE animal_id = '{animal_id}'::uuid;
+    ;'''
+    return read_sql(engine, sql)

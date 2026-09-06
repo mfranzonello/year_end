@@ -1,5 +1,6 @@
 from pathlib import Path
 from uuid import UUID
+from io import BytesIO
 
 from pandas import DataFrame
 import cloudinary
@@ -28,7 +29,13 @@ def fetch_resource(public_id:UUID) -> bool:
     except NotFound:
         return False
 
-def upload_image(public_id:UUID, image_path:Path, display_name:str):
+def upload_image(public_id:UUID, display_name:str, image_path:Path=None, binary_data=None):
+    if binary_data:
+        file_stream = BytesIO(binary_data)
+        file_stream.name = binary_data.name
+    else:
+        file_stream = image_path
+
     cloudinary.uploader.upload(image_path, public_id=str(public_id), display_name=display_name, asset_folder=PROFILES)
 
 def update_display_name(public_id:UUID, display_name:str):
