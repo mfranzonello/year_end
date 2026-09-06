@@ -35,5 +35,6 @@ actor_spans = fetch_actor_spans(engine, year, schema_name=DASHBOARD_SCHEMA, cut_
 markers = fetch_markers(engine, year)
 
 # gantt chart of appearances
-chart = timeline_chart(actor_spans, markers, cloud_name=CLOUDINARY_CLOUD)
+with st.spinner('Building chart...', show_time=True):
+    chart = timeline_chart(actor_spans, markers, cloud_name=CLOUDINARY_CLOUD)
 plot_altair_chart(chart)

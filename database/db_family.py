@@ -120,16 +120,17 @@ def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
 
     spouse AS (
     SELECT full_name AS spouse_name,
-    union_date, union_date_precision
+    union_date, union_date_precision, severance_date
     FROM tree.partners JOIN dashboard.display_names ON member_id = spouse_id
-    JOIN unions USING (union_id)
+    JOIN tree.partnerships USING (union_id)
     WHERE person_id = '{person_id}'::uuid
     )
 
     SELECT person_id, first_name, middle_names, last_name, nick_name,
     sex, prefix, suffix_to_text(suffix) AS suffix,
     parent_names, spouse_name, children_names, pet_names,
-    birth_date, birth_date_precision, union_date, union_date_precision, death_date, death_date_precision
+    birth_date::date, birth_date_precision, death_date::date, death_date_precision,
+    union_date, union_date_precision, severance_date::date
     FROM persons
     CROSS JOIN folks
     LEFT JOIN spouse ON TRUE
@@ -150,9 +151,9 @@ def fetch_animal_information(engine:Engine, animal_id:UUID) -> DataFrame:
 
     SELECT animal_id, first_name, middle_names, nick_name,
     sex, species, owner_names,
-    birth_date, birth_date_precision, 
-    gotcha_date, gotcha_date_precision, 
-    death_date, death_date_precision
+    birth_date::date, birth_date_precision, 
+    gotcha_date::date, gotcha_date_precision, 
+    death_date::date, death_date_precision
     FROM animals
     LEFT JOIN pets ON pet_id = animal_id
     CROSS JOIN owners

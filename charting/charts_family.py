@@ -6,7 +6,7 @@ from pandas import DataFrame, isna
 from pandas.api.types import is_list_like
 from webcolors import name_to_hex
 
-from family_tree.cloudinary_lite import get_image_url, get_image_path
+from family_tree.cloudy import get_image_url, get_image_path
 
 def get_color_hexes(color_names:list[str]) -> list[str]:
     return [name_to_hex(c) for c in color_names]

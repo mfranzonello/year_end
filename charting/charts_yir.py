@@ -5,7 +5,7 @@ import altair as alt
 from pandas import DataFrame, concat, json_normalize
 from webcolors import name_to_hex
 
-from family_tree.cloudinary_lite import get_image_url
+from family_tree.cloudy import get_image_url
 
 def get_color_hexes(color_names:list[str]) -> list[str]:
     return [name_to_hex(c) for c in color_names]
