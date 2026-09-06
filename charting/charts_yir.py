@@ -114,7 +114,7 @@ def submission_chart(engine, folder_values:DataFrame, quantity:str, cloud_name:s
 
     video_counts['image_url'] = video_counts.apply(lambda x: get_image_url(engine, cloud_name, x['member_id'],
                                                                            grayscale=x[sort_quantity]==0,
-                                                                           pixels=10
+                                                                           pixels=100,
                                                                            ),
                                                    axis=1)
 
@@ -360,6 +360,7 @@ def timeline_chart(engine, actor_spans:DataFrame, markers:DataFrame, cloud_name:
                                                                 grayscale=not x['total_spans'],
                                                                 border_color=blue if x['total_spans'] else red,
                                                                 border_width=10,
+                                                                pixels=100,
                                                                 ),
                                         axis=1)
     )
