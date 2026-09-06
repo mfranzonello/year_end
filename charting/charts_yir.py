@@ -58,7 +58,7 @@ def get_percent_hq(resolutions:dict, resolution_order:list, hq_min:str) -> float
 
 
 ''' main status review charts '''
-def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str,
+def submission_chart(engine, folder_values:DataFrame, quantity:str, cloud_name:str,
                      cap:bool=False, order:list|None=None) -> alt.Chart:
 
     single_bars = ['video_count', 'video_duration', 'file_size']
@@ -112,7 +112,7 @@ def submission_chart(folder_values:DataFrame, quantity:str, cloud_name:str,
                                     .fillna('_ROOT')
                                     )
 
-    video_counts['image_url'] = video_counts.apply(lambda x: get_image_url(cloud_name, x['member_id'],
+    video_counts['image_url'] = video_counts.apply(lambda x: get_image_url(engine, cloud_name, x['member_id'],
                                                                            grayscale=x[sort_quantity]==0
                                                                            ),
                                                    axis=1)
@@ -313,7 +313,7 @@ def growth_charts(year_values, resolution_order:list) -> tuple[alt.Chart]:
 
 
 ''' actor appearances '''
-def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str) -> alt.Chart:
+def timeline_chart(engine, actor_spans:DataFrame, markers:DataFrame, cloud_name:str) -> alt.Chart:
     time_format = (
         "floor(datum.value/60) + ':' + "
         "(datum.value % 60 < 10 ? '0' : '') + "
@@ -355,7 +355,7 @@ def timeline_chart(actor_spans:DataFrame, markers:DataFrame, cloud_name:str) -> 
     red = get_color_rgb_hex('firebrick')
     actor_images = appearances[appearances['member_id'].notna()]
     actor_images['image_url'] = (actor_images
-                                 .apply(lambda x: get_image_url(cloud_name, x['member_id'],
+                                 .apply(lambda x: get_image_url(engine, cloud_name, x['member_id'],
                                                                 grayscale=not x['total_spans'],
                                                                 border_color=blue if x['total_spans'] else red,
                                                                 border_width=10,

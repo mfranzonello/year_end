@@ -77,7 +77,7 @@ match quantity:
 if submission_string:
     st.write(f'{submission_string} submitted this year!')
 
-chart = submission_chart(folder_values, quantity, cloud_name=CLOUDINARY_CLOUD,
+chart = submission_chart(engine, folder_values, quantity, cloud_name=CLOUDINARY_CLOUD,
                          cap=cap, order=order)
 plot_altair_chart(chart)
 

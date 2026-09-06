@@ -3,17 +3,25 @@ from urllib.error import HTTPError, URLError
 from pathlib import Path
 from uuid import UUID
 from io import BytesIO
+from datetime import datetime
 
 import cloudinary
 import cloudinary.api
 import cloudinary.uploader
 from cloudinary.exceptions import NotFound
+from pandas import DataFrame
+
+from database.db_images import fetch_image_information, update_image_information
 
 CLOUDINARY_DOMAIN = 'https://res.cloudinary.com'
-PROFILES = 'profile_to_replace'
+PROFILES = 'profile_pictures'
 
 IMAGE_CACHE = Path('.cache/family-tree-images')
 CLOUDINARY_DOMAIN = 'https://res.cloudinary.com'
+
+CLOUDINARY_RESPONSE_COLS = {'version': 'version_number',
+                            'created_at': 'upload_time',
+                            }
 
 def configure_cloud(cloud_name:str, api_key:str, api_secret:str):
     _ = cloudinary.config(cloud_name=cloud_name,
@@ -32,23 +40,34 @@ def fetch_resource(public_id:UUID) -> bool:
     except NotFound:
         return False
 
-def get_version(public_id:UUID) -> str:
-    resource = fetch_resource(public_id)
-    if resource:
-        return resource['version']
+def get_version(engine, public_id:UUID) -> str:
+    image_information = fetch_image_information(engine, public_id)
+    if len(image_information):
+        return image_information['version_number'].iloc[0]
 
-def upload_image(public_id:UUID, display_name:str, image_path:Path=None, binary_data=None):
+    #resource = fetch_resource(public_id)
+    #if resource:
+    #    return resource['version']
+    
+def upload_image(engine, public_id:UUID, display_name:str, image_path:Path=None, binary_data=None):
     if binary_data:
         file_stream = BytesIO(binary_data)
         file_stream.name = binary_data.name
     else:
         file_stream = image_path
 
-    cloudinary.uploader.upload(image_path, public_id=str(public_id), display_name=display_name, asset_folder=PROFILES,
-                               invalidate=True)
+    response = cloudinary.uploader.upload(image_path, public_id=str(public_id),
+                                          display_name=display_name, asset_folder=PROFILES)
 
-def update_display_name(public_id:UUID, display_name:str):
-    cloudinary.api.update(str(public_id), display_name=display_name)
+    image_information = DataFrame([response]).rename(columns=CLOUDINARY_RESPONSE_COLS)
+    image_information['update_time'] = image_information['upload_time'] #datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
+    update_image_information(engine, image_information)
+
+def update_display_name(engine, public_id:UUID, display_name:str):
+    response = cloudinary.api.update(str(public_id), display_name=display_name)
+
+    image_information = DataFrame([response]).rename(columns=CLOUDINARY_RESPONSE_COLS)
+    update_image_information(engine, image_information)
 
 def url_is_404(url:str) -> bool:
     try:
@@ -63,24 +82,24 @@ def border_image(image_url: str, border_color:str) -> str|None:
     if image_url:
         return image_url.replace('/upload/', '/upload/e_grayscale/')
 
-def get_image_url(cloud_name:str, profile_id:str, grayscale=False,
+def get_image_url(engine, cloud_name:str, profile_id:str, grayscale=False,
                   border_color=None, border_width=5, pixels=None) -> str|None:
     if profile_id:
-        version = get_version(profile_id)
+        version = get_version(engine, profile_id)
 
         if not version:
             ## requires a default image to exist
-            image_url = get_image_url(cloud_name, profile_id=str(UUID(int=0)),
+            image_url = get_image_url(engine, cloud_name, profile_id=str(UUID(int=0)),
                                       grayscale=grayscale, border_color=border_color,
                                       border_width=border_width, pixels=pixels)
 
         else:
-            url_start = f'{CLOUDINARY_DOMAIN}/{cloud_name}/image/upload/v{version}/'
+            url_start = f'{CLOUDINARY_DOMAIN}/{cloud_name}/image/upload/'
             url_mids = [('e_grayscale', grayscale),
                         (f'bo_{border_width}px_solid_{border_color}', border_color),
                         (f'c_fill,w_{pixels},h_{pixels}', pixels)
                         ]
-            image_url = url_start + ('/'.join(m for m, b in url_mids if b) + f'/{profile_id}').replace('//', '/')
+            image_url = url_start + ('/'.join(m for m, b in url_mids if b) + f'/v{version}/{profile_id}').replace('//', '/')
 
         return image_url
 
@@ -92,10 +111,10 @@ def get_image_path(cloud_name: str, node_id) -> Path:
         return str(image_path)
 
     else:
-        image_url = get_image_url(cloud_name, node_id, pixels=100)
+        image_url = get_image_url(engine, cloud_name, node_id, pixels=100)
 
         if url_is_404(image_url):
-            image_url = get_image_url(cloud_name, UUID(int=0), pixels=100)
+            image_url = get_image_url(engine, cloud_name, UUID(int=0), pixels=100)
             
         image_path.write_bytes(urlopen(image_url, timeout=10).read())
     

@@ -91,7 +91,8 @@ elif member_type == 'animal':
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    image_url = get_image_url(CLOUDINARY_CLOUD, member_id, pixels=400)
+    # member image
+    image_url = get_image_url(engine, CLOUDINARY_CLOUD, member_id, pixels=400)
     st.image(image_url)
 
 with col2:
@@ -134,7 +135,7 @@ with col2:
     if deathday is not None:
         st.markdown(f'**Died**: {deathday}')
 
-    if death_date_precision is not 'past':
+    if death_date_precision != 'past':
         age = get_time_passed_display(birth_date, birth_date_precision, cut_date, include_years=False)
         if age is not None:
             st.markdown(f'**Age**: {age}')
@@ -203,4 +204,4 @@ if replace_image_path:
     
     if replace:
         display_name = members[members['member_id'] == member_id]['full_name'].iloc[0]
-        upload_image(public_id=member_id, image_path=replace_image_path, display_name=display_name)
+        upload_image(engine, public_id=member_id, image_path=replace_image_path, display_name=display_name)
