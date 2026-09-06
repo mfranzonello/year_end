@@ -6,6 +6,7 @@ from pandas import DataFrame, isna
 from pandas.api.types import is_list_like
 from webcolors import name_to_hex
 
+from database.db import Engine
 from family_tree.cloudy import get_image_url, get_image_path
 
 def get_color_hexes(color_names:list[str]) -> list[str]:
@@ -162,7 +163,7 @@ def find_horizontal_route(start_node, end_node, parent_nodes, style:str=None):
     return edges
 
 ''' main family tree charts '''
-def tree_chart(tree_data:DataFrame, cloud_name:str, use_images=False, generation_limit:int=None) -> Graph:
+def tree_chart(engine:Engine, tree_data:DataFrame, cloud_name:str, use_images=False, generation_limit:int=None) -> Graph:
     
     tree = Graph()
     ##tree.attr(splines='ortho')
@@ -185,7 +186,7 @@ def tree_chart(tree_data:DataFrame, cloud_name:str, use_images=False, generation
             node_type = node['node_type']
             if node_type in ['person', 'animal']:
                 if use_images:
-                    image = get_image_path(cloud_name, str(node['node_id']))
+                    image = get_image_path(engine, cloud_name, node['node_id'], node['node_type'])
                     label = ''
                 else:
                     image = None

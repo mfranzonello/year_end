@@ -19,10 +19,10 @@ def fetch_display_names(engine:Engine, schema_name:str='demo') -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-def fetch_member_names(engine:Engine, schema_name:str='demo') -> DataFrame:
+def fetch_member_summary(engine:Engine, schema_name:str='demo') -> DataFrame:
     sql = f'''
-    SELECT member_id, full_name, member_type
-    FROM {schema_name}.member_information
+    SELECT member_id, full_name, member_type, sort_order
+    FROM {schema_name}.member_summary
     ;'''
     return read_sql(engine, sql)
 

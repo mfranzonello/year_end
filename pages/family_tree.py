@@ -4,7 +4,7 @@ from datetime import date, timedelta
 import streamlit as st
 
 from database.db import get_engine
-from database.db_display import fetch_member_information, fetch_member_birth_date, fetch_family_tree, fetch_founder_id
+from database.db_display import fetch_member_summary, fetch_member_birth_date, fetch_family_tree, fetch_founder_id
 from charting.charts_family import tree_chart
 from pages.general import set_sidebar, plot_graphviz_chart
 
@@ -27,8 +27,8 @@ set_sidebar()
 st.set_page_config(page_title='Franzonello Family YIR Appearances',
                    layout='wide')
 
-members = fetch_member_information(engine, schema_name=SCHEMA_NAME)
-persons = members[members['member_type'] == 'person'].sort_values(by='full_name').reset_index(drop=True)
+member_summary = fetch_member_summary(engine, schema_name=SCHEMA_NAME)
+persons = member_summary[member_summary['member_type'] == 'person'].sort_values(by='sort_order').reset_index(drop=True)
 
 cols = st.columns(4)
 with cols[0]:
@@ -66,6 +66,7 @@ tree_data = fetch_family_tree(engine, person_id, schema_name=SCHEMA_NAME, cut_da
                               include_animals=include_animals)
 
 # graph with nodes and edges
-graph = tree_chart(tree_data, cloud_name=CLOUDINARY_CLOUD, use_images=use_images,
-                              generation_limit=GENERATION_LIMIT)
+with st.spinner('Building tree...', show_time=True):
+    graph = tree_chart(engine, tree_data, cloud_name=CLOUDINARY_CLOUD,
+                       use_images=use_images, generation_limit=GENERATION_LIMIT)
 plot_graphviz_chart(graph, use_images=use_images)

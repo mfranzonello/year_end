@@ -120,13 +120,13 @@ def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
 
     spouse AS (
     SELECT full_name AS spouse_name,
-    union_date, union_date_precision, severance_date
+    union_date, union_date_precision, severance_date, married_name
     FROM tree.partners JOIN dashboard.display_names ON member_id = spouse_id
     JOIN tree.partnerships USING (union_id)
     WHERE person_id = '{person_id}'::uuid
     )
 
-    SELECT person_id, first_name, middle_names, last_name, nick_name,
+    SELECT person_id, first_name, middle_names, last_name, married_name, nick_name,
     sex, prefix, suffix_to_text(suffix) AS suffix,
     parent_names, spouse_name, children_names, pet_names,
     birth_date::date, birth_date_precision, death_date::date, death_date_precision,
