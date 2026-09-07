@@ -120,8 +120,8 @@ def fill_in_bio(engine, cloud_name, members, information, member_type, member_id
     col1, col2, col3 = st.columns(3)
     with col1:
         # member image
-        image_url = get_image_url(engine, cloud_name, member_id, profile_type=member_type, pixels=350)
-        st.image(image_url)
+        image_url = get_image_url(engine, cloud_name, member_id, profile_type=member_type, pixels=1000)
+        st.image(image_url, width=350)
 
         if current_tier() == "admin":
             # change image
