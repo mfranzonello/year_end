@@ -101,6 +101,7 @@ def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
     SELECT ARRAY_AGG(child_id ORDER BY birth_date) AS child_ids
     FROM parents JOIN persons ON child_id = person_id
     WHERE parent_id = '{person_id}'::uuid
+    AND birth_date_precision != 'future'
     ),
 
     folks AS (
@@ -120,11 +121,25 @@ def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
     union_date, union_date_precision, severance_date, married_name
     FROM tree.partners JOIN tree.partnerships USING (union_id)
     WHERE person_id = '{person_id}'::uuid
+    ),
+
+    siblings AS (
+    SELECT ARRAY_AGG(child_id ORDER BY birth_date) AS sibling_ids
+    FROM (
+    SELECT DISTINCT child_id, birth_date
+    FROM parents JOIN persons ON child_id = person_id
+    WHERE parent_id IN (
+    SELECT parent_id FROM parents
+    WHERE child_id = '{person_id}'::uuid
+    )
+    AND birth_date_precision != 'future'
+    AND child_id != '{person_id}'::uuid
+    )
     )
 
     SELECT person_id, first_name, middle_names, last_name, married_name, nick_name,
     sex, prefix, suffix_to_text(suffix) AS suffix,
-    parent_ids, spouse_ids, child_ids, pet_ids,
+    parent_ids, spouse_ids, child_ids, sibling_ids, pet_ids,
     birth_date::date, birth_date_precision, death_date::date, death_date_precision,
     union_date, union_date_precision, severance_date::date
     FROM persons
@@ -132,6 +147,7 @@ def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
     LEFT JOIN spouse ON TRUE
     CROSS JOIN children
     CROSS JOIN furries
+    CROSS JOIN siblings
     WHERE person_id = '{person_id}'::uuid
     ;'''
     return read_sql(engine, sql)

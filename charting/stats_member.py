@@ -117,7 +117,10 @@ def fill_in_bio(engine, member_id, members, cloud_name):
         birth_date = information["birth_date"].iloc[0]
         birth_date_precision = information["birth_date_precision"].iloc[0]
         if birth_date_precision == 'future':
+            future = 'Future '
             st.markdown(f'*Unborn*')
+        else:
+            future = ''
 
         if death_date:
             cut_date = min(death_date, date.today())
@@ -167,18 +170,10 @@ def fill_in_bio(engine, member_id, members, cloud_name):
                 species_name = get_specied_name(species)
                 st.markdown(f'**Species**: {species_name}')
 
-        if sex:
-            gender = get_gender(sex)
-            st.markdown(f'**Gender**: {gender}')
+        gender = get_gender(sex)
+        st.markdown(f'**Gender**: {gender}')
 
-    with col3:
         if member_type == 'person':
-            # marriage information
-            spouse = information['spouse_ids'].iloc[0]
-            if spouse:
-                spouse_name = get_gendered_name('spouse', sex)
-                get_list_display(members, spouse, f'**{spouse_name} of**:')
-
             union_date = information['union_date'].iloc[0]
             if union_date:
                 union_date_precision = information['union_date_precision'].iloc[0]
@@ -193,7 +188,21 @@ def fill_in_bio(engine, member_id, members, cloud_name):
                 marriage_span = get_time_passed_display(union_date, union_date_precision, cut_date_2, include_years=True) ## should look at spouse end date too
                 st.markdown(f'**Married for**: {marriage_span}')
 
-            # clan information
+    with col3:
+        if member_type == 'person':
+            # ancestry information
+            parents = information['parent_ids'].iloc[0]
+            if parents:
+                child_name = get_gendered_name('child', sex)
+                get_list_display(members, parents, f'**{future}{child_name} of**:')
+
+            # spousal information
+            spouse = information['spouse_ids'].iloc[0]
+            if spouse:
+                spouse_name = get_gendered_name('spouse', sex)
+                get_list_display(members, spouse, f'**{spouse_name} of**:')
+
+            # descendants information
             children = information['child_ids'].iloc[0]
             if children:
                 parent_name = get_gendered_name('parent', sex)
@@ -203,10 +212,12 @@ def fill_in_bio(engine, member_id, members, cloud_name):
             if pets:
                 get_list_display(members, pets, '**Owner of**:')
 
-            parents = information['parent_ids'].iloc[0]
-            if parents:
-                child_name = get_gendered_name('child', sex)
-                get_list_display(members, parents, f'**{child_name} of**:')
+            # siblings information
+            siblings = information['sibling_ids'].iloc[0]
+            if siblings:
+                sibling_name = get_gendered_name('sibling', sex)
+                get_list_display(members, siblings, f'**{future}{sibling_name} of**:')
+
 
         elif member_type == 'animal':
             # ownership information
