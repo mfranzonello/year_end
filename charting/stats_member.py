@@ -108,6 +108,24 @@ def fill_in_bio(engine, member_id, members, cloud_name):
         image_url = get_image_url(engine, cloud_name, member_id, profile_type=member_type, pixels=400)
         st.image(image_url)
 
+        # change image
+        if 'image_replacement_key' in st.session_state:
+            image_replacement_key = st.session_state['image_replacement_key']
+        else:
+            image_replacement_key = 0
+            st.session_state['image_replacement_key'] = image_replacement_key
+        replace_image_path = st.file_uploader('Replace Image', type=['jpg', 'jpeg', 'png'],
+                                              help='Upload a new image to replace the current one.',
+                                              key=f'image_replacement_key{image_replacement_key}')
+        if replace_image_path:
+            replace = st.button('Replace', type='primary')
+    
+            if replace:
+                display_name = members[members['member_id'] == member_id]['full_name'].iloc[0]
+                upload_image(engine, public_id=member_id, image_path=replace_image_path, display_name=display_name)
+                st.session_state['image_replacement_key'] += 1
+                st.rerun()
+
     with col2:
         # born and living marker
         death_date = information["death_date"].iloc[0]
@@ -189,6 +207,16 @@ def fill_in_bio(engine, member_id, members, cloud_name):
                 marriage_span = get_time_passed_display(union_date, union_date_precision, cut_date_2, include_years=True) ## should look at spouse end date too
                 st.markdown(f'**Married for**: {marriage_span}')
 
+        if member_type == 'animal':
+            gotcha_date = information['gotcha_date'].iloc[0]
+            if gotcha_date is not None:
+                gotcha_date_precision = information['gotcha_date_precision'].iloc[0]
+                adoption = get_date_display(gotcha_date, gotcha_date_precision)
+                st.markdown(f'**Adopted on**: {adoption}')
+                if death_date_precision != 'past':
+                    owned_span = get_time_passed_display(gotcha_date, gotcha_date_precision, cut_date, include_years=True)
+                    st.markdown(f'**Owned for**: {owned_span}')
+
     with col3:
         if member_type == 'person':
             # ancestry information
@@ -230,31 +258,4 @@ def fill_in_bio(engine, member_id, members, cloud_name):
             owners = information['owner_ids'].iloc[0]
             if owners:
                 get_list_display(members, owners, '**Pet of**:')
-
-            gotcha_date = information['gotcha_date'].iloc[0]
-            if gotcha_date is not None:
-                gotcha_date_precision = information['gotcha_date_precision'].iloc[0]
-                adoption = get_date_display(gotcha_date, gotcha_date_precision)
-                st.markdown(f'**Adopted on**: {adoption}')
-                if death_date_precision != 'past':
-                    owned_span = get_time_passed_display(gotcha_date, gotcha_date_precision, cut_date, include_years=True)
-                    st.markdown(f'**Owned for**: {owned_span}')
-
-    # change image
-    if 'image_replacement_key' in st.session_state:
-        image_replacement_key = st.session_state['image_replacement_key']
-    else:
-        image_replacement_key = 0
-        st.session_state['image_replacement_key'] = image_replacement_key
-    replace_image_path = st.file_uploader('Replace Image', type=['jpg', 'jpeg', 'png'],
-                                          help='Upload a new image to replace the current one.',
-                                          key=f'image_replacement_key{image_replacement_key}')
-    if replace_image_path:
-        replace = st.button('Replace', type='primary')
-    
-        if replace:
-            display_name = members[members['member_id'] == member_id]['full_name'].iloc[0]
-            upload_image(engine, public_id=member_id, image_path=replace_image_path, display_name=display_name)
-            st.session_state['image_replacement_key'] += 1
-            st.rerun()
 

@@ -83,11 +83,12 @@ def fetch_actor_spans(engine:Engine, project_year:int, schema_name:str='demo', c
     return read_sql(engine, sql)
 
 def fetch_family_tree(engine: Engine, founder_id:UUID, schema_name:str='demo', cut_date:date|None=None,
-                      direction:str='up_down', partner_branches:bool=True, include_animals='all') -> DataFrame:
+                      direction:str='up_down', partner_branches:bool=True,
+                      exclude_persons=False, include_animals='all') -> DataFrame:
     if cut_date is None:
         cut_date = 'infinity'
     if schema_name == 'dashboard':
-        parameters = f"('{founder_id}'::uuid, '{cut_date}'::date, '{direction}', {partner_branches}, '{include_animals}')"
+        parameters = f"('{founder_id}'::uuid, '{cut_date}'::date, '{direction}', {partner_branches}, '{include_animals}', {exclude_persons})"
     else:
         parameters = ''
     sql = f'''

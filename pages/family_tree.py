@@ -30,7 +30,7 @@ st.set_page_config(page_title='Franzonello Family YIR Appearances',
 member_summary = fetch_member_summary(engine, schema_name=SCHEMA_NAME)
 persons = member_summary[member_summary['member_type'] == 'person'].sort_values(by='sort_order').reset_index(drop=True)
 
-cols = st.columns(4)
+cols = st.columns(5)
 with cols[0]:
     founder_id = fetch_founder_id(engine, schema_name=SCHEMA_NAME)
     person_id:UUID = st.selectbox('Person to Center', persons['member_id'],
@@ -42,20 +42,33 @@ with cols[1]:
     cut_date = st.date_input('As of Date', value=None, min_value=fetch_member_birth_date(engine, person_id, schema_name=SCHEMA_NAME),
                              help='Only show family members who were alive on or before this date.')
 
+with cols[3]:
+    options = ['living', 'all']
+    include_persons = st.radio('Show People',
+                               options=options,
+                               format_func=lambda x: {'living': 'Living People', 'all': 'All People'}[x],
+                               index=options.index('all'),
+                               help='Choose whether to include people in the family tree. "Living People" shows only people that were alive on or before the selected date. "All People" shows all known people, regardless of their status.')
+    exclude_persons = include_persons != 'all'
+
+
 with cols[2]:
+    options=['living', 'all', 'none']
     include_animals = st.radio('Show Pets',
-                               options=['living', 'all', 'none'],
+                               options=options,
+                               index=options.index('all'),
                                format_func=lambda x: {'living': 'Living Pets', 'all': 'All Pets', 'none': 'No Pets'}[x],
                                help='Choose whether to include pets in the family tree. "Living Pets" shows only pets that were alive on or before the selected date. "All Pets" shows all known pets, regardless of their status. "No Pets" excludes pets from the family tree.')
 
-with cols[3]:
+
+with cols[4]:
     choices = ['Images', 'Text']
     use_images = st.radio('View Style',
                           options=[True, False],
                           format_func=lambda x: {True: 'Images', False: 'Text'}[x],
                           help='Show the graph with images or text-only')
     
-# # with cols[4]:
+# # with cols[5]:
 # #     extended = st.checkbox('Extended Tree', value=False, help='Include all known family members, even if not directly related to the selected person.')
 # #     direction = 'bidirectional' if extended else 'up_down'
 direction = 'up_down'  # default to up_down for now, can add extended option later
@@ -63,10 +76,11 @@ direction = 'up_down'  # default to up_down for now, can add extended option lat
 st.title(f'Family Tree')
 
 tree_data = fetch_family_tree(engine, person_id, schema_name=SCHEMA_NAME, cut_date=cut_date, direction=direction,
-                              include_animals=include_animals)
+                              exclude_persons=exclude_persons, include_animals=include_animals)
 
-# graph with nodes and edges
-with st.spinner('Building tree...', show_time=True):
-    graph = tree_chart(engine, tree_data, cloud_name=CLOUDINARY_CLOUD,
-                       use_images=use_images, generation_limit=GENERATION_LIMIT)
-plot_graphviz_chart(graph, use_images=use_images)
+if len(tree_data):
+    # graph with nodes and edges
+    with st.spinner('Building tree...', show_time=True):
+        graph = tree_chart(engine, tree_data, cloud_name=CLOUDINARY_CLOUD,
+                           use_images=use_images, generation_limit=GENERATION_LIMIT)
+    plot_graphviz_chart(graph, use_images=use_images)
