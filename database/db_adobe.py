@@ -62,22 +62,20 @@ def fetch_timeline_reviews(engine:Engine) -> DataFrame:
     return read_sql(engine, sql)
 
 def fetch_appearance_spans(engine:Engine, review_id:UUID) -> DataFrame:
-    params = {'review_id', review_id}
     sql = f'''
     SELECT member_id, start_time, end_time, span
     FROM dashboard.appearance_spans
-    WHERE review_id = :review_id
+    WHERE review_id = '{review_id}'::uuid
     ;'''
-    return read_sql(engine, sql, params)
+    return read_sql(engine, sql)
 
 def fetch_markers(engine:Engine, review_id:UUID) -> DataFrame:
-    params = {'review_id', review_id}
     sql = f'''
     SELECT chapter_name, start_time
     FROM publishing.chapters
-    WHERE review_id = :review_id
+    WHERE review_id = '{review_id}'::uuid
     ;'''
-    return read_sql(engine, sql, params)
+    return read_sql(engine, sql)
 
 # # def fetch_compilation(engine:Engine, year:int) -> DataFrame:
 # #     sql = f'''

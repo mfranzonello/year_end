@@ -71,6 +71,9 @@ actor_spans = fetch_actor_spans(engine, review_id, schema_name=DASHBOARD_SCHEMA,
 markers = fetch_markers(engine, review_id)
 
 # gantt chart of appearances
-with st.spinner('Building chart...', show_time=True):
-    chart = timeline_chart(engine, actor_spans, markers, cloud_name=CLOUDINARY_CLOUD)
-plot_altair_chart(chart)
+if len(actor_spans.dropna(subset=['start_time'])):
+    with st.spinner('Building chart...', show_time=True):
+        chart = timeline_chart(engine, actor_spans, markers, cloud_name=CLOUDINARY_CLOUD)
+    plot_altair_chart(chart)
+else:
+    st.write("This review hasn't been reviewed yet.")
