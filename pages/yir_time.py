@@ -6,8 +6,8 @@ import streamlit as st
 from database.db import get_engine
 from database.db_display import fetch_actor_spans
 from database.db_adobe import fetch_timeline_years, fetch_markers
-from charting.charts import timeline_chart
-from charting.general import set_sidebar, plot_altair_chart
+from charting.charts_yir import timeline_chart
+from pages.general import set_sidebar, plot_altair_chart
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')
@@ -35,5 +35,6 @@ actor_spans = fetch_actor_spans(engine, year, schema_name=DASHBOARD_SCHEMA, cut_
 markers = fetch_markers(engine, year)
 
 # gantt chart of appearances
-chart = timeline_chart(actor_spans, markers, cloud_name=CLOUDINARY_CLOUD)
+with st.spinner('Building chart...', show_time=True):
+    chart = timeline_chart(engine, actor_spans, markers, cloud_name=CLOUDINARY_CLOUD)
 plot_altair_chart(chart)

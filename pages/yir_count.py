@@ -4,8 +4,8 @@ import streamlit as st
 from database.db import get_engine
 from database.db_project import fetch_project_years, fetch_folder_summaries, fetch_years_summary
 from database.db_display import fetch_resolution_order
-from charting.charts import submission_chart, review_pie
-from charting.general import set_sidebar, plot_altair_chart
+from charting.charts_yir import submission_chart, review_pie
+from pages.general import set_sidebar, plot_altair_chart
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')
@@ -77,7 +77,7 @@ match quantity:
 if submission_string:
     st.write(f'{submission_string} submitted this year!')
 
-chart = submission_chart(folder_values, quantity, cloud_name=CLOUDINARY_CLOUD,
+chart = submission_chart(engine, folder_values, quantity, cloud_name=CLOUDINARY_CLOUD,
                          cap=cap, order=order)
 plot_altair_chart(chart)
 

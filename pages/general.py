@@ -1,13 +1,15 @@
 from pathlib import Path
 
 import streamlit as st
+from graphviz import Graph
 
 from streamlit_auth import current_identity, render_account_controls
 
 pages = [('yir_count', 'YIR Status'),
          ('yir_growth', 'YIR Growth'),
          ('yir_time', 'YIR Timeline'),
-         ('family_tree', 'Family Tree')]
+         ('family_tree', 'Family Tree'),
+         ('family_member', 'Family Member')]
 existing_pages = [(page, n) for (p, n) in pages if (page := f'pages/{p}.py') and Path(page).exists()]
 
 # set up page
@@ -31,3 +33,10 @@ def set_sidebar():
 def plot_altair_chart(chart):
     if chart:
         st.altair_chart(chart)
+
+def plot_graphviz_chart(graph:Graph, use_images=False):
+    if graph:
+        if use_images:
+            st.image(graph.pipe(format='png'))
+        else:
+            st.graphviz_chart(graph)

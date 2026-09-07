@@ -3,7 +3,7 @@ from pathlib import Path
 import streamlit as st
 
 from database.db import get_engine
-from charting.general import set_sidebar, existing_pages
+from pages.general import set_sidebar, existing_pages
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')
@@ -14,8 +14,6 @@ PGPASSWORD = st.secrets['postgresql']['password']
 CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
 
 engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
-
-
 
 set_sidebar()
 

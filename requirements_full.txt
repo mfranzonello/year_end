@@ -7,12 +7,10 @@ selenium==4.38.0
 # distutils compatibility shim below for Python 3.12+.
 pymiere==1.4.1
 opencv-python==4.13.0.92
-cloudinary==1.44.1
 graphviz==0.21
 hachoir==3.3.0
 PyVimeo==1.1.2
 pytubefix==10.3.6
-
 
 # module only needed for Windows shortcuts
 pywin32==311; platform_system == "Windows"
@@ -27,7 +25,3 @@ azure-data-tables==12.7.0
 azure-storage-queue==12.17.0
 azure-identity==1.25.3
 PyJWT[crypto]==2.13.0
-
-# Environment policy: install project dependencies only in virtual environments.
-# The current global Python installation has legacy project packages to remove later;
-# do not add new project dependencies there.
