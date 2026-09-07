@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from charting.general import set_sidebar
+from pages.general import set_sidebar
 from streamlit_auth import require_admin
 
 
