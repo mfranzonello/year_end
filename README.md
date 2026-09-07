@@ -102,8 +102,11 @@ uses Streamlit's OpenID Connect support and an explicit owner allowlist. Copy th
 `.streamlit/secrets.example.toml` into the ignored
 `.streamlit/secrets.toml`, configure the OAuth client for the environment's
 `/oauth2callback` URL, and start with an empty `admin_subjects` list. After the
-owner signs in, the sidebar displays that account's stable authorization
-subject; add that value to `admin_subjects` and restart the app. Email addresses
+owner signs in, an administrator must obtain that account's stable OIDC `sub`
+claim through a private maintenance process, add it to `admin_subjects`, and
+restart the app. Login IDs are not displayed in the interface. The allowlist
+is stored in deployment secrets; this login flow does not persist accounts
+in the database. Email addresses
 are deliberately not used as authorization identifiers.
 
 Inspect the media CLI options:

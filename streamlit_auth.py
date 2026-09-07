@@ -71,17 +71,15 @@ def render_account_controls(identity: AppIdentity) -> None:
     if identity.is_authenticated:
         st.caption(identity.display_name or "Signed in")
         st.badge("Administrator" if identity.is_admin else "Reader")
-        if not identity.is_admin and identity.subject:
-            st.caption(f"Authorization subject: `{identity.subject}`")
         if st.button("Sign out", key="account_sign_out"):
             st.logout()
         return
 
     if authentication_configured():
-        if st.button("Administrator sign in", type="primary", key="account_sign_in"):
+        if st.button("Sign in with Google", type="primary", key="account_sign_in"):
             st.login("google")
     else:
-        st.caption("Administrator sign-in is not configured for this deployment.")
+        st.caption("Sign-in is not configured for this deployment.")
 
 
 def require_admin() -> AppIdentity:
@@ -89,7 +87,7 @@ def require_admin() -> AppIdentity:
     identity = current_identity()
     if not identity.is_authenticated:
         st.error("Administrator sign-in is required to view this page.")
-        if authentication_configured() and st.button("Sign in", type="primary"):
+        if authentication_configured() and st.button("Sign in with Google", type="primary"):
             st.login("google")
         st.stop()
     if not identity.is_admin:
