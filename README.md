@@ -98,7 +98,7 @@ Start the dashboard:
 
 The public dashboards remain available without signing in. Administrator access
 uses Streamlit's OpenID Connect support and an explicit owner allowlist. Copy the
-`[auth]` and `[authorization]` sections from
+`[auth]`, `[auth.google]`, and `[authorization]` sections from
 `.streamlit/secrets.example.toml` into the ignored
 `.streamlit/secrets.toml`, configure the OAuth client for the environment's
 `/oauth2callback` URL, and start with an empty `admin_subjects` list. After the

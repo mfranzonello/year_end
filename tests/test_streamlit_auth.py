@@ -1,8 +1,29 @@
 """Unit tests for Streamlit identity normalization and owner authorization."""
 
 from unittest import TestCase
+from unittest.mock import patch
 
-from streamlit_auth import resolve_identity
+from streamlit_auth import authentication_configured, resolve_identity
+
+
+class AuthenticationConfigurationTests(TestCase):
+    def test_named_google_configuration_requires_shared_and_provider_settings(self):
+        auth = {
+            "redirect_uri": "http://localhost:8501/oauth2callback",
+            "cookie_secret": "test-cookie",
+            "google": {
+                "client_id": "test-client",
+                "client_secret": "test-secret",
+                "server_metadata_url": "https://example.invalid/metadata",
+            },
+        }
+        with patch("streamlit_auth.st.secrets", {"auth": auth}):
+            self.assertTrue(authentication_configured())
+            auth["google"]["client_secret"] = " "
+            self.assertFalse(authentication_configured())
+            auth["google"]["client_secret"] = "test-secret"
+            del auth["cookie_secret"]
+            self.assertFalse(authentication_configured())
 
 
 class ResolveIdentityTests(TestCase):

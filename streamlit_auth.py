@@ -40,18 +40,18 @@ def resolve_identity(
 
 
 def authentication_configured() -> bool:
-    """Return whether the default OIDC provider has its required configuration."""
+    """Return whether Google OIDC and the shared cookie settings are configured."""
     auth = st.secrets.get("auth", {})
-    required = (
-        "redirect_uri",
-        "cookie_secret",
-        "client_id",
-        "client_secret",
-        "server_metadata_url",
-    )
-    return isinstance(auth, Mapping) and all(
-        isinstance(auth.get(key), str) and auth[key].strip()
-        for key in required
+    if not isinstance(auth, Mapping):
+        return False
+    google = auth.get("google", {})
+    return isinstance(google, Mapping) and all(
+        isinstance(section.get(key), str) and bool(section[key].strip())
+        for section, keys in (
+            (auth, ("redirect_uri", "cookie_secret")),
+            (google, ("client_id", "client_secret", "server_metadata_url")),
+        )
+        for key in keys
     )
 
 
@@ -79,7 +79,7 @@ def render_account_controls(identity: AppIdentity) -> None:
 
     if authentication_configured():
         if st.button("Administrator sign in", type="primary", key="account_sign_in"):
-            st.login()
+            st.login("google")
     else:
         st.caption("Administrator sign-in is not configured for this deployment.")
 
@@ -90,7 +90,7 @@ def require_admin() -> AppIdentity:
     if not identity.is_authenticated:
         st.error("Administrator sign-in is required to view this page.")
         if authentication_configured() and st.button("Sign in", type="primary"):
-            st.login()
+            st.login("google")
         st.stop()
     if not identity.is_admin:
         st.error("Your account does not have administrator access.")
