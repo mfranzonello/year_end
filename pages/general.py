@@ -9,20 +9,23 @@ pages = [('yir_count', 'YIR Status', None),
          ('yir_growth', 'YIR Growth', None),
          ('yir_time', 'YIR Timeline', None),
          ('family_tree', 'Family Tree', ['viewer', 'member', 'admin']),
-         ('family_member', 'Family Members' ['viewer', 'member', 'admin'])]
-existing_pages = [(page, n, a) for (p, n, a) in pages
-                  if (page := f'pages/{p}.py')
-                  and Path(page).exists()
-                  and (a is None or current_identity() in a)]
+         ('family_member', 'Family Members', ['viewer', 'member', 'admin'])]
+existing_pages = [(page, n, g) for (p, n, g) in pages
+                  if (page := f'pages/{p}.py') and Path(page).exists()]
+
+def allow_page(page_gate):
+    return page_gate is None or current_identity().tier in page_gate
 
 # set up page
 def set_sidebar():
     st.set_page_config(page_title='Franzonello Family')
     identity = current_identity()
+
     with st.sidebar:
         st.page_link('display.py', label='Home')
-        for page_py, page_name in existing_pages:
-            st.page_link(page_py, label=page_name)
+        for page_py, page_name, page_gate in existing_pages:
+            if allow_page(page_gate):
+                st.page_link(page_py, label=page_name)
         if identity.is_admin:
             st.page_link(
                 'pages/admin.py',
