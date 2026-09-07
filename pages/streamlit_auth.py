@@ -1,6 +1,7 @@
 """Authenticate Google users and enforce database-backed application tiers."""
 
 from collections.abc import Iterable, Mapping
+import logging
 
 from sqlalchemy.exc import SQLAlchemyError
 from database.db import get_engine
@@ -11,6 +12,7 @@ import streamlit as st
 
 
 TIERS = ("demo", "viewer", "member", "admin")
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -91,16 +93,26 @@ def current_identity() -> AppIdentity:
         st.stop()
     issuer = "Google"
     key = (issuer, str(subject))
+    operation = "connect"
     try:
         engine = identity_engine()
+        operation = "fetch_identity"
         record = db_admin.fetch_identity(engine, *key)
         if record.empty:
+            operation = "create_identity"
             db_admin.create_identity(engine, *key, user.get("email"), user.get("name"))
         if st.session_state.get("identity_login_observed") != key:
+            operation = "update_identity_login"
             db_admin.update_identity_login(engine, *key)
             st.session_state["identity_login_observed"] = key
+        operation = "fetch_identity_role"
         roles = db_admin.fetch_identity_role(engine, *key)["role_name"].tolist()
-    except (SQLAlchemyError, ValueError):
+    except (SQLAlchemyError, ValueError) as error:
+        logger.error(
+            "Account access failed: operation=%s error_type=%s connection_invalidated=%s",
+            operation, type(error).__name__,
+            bool(getattr(error, "connection_invalidated", False)),
+        )
         st.error("Account access could not be loaded. Contact the administrator or retry later.")
         st.stop()
     return resolve_identity(user, roles)

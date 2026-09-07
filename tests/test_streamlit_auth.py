@@ -117,3 +117,28 @@ class DatabaseSessionTests(TestCase):
             with self.assertRaisesRegex(RuntimeError, "stopped"):
                 auth.require_tier("viewer")
             self.assertEqual(auth.require_any_tier("demo").tier, "demo")
+
+class AccountFailureTests(TestCase):
+    def test_database_failure_stops_access_and_logs_no_private_values(self):
+        from sqlalchemy.exc import OperationalError
+        from pages import streamlit_auth as auth
+        error = OperationalError('private SQL', {'subject': 'private-subject'},
+                                 Exception('private connection details'),
+                                 connection_invalidated=True)
+        user = {'is_logged_in': True, 'sub': 'private-subject',
+                'iss': 'https://accounts.google.com'}
+        with patch.object(auth.st, 'user', user), \
+             patch.object(auth.st, 'session_state', {}), \
+             patch.object(auth, 'identity_engine'), \
+             patch.object(auth.db_admin, 'fetch_identity', side_effect=error), \
+             patch.object(auth.db_admin, 'fetch_identity_role') as roles, \
+             patch.object(auth.st, 'error'), \
+             patch.object(auth.st, 'stop', side_effect=RuntimeError('stopped')), \
+             self.assertLogs(auth.logger, level='ERROR') as logs:
+            with self.assertRaisesRegex(RuntimeError, 'stopped'):
+                auth.current_identity()
+            roles.assert_not_called()
+        message = ' '.join(logs.output)
+        self.assertIn('operation=fetch_identity', message)
+        self.assertIn('connection_invalidated=True', message)
+        self.assertNotIn('private', message)
