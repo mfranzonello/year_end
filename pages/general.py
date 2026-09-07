@@ -3,7 +3,7 @@ from pathlib import Path
 import streamlit as st
 from graphviz import Graph
 
-from streamlit_auth import current_identity, render_account_controls
+from pages.streamlit_auth import current_identity, render_account_controls
 
 pages = [('yir_count', 'YIR Status'),
          ('yir_growth', 'YIR Growth'),
