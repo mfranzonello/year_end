@@ -98,37 +98,33 @@ def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
     sql = f'''
     WITH
     children AS (
-    SELECT ARRAY_AGG(full_name ORDER BY birth_date) AS children_names
-    FROM parents JOIN dashboard.display_names ON member_id = child_id
-    JOIN persons ON child_id = person_id
+    SELECT ARRAY_AGG(child_id ORDER BY birth_date) AS child_ids
+    FROM parents JOIN persons ON child_id = person_id
     WHERE parent_id = '{person_id}'::uuid
     ),
 
     folks AS (
-    SELECT ARRAY_AGG(full_name ORDER BY birth_date) AS parent_names
-    FROM parents JOIN dashboard.display_names ON member_id = parent_id
-    JOIN persons ON parent_id = person_id
+    SELECT ARRAY_AGG(parent_id ORDER BY birth_date) AS parent_ids
+    FROM parents JOIN persons ON parent_id = person_id
     WHERE child_id = '{person_id}'::uuid
     ),
   
     furries AS (
-    SELECT ARRAY_AGG(full_name ORDER BY birth_date) AS pet_names
-    FROM pets JOIN dashboard.display_names ON member_id = pet_id
-    JOIN animals ON pet_id = animal_id
+    SELECT ARRAY_AGG(pet_id ORDER BY birth_date) AS pet_ids
+    FROM pets JOIN animals ON pet_id = animal_id
     WHERE owner_id = '{person_id}'::uuid
     ),
 
     spouse AS (
-    SELECT full_name AS spouse_name,
+    SELECT ARRAY[spouse_id] AS spouse_ids,
     union_date, union_date_precision, severance_date, married_name
-    FROM tree.partners JOIN dashboard.display_names ON member_id = spouse_id
-    JOIN tree.partnerships USING (union_id)
+    FROM tree.partners JOIN tree.partnerships USING (union_id)
     WHERE person_id = '{person_id}'::uuid
     )
 
     SELECT person_id, first_name, middle_names, last_name, married_name, nick_name,
     sex, prefix, suffix_to_text(suffix) AS suffix,
-    parent_names, spouse_name, children_names, pet_names,
+    parent_ids, spouse_ids, child_ids, pet_ids,
     birth_date::date, birth_date_precision, death_date::date, death_date_precision,
     union_date, union_date_precision, severance_date::date
     FROM persons
@@ -143,14 +139,13 @@ def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
 def fetch_animal_information(engine:Engine, animal_id:UUID) -> DataFrame:
     sql = f'''
     WITH owners AS (
-    SELECT ARRAY_AGG(full_name ORDER BY birth_date) AS owner_names
-    FROM pets JOIN dashboard.display_names ON member_id = owner_id
-    JOIN persons ON owner_id = person_id
+    SELECT ARRAY_AGG(owner_id ORDER BY birth_date) AS owner_ids
+    FROM pets JOIN persons ON owner_id = person_id
     WHERE pet_id = '{animal_id}'::uuid
     )
 
     SELECT animal_id, first_name, middle_names, nick_name,
-    sex, species, owner_names,
+    sex, species, owner_ids,
     birth_date::date, birth_date_precision, 
     gotcha_date::date, gotcha_date_precision, 
     death_date::date, death_date_precision

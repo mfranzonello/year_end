@@ -9,6 +9,9 @@ from database.db_family import fetch_person_information, fetch_animal_informatio
 from family_tree.cloudy import get_image_url, upload_image, configure_cloud
 from pages.general import set_sidebar
 
+def get_member_name_display(members, member_id):
+    return members[members['member_id'] == member_id]['full_name'].iloc[0]
+
 def get_date_display(entry_date, entry_date_precision):
     if entry_date is not None:
         match entry_date_precision:
@@ -25,6 +28,29 @@ def get_date_display(entry_date, entry_date_precision):
                 return date_str
             case _:
                 return None
+
+def get_gender(sex):
+    gender_types = {'m': 'Male ♂',
+                    'f': 'Female ♀️',
+                    }
+    return gender_types.get(sex, 'Unknown ⚥')
+
+def get_gendered_name(name_type, sex):
+    name_types = {'parent': {'m': 'Father', 'f': 'Mother'},
+                  'sibling': {'m': 'Brother', 'f': 'Sister'},
+                  'child': {'m': 'Son', 'f': 'Daughter'},
+                  'spouse': {'m': 'Husband', 'f': 'Wife'},
+                  'nee': {'m': 'Bachelor', 'f': 'Maiden'},
+                  }
+    return name_types[name_type].get(sex, name_type.title())
+
+def get_specied_name(species):
+    species_types = {'cat': '🐈',
+                     'dog': '🐕',
+                     'fish': '🐟',
+                     'rabbit': '🐇',
+                     'bird': '🐦'}
+    return species.title() + ' ' + species_types.get(species, '🧸')
 
 def get_time_passed(start_date, start_date_precision, end_date):
     if (start_date is not None) and (end_date is not None):
@@ -51,10 +77,15 @@ def get_time_passed_display(start_date, start_date_precision, end_date, include_
         years = ' years' if include_years else ''
         return f'{time_passed.years}{years}'
 
-def get_list_display(list_names):
-    if len(list_names):
-        conj = ' and ' if len(list_names) > 1 else ''
-        return ', '.join(list_names[:-1]) + conj + list_names[-1]
+def get_list_display(members, list_ids, callout):
+    with st.container(horizontal=True, gap='small'):
+        st.markdown(callout)
+
+    with st.container(width='content'):
+        for list_id in list_ids:
+            if st.button(get_member_name_display(members, list_id), type='secondary'):
+                st.session_state['member_id'] = list_id
+                st.rerun()
 
 def get_plural(word, items, s='s', plural=None):
     if plural is None:
@@ -68,7 +99,7 @@ def fill_in_bio(engine, member_id, members, cloud_name):
         information = fetch_person_information(engine, member_id)
     elif member_type == 'animal':
         information = fetch_animal_information(engine, member_id)
-    sex = information["sex"].iloc[0]
+    sex = information['sex'].iloc[0]
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -109,7 +140,7 @@ def fill_in_bio(engine, member_id, members, cloud_name):
             last_name = information['last_name'].iloc[0]
             married_name = information['married_name'].iloc[0]
             if married_name and married_name != last_name:
-                nee_name = {'m': 'Bachelor', 'f': 'Maiden'}.get(sex, 'Nee')
+                nee_name = get_gendered_name('nee', sex)
                 st.markdown(f'**{nee_name} Name**: {last_name}')
                 st.markdown(f'**Last Name**: {married_name}')
             else:
@@ -133,24 +164,21 @@ def fill_in_bio(engine, member_id, members, cloud_name):
         if member_type == 'animal':
             species = information["species"].iloc[0]
             if species:
-                species_types = {'cat': 'Cat 🐈',
-                                 'dog': 'Dog 🐕',
-                                 'fish': 'Fish 🐟',
-                                 'rabbit': 'Rabbit 🐇',
-                                 'bird': 'Bird 🐦'}
-                st.markdown(f'**Species**: {species_types.get(species, species.title())}')
+                species_name = get_specied_name(species)
+                st.markdown(f'**Species**: {species_name}')
 
         if sex:
-            gender = {'m': 'Male ♂️', 'f': 'Female ♀️'}
-            st.markdown(f'**Gender**: {gender[sex]}')
+            gender = get_gender(sex)
+            st.markdown(f'**Gender**: {gender}')
 
     with col3:
         if member_type == 'person':
             # marriage information
-            spouse = information['spouse_name'].iloc[0]
+            spouse = information['spouse_ids'].iloc[0]
             if spouse:
-                spouse_name = {'m': 'Husband', 'f': 'Wife'}.get(sex, 'Spouse')
-                st.markdown(f'**{spouse_name} of**: {spouse}')
+                spouse_name = get_gendered_name('spouse', sex)
+                get_list_display(members, spouse, f'**{spouse_name} of**:')
+
             union_date = information['union_date'].iloc[0]
             if union_date:
                 union_date_precision = information['union_date_precision'].iloc[0]
@@ -166,22 +194,25 @@ def fill_in_bio(engine, member_id, members, cloud_name):
                 st.markdown(f'**Married for**: {marriage_span}')
 
             # clan information
-            children = information['children_names'].iloc[0]
+            children = information['child_ids'].iloc[0]
             if children:
-                parent_name = {'m': 'Father', 'f': 'Mother'}.get(sex, 'Parent')
-                st.markdown(f'**{parent_name} of {len(children)}**: {get_list_display(children)}')
-            pets = information['pet_names'].iloc[0]
+                parent_name = get_gendered_name('parent', sex)
+                get_list_display(members, children, f'**{parent_name} of {len(children)}**:')
+
+            pets = information['pet_ids'].iloc[0]
             if pets:
-                st.markdown(f'**Owner of**: {get_list_display(pets)}')
-            parents = information['parent_names'].iloc[0]
+                get_list_display(members, pets, '**Owner of**:')
+
+            parents = information['parent_ids'].iloc[0]
             if parents:
-                st.markdown(f'**Child of**: {get_list_display(parents)}')
+                child_name = get_gendered_name('child', sex)
+                get_list_display(members, parents, f'**{child_name} of**:')
 
         elif member_type == 'animal':
             # ownership information
-            owners = information['owner_names'].iloc[0]
+            owners = information['owner_ids'].iloc[0]
             if owners:
-                st.markdown(f'**Pet of**: {", ".join(owners)}')
+                get_list_display(members, owners, '**Pet of**:')
 
             gotcha_date = information['gotcha_date'].iloc[0]
             if gotcha_date is not None:

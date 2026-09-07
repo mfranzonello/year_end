@@ -33,12 +33,14 @@ st.set_page_config(page_title='Franzonello Family YIR Appearances',
 
 members = fetch_member_summary(engine, schema_name=SCHEMA_NAME).sort_values('sort_order')
 known_index = members.index[members['member_id'] == st.session_state.get('member_id')]
+
 index = int(known_index[0]) if len(known_index) else None
 member_id = st.selectbox('Select Family Member', members['member_id'],
+                         placeholder='Choose a family member to view',
                          format_func=lambda x: members[members['member_id'] == x]['full_name'].iloc[0],
                          width=400,
-                         index=None)
+                         index=index)
 
 if member_id is not None:
     st.session_state['member_id'] = member_id
-    fill_in_bio(engine, member_id, members, CLOUDINARY_CLOUD)
+    list_id = fill_in_bio(engine, member_id, members, CLOUDINARY_CLOUD)
