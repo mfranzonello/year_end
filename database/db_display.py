@@ -41,7 +41,7 @@ def fetch_member_information(engine:Engine, schema_name:str='demo', cut_date:dat
     ;'''
     return read_sql(engine, sql)
 
-def fetch_actor_spans(engine:Engine, project_year:int, schema_name:str='demo', cut_date:date=date.today(),
+def fetch_actor_spans(engine:Engine, review_id:UUID, schema_name:str='demo', cut_date:date=date.today(),
                       direction:str='up_down', partner_branches:bool=True) -> DataFrame:
 
     if schema_name == 'dashboard':
@@ -61,7 +61,7 @@ def fetch_actor_spans(engine:Engine, project_year:int, schema_name:str='demo', c
     appearances AS (
     SELECT member_id, start_time, end_time, span
     FROM dashboard.appearance_spans 
-    WHERE project_year = {project_year}
+    WHERE review_id = '{review_id}'::uuid
     ),
 
     members AS (

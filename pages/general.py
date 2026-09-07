@@ -5,12 +5,15 @@ from graphviz import Graph
 
 from streamlit_auth import current_identity, render_account_controls
 
-pages = [('yir_count', 'YIR Status'),
-         ('yir_growth', 'YIR Growth'),
-         ('yir_time', 'YIR Timeline'),
-         ('family_tree', 'Family Tree'),
-         ('family_member', 'Family Member')]
-existing_pages = [(page, n) for (p, n) in pages if (page := f'pages/{p}.py') and Path(page).exists()]
+pages = [('yir_count', 'YIR Status', None),
+         ('yir_growth', 'YIR Growth', None),
+         ('yir_time', 'YIR Timeline', None),
+         ('family_tree', 'Family Tree', ['viewer', 'member', 'admin']),
+         ('family_member', 'Family Members' ['viewer', 'member', 'admin'])]
+existing_pages = [(page, n, a) for (p, n, a) in pages
+                  if (page := f'pages/{p}.py')
+                  and Path(page).exists()
+                  and (a is None or current_identity() in a)]
 
 # set up page
 def set_sidebar():

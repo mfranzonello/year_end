@@ -5,7 +5,7 @@ import streamlit as st
 
 from database.db import get_engine
 from database.db_display import fetch_actor_spans
-from database.db_adobe import fetch_timeline_years, fetch_markers
+from database.db_adobe import fetch_timeline_reviews, fetch_markers
 from charting.charts_yir import timeline_chart
 from pages.general import set_sidebar, plot_altair_chart
 
@@ -21,18 +21,54 @@ engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 DASHBOARD_SCHEMA = 'dashboard' # demo if not logged in
 
+def get_review_name(reviews, review_id:UUID) -> str:
+    review = reviews[reviews['review_id']==review_id]
+    review_type = review['review_type'].iloc[0]
+    match review_type:
+        case 'year':
+            add_on = f'{review["project_year"].iloc[0]} YIR'
+        case 'decade':
+            add_on = f'{review["project_year"].iloc[0]}s DIR'
+        case 'era':
+            add_on = ' Era'
+        case _:
+            add_on = ''
+
+    video_theme = review['video_theme'].iloc[0]
+    if video_theme:
+        add_on += f' ({video_theme})'
+
+    return f'Family {add_on}'
+
+def get_cut_date(reviews, review_id:UUID) -> date:
+    review = reviews[reviews['review_id']==review_id]
+    review_type = review['review_type'].iloc[0]
+    review_start_year = review['project_year'].iloc[0]
+    match review_type:
+        case 'year':
+            cut_date = date(review_start_year + 1, 1, 1) - timedelta(days=1)
+        case 'decade':
+            cut_date = date(review_start_year + 10, 1, 1) - timedelta(days=1)
+        case 'era' | _:
+            cut_date = date.today()
+            ##cut_date = date(review_start_year + 20, 1, 1) - timedelta(days=1) ### this needs an era end date
+
+    return cut_date
+
+
 # set up page
 set_sidebar()
-st.set_page_config(page_title='Franzonello Family YIR Appearances',
+st.set_page_config(page_title='Family Review Appearances',
                    layout='wide')
-years = fetch_timeline_years(engine)
-year:int = st.selectbox('Year to Review', years, len(years) - 1, width=100)
-st.title(f'Franzonello YIR {year}')
+reviews = fetch_timeline_reviews(engine).sort_values(by=['project_year', 'review_type'])
+review_id:UUID = st.selectbox('Review to Review', reviews, len(reviews) - 1, width=400,
+                              format_func=lambda x: get_review_name(reviews, x))
+st.title(get_review_name(reviews, review_id))
 
-cut_date = date(year + 1, 1, 1) - timedelta(days=1)
+cut_date = get_cut_date(reviews, review_id)
 
-actor_spans = fetch_actor_spans(engine, year, schema_name=DASHBOARD_SCHEMA, cut_date=cut_date)
-markers = fetch_markers(engine, year)
+actor_spans = fetch_actor_spans(engine, review_id, schema_name=DASHBOARD_SCHEMA, cut_date=cut_date)
+markers = fetch_markers(engine, review_id)
 
 # gantt chart of appearances
 with st.spinner('Building chart...', show_time=True):
