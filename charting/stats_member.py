@@ -41,6 +41,7 @@ def get_gendered_name(name_type, sex):
                   'child': {'m': 'Son', 'f': 'Daughter'},
                   'spouse': {'m': 'Husband', 'f': 'Wife'},
                   'nee': {'m': 'Bachelor', 'f': 'Maiden'},
+                  'expecting': {'m': 'Waiting for', 'f': 'Pregnant with'}
                   }
     return name_types[name_type].get(sex, name_type.title())
 
@@ -207,6 +208,11 @@ def fill_in_bio(engine, member_id, members, cloud_name):
             if children:
                 parent_name = get_gendered_name('parent', sex)
                 get_list_display(members, children, f'**{parent_name} of {len(children)}**:')
+
+            expecting = information['expecting_ids'].iloc[0]
+            if expecting:
+                expecting_name = get_gendered_name('expecting', sex)
+                get_list_display(members, expecting, f'**{expecting_name}**:')
 
             pets = information['pet_ids'].iloc[0]
             if pets:
