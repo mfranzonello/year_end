@@ -1,4 +1,6 @@
-﻿from datetime import date, timedelta
+﻿"""Render member biography details, with administrator-only image replacement."""
+
+from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 
 import streamlit as st
@@ -6,6 +8,7 @@ from pgeocode import Nominatim
 from pandas import DataFrame
 
 from family_tree.cloudy import get_image_url, upload_image
+from pages.streamlit_auth import current_tier, require_admin
 
 nomi = Nominatim('us')
 
@@ -120,24 +123,26 @@ def fill_in_bio(engine, cloud_name, members, information, member_type, member_id
         image_url = get_image_url(engine, cloud_name, member_id, profile_type=member_type, pixels=350)
         st.image(image_url)
 
-        # change image
-        if 'image_replacement_key' in st.session_state:
-            image_replacement_key = st.session_state['image_replacement_key']
-        else:
-            image_replacement_key = 0
-            st.session_state['image_replacement_key'] = image_replacement_key
-        replace_image_path = st.file_uploader('Replace Image', type=['jpg', 'jpeg', 'png'],
-                                              help='Upload a new image to replace the current one.',
-                                              key=f'image_replacement_key{image_replacement_key}',
-                                              width=350)
-        if replace_image_path:
-            replace = st.button('Replace', type='primary')
-    
-            if replace:
-                display_name = members[members['member_id'] == member_id]['full_name'].iloc[0]
-                upload_image(engine, public_id=member_id, image_path=replace_image_path, display_name=display_name)
-                st.session_state['image_replacement_key'] += 1
-                st.rerun()
+        if current_tier() == "admin":
+            # change image
+            if 'image_replacement_key' in st.session_state:
+                image_replacement_key = st.session_state['image_replacement_key']
+            else:
+                image_replacement_key = 0
+                st.session_state['image_replacement_key'] = image_replacement_key
+            replace_image_path = st.file_uploader('Replace Image', type=['jpg', 'jpeg', 'png'],
+                                                  help='Upload a new image to replace the current one.',
+                                                  key=f'image_replacement_key{image_replacement_key}',
+                                                  width=350)
+            if replace_image_path:
+                replace = st.button('Replace', type='primary')
+
+                if replace:
+                    require_admin()
+                    display_name = members[members['member_id'] == member_id]['full_name'].iloc[0]
+                    upload_image(engine, public_id=member_id, image_path=replace_image_path, display_name=display_name)
+                    st.session_state['image_replacement_key'] += 1
+                    st.rerun()
 
     with col2:
         # born and living marker
