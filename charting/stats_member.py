@@ -244,7 +244,7 @@ def fill_in_bio(engine, cloud_name, members, information, member_type, member_id
         if project_stats.get('appearances'):
             r = project_stats['appearances']
             review_s = get_plural('review', count=r)
-            st.markdown(f'**Appeared in**: {r}+ {review_s}')
+            st.markdown(f'**Appeared in**: {r} {review_s}')
 
         # location information
         zip_code = contact_info.get('zip_code')

@@ -169,7 +169,7 @@ def fetch_person_information(engine:Engine) -> DataFrame:
     person_id, zip_code
     FROM messaging.address_moves
     JOIN messaging.addresses USING (address_id)
-    ORDER BY person_id, start_date DESC
+    ORDER BY person_id, start_date DESC NULLS LAST
     ),
 
     socials AS (
@@ -190,8 +190,8 @@ def fetch_person_information(engine:Engine) -> DataFrame:
     stats_2 AS (
     SELECT
     member_id AS person_id,
-    COUNT(DISTINCT project_year) AS total_appearances
-    FROM project.appearances
+    COUNT(review_id) AS total_appearances
+    FROM project.backfill
     GROUP BY member_id
     )
 
@@ -239,18 +239,28 @@ def fetch_animal_information(engine:Engine) -> DataFrame:
   
     owner_addresses AS (
     SELECT
-    pet_id AS animal_id,
-    person_id, zip_code, start_date
-    FROM pets 
-    JOIN messaging.address_moves ON person_id = owner_id
-    JOIN messaging.addresses USING (address_id)
+        p.pet_id AS animal_id,
+        person_id,
+        zip_code,
+        start_date
+    FROM pets p
+    JOIN animals an
+        ON animal_id = pet_id
+    JOIN messaging.address_moves
+        ON person_id = owner_id
+    JOIN messaging.addresses
+        USING (address_id)
+    WHERE
+        death_date IS NULL
+        OR start_date IS NULL
+        OR start_date <= death_date
     ),
 
     addy AS (
     SELECT DISTINCT ON (animal_id)
     animal_id, zip_code
     FROM owner_addresses
-    ORDER BY animal_id, start_date DESC
+    ORDER BY animal_id, start_date DESC NULLS LAST
     ),
 
     stats_1 AS (
@@ -265,8 +275,8 @@ def fetch_animal_information(engine:Engine) -> DataFrame:
 
     stats_2 AS (
     SELECT member_id AS animal_id,
-    COUNT(DISTINCT project_year) AS total_appearances
-    FROM project.appearances
+    COUNT(review_id) AS total_appearances
+    FROM project.backfill
     GROUP BY member_id)
 
     SELECT
