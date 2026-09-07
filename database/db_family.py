@@ -157,6 +157,18 @@ def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
     SELECT email_address, phone_number
     FROM messaging.contacts
     WHERE person_id = '{person_id}'::uuid
+    ),
+
+    stats_1 AS (
+    SELECT COUNT (file_id) AS total_files, COUNT (DISTINCT project_year) AS total_years
+    FROM project.files JOIN project.folders USING (folder_id)
+    WHERE member_id = '{person_id}'::uuid
+    ),
+
+    stats_2 AS (
+    select count(distinct project_Year) AS total_appearances
+    FROM project.appearances
+    WHERE member_id = '{person_id}'::uuid
     )
 
     SELECT person_id, first_name, middle_names, last_name, married_name, nick_name,
@@ -164,7 +176,8 @@ def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
     parent_ids, spouse_ids, child_ids, expecting_ids, sibling_ids, pet_ids,
     birth_date::date, birth_date_precision, death_date::date, death_date_precision,
     union_date, union_date_precision, severance_date::date,
-    json_build_object('email_address', email_address, 'phone_number', phone_number, 'zip_code', zip_code) AS contact_info
+    json_build_object('email_address', email_address, 'phone_number', phone_number, 'zip_code', zip_code) AS contact_info,
+    json_build_object('files', total_files, 'years', total_years, 'appearances', total_appearances) AS project_stats
     FROM persons
     CROSS JOIN folks
     LEFT JOIN spouse ON TRUE
@@ -174,6 +187,7 @@ def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
     CROSS JOIN siblings
     LEFT JOIN socials ON TRUE
     LEFT JOIN addy ON TRUE
+    CROSS JOIN stats_1 CROSS JOIN stats_2
     WHERE person_id = '{person_id}'::uuid
     ;'''
     return read_sql(engine, sql)
@@ -192,18 +206,32 @@ def fetch_animal_information(engine:Engine, animal_id:UUID) -> DataFrame:
     WHERE person_id in (SELECT owner_id FROM pets WHERE pet_id = '{animal_id}'::uuid)
     ORDER BY start_date DESC
     LIMIT 1
+    ),
+
+    stats_1 AS (
+    SELECT COUNT (file_id) AS total_files, COUNT (DISTINCT project_year) AS total_years
+    FROM project.files JOIN project.folders USING (folder_id)
+    WHERE member_id = '{animal_id}'::uuid
+    ),
+
+    stats_2 AS (
+    select count(distinct project_Year) AS total_appearances
+    FROM project.appearances
+    WHERE member_id = '{animal_id}'::uuid
     )
 
     SELECT animal_id, first_name, middle_names, nick_name,
     sex, species, owner_ids,
-    json_build_object('zip_code', zip_code) AS contact_info,
     birth_date::date, birth_date_precision, 
     gotcha_date::date, gotcha_date_precision, 
-    death_date::date, death_date_precision
+    death_date::date, death_date_precision,
+    json_build_object('zip_code', zip_code) AS contact_info,
+    json_build_object('files', total_files, 'years', total_years, 'appearances', total_appearances) AS project_stats
     FROM animals
     LEFT JOIN pets ON pet_id = animal_id
     CROSS JOIN owners
     LEFT JOIN addy ON TRUE
+    CROSS JOIN stats_1 CROSS JOIN stats_2
     WHERE animal_id = '{animal_id}'::uuid;
     ;'''
     return read_sql(engine, sql)
