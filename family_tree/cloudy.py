@@ -47,10 +47,6 @@ def get_version(engine:Engine, public_id:UUID) -> str:
     image_information = fetch_image_information(engine, public_id)
     if len(image_information):
         return image_information['version_number'].iloc[0]
-
-    #resource = fetch_resource(public_id)
-    #if resource:
-    #    return resource['version']
     
 def upload_image(engine:Engine, public_id:UUID, display_name:str, image_path:Path=None, binary_data=None):
     if binary_data:
@@ -63,7 +59,7 @@ def upload_image(engine:Engine, public_id:UUID, display_name:str, image_path:Pat
                                           display_name=display_name, asset_folder=PROFILES)
 
     image_information = DataFrame([response]).rename(columns=CLOUDINARY_RESPONSE_COLS)
-    image_information['update_time'] = image_information['upload_time'] #datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
+    image_information['update_time'] = image_information['upload_time'] 
     update_image_information(engine, image_information)
 
 def update_display_name(engine:Engine, public_id:UUID, display_name:str):
@@ -86,7 +82,7 @@ def border_image(image_url: str, border_color:str) -> str|None:
         return image_url.replace('/upload/', '/upload/e_grayscale/')
 
 def get_image_url(engine:Engine, cloud_name:str, profile_id:str, profile_type:str=None,
-                  grayscale=False, border_color=None, border_width=5, pixels=None) -> str|None:
+                  grayscale=False, border_color=None, border_width=5, pixels=None, square=False) -> str|None:
     if profile_id:
         version = get_version(engine, profile_id)
 
@@ -95,13 +91,14 @@ def get_image_url(engine:Engine, cloud_name:str, profile_id:str, profile_type:st
             image_type = IMAGE_TYPES.get(profile_type, 0)
             image_url = get_image_url(engine, cloud_name, profile_id=str(UUID(int=image_type)),
                                       grayscale=grayscale, border_color=border_color,
-                                      border_width=border_width, pixels=pixels)
+                                      border_width=border_width, pixels=pixels, square=square)
 
         else:
             url_start = f'{CLOUDINARY_DOMAIN}/{cloud_name}/image/upload/'
             url_mids = [('e_grayscale', grayscale),
                         (f'bo_{border_width}px_solid_{border_color}', border_color),
-                        (f'c_fill,w_{pixels},h_{pixels}', pixels)
+                        (f'c_fill,w_{pixels},h_{pixels}', pixels),
+                        (f'c_fill,ar_1:1', square)
                         ]
             image_url = url_start + ('/'.join(m for m, b in url_mids if b) + f'/v{version}/{profile_id}').replace('//', '/')
 

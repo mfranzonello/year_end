@@ -431,3 +431,22 @@ historical sender address into a current contact method.
   repository, or deliberately retain multiple historical locations?
 - Should unions eventually represent end dates or statuses such as separation,
   divorce, or dissolution, and how should those affect tree and Calendar views?
+
+
+## Application identities and roles
+
+`users.identities` uses generated integer `user_id` values and a unique
+`(issuer_name, subject_id)` identity key. Email, display name, first login, and
+last login are required; `person_id` is optional. `users.roles` defines unique
+role names (`demo`, `viewer`, `member`, `admin`). `users.identity_roles` links
+identities and roles with unique `(user_id, role_id)` pairs.
+
+The `indentity_roles_user_id_fkey` constraint now uses `ON DELETE CASCADE`.
+This was applied directly to Neon for the Streamlit authentication integration;
+no identity or role data was removed. Only role links depend on identity
+deletion, and no custom triggers were present on these two tables at inspection.
+Validation created a synthetic identity and role link, deleted the identity,
+and confirmed cascade deletion inside a rolled-back savepoint. To roll back
+the constraint change, recreate the same foreign key with `ON DELETE NO ACTION`;
+this does not restore data deleted after deployment. The reusable identity
+integration check verifies the live cascade and CRUD behavior.

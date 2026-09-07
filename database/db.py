@@ -1,8 +1,12 @@
+"""Shared database connection and parameterized query helpers."""
+
 from sqlalchemy import create_engine, text, Engine
 from pandas import read_sql_query, DataFrame
 
 def get_engine(host:str, port:str, dbname:str, user:str, password:str):
-    engine = create_engine(f'postgresql+psycopg://{user}:{password}@{host}:{port}/{dbname}')
+    """Create a pool that replaces disconnected connections before reuse."""
+    engine = create_engine(f'postgresql+psycopg://{user}:{password}@{host}:{port}/{dbname}',
+                           pool_pre_ping=True)
     return engine
 
 def build_values(df: DataFrame, cols:list[str]) -> tuple[str, dict[str, object]]:
