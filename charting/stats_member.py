@@ -5,7 +5,6 @@ import streamlit as st
 from pgeocode import Nominatim
 from pandas import DataFrame
 
-from database.db_family import fetch_person_information, fetch_animal_information
 from family_tree.cloudy import get_image_url, upload_image
 
 nomi = Nominatim('us')
@@ -111,15 +110,7 @@ def plot_map(zip_code:int):
         location_data = DataFrame([[location.latitude, location.longitude]], columns=('lat', 'lon'))
         st.map(location_data, height=300, zoom=10)
 
-def fill_in_bio(engine, member_id, members, cloud_name):
-    member_info = members[members['member_id'] == member_id]
-    member_type = member_info['member_type'].iloc[0]
-    
-    if member_type == 'person':
-        information = fetch_person_information(engine, member_id)
-    elif member_type == 'animal':
-        information = fetch_animal_information(engine, member_id)
-    
+def fill_in_bio(engine, cloud_name, members, information, member_type, member_id):
     sex = information['sex'].iloc[0]
     contact_info = information['contact_info'].iloc[0]
 

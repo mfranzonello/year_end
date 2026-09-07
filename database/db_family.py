@@ -94,144 +94,194 @@ def fetch_family_graph(engine:Engine, founder_id:UUID,
     }
     return read_sql(engine, sql, params=params)
 
-def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
+def fetch_person_information(engine:Engine) -> DataFrame:
     sql = f'''
     WITH
     children AS (
-    SELECT ARRAY_AGG(child_id ORDER BY birth_date) AS child_ids
+    SELECT parent_id AS person_id,
+    ARRAY_AGG(child_id ORDER BY birth_date) AS child_ids
     FROM parents JOIN persons ON child_id = person_id
-    WHERE parent_id = '{person_id}'::uuid
-    AND birth_date_precision != 'future'
+    WHERE birth_date_precision != 'future'
+    GROUP BY parent_id
     ),
 
     expectations AS (
-    SELECT ARRAY_AGG(child_id ORDER BY birth_date) AS expecting_ids
-    FROM parents 
-    JOIN persons ON child_id = person_id
-    WHERE parent_id = '{person_id}'::uuid
-    AND birth_date_precision = 'future'
+    SELECT
+    parent_id AS person_id,
+    ARRAY_AGG(child_id ORDER BY birth_date) AS expecting_ids
+    FROM parents JOIN persons ON child_id = person_id
+    WHERE birth_date_precision = 'future'
+    GROUP BY parent_id
     ),
 
     folks AS (
-    SELECT ARRAY_AGG(parent_id ORDER BY birth_date) AS parent_ids
+    SELECT
+    child_id AS person_id,
+    ARRAY_AGG(parent_id ORDER BY birth_date) AS parent_ids
     FROM parents JOIN persons ON parent_id = person_id
-    WHERE child_id = '{person_id}'::uuid
+    GROUP BY child_id
     ),
-  
+
     furries AS (
-    SELECT ARRAY_AGG(pet_id ORDER BY birth_date) AS pet_ids
+    SELECT
+    owner_id AS person_id,
+    ARRAY_AGG(pet_id ORDER BY birth_date) AS pet_ids
     FROM pets JOIN animals ON pet_id = animal_id
-    WHERE owner_id = '{person_id}'::uuid
+    GROUP BY owner_id
     ),
 
     spouse AS (
-    SELECT ARRAY[spouse_id] AS spouse_ids,
-    union_date, union_date_precision, severance_date, married_name
-    FROM tree.partners JOIN tree.partnerships USING (union_id)
-    WHERE person_id = '{person_id}'::uuid
+    SELECT
+    person_id,
+    ARRAY_AGG(spouse_id) AS spouse_ids,
+    MAX(union_date) AS union_date,
+    MAX(union_date_precision) AS union_date_precision,
+    MAX(severance_date) AS severance_date,
+    MAX(married_name) AS married_name
+    FROM tree.partners
+    JOIN tree.partnerships USING (union_id)
+    GROUP BY person_id
+    ),   
+
+    sibling_pairs AS (
+    SELECT DISTINCT
+    me.child_id AS person_id,
+    sibling.child_id AS sibling_id,
+    sibling_person.birth_date
+    FROM parents me
+    JOIN parents sibling
+    ON sibling.parent_id = me.parent_id
+    AND sibling.child_id != me.child_id
+    JOIN persons sibling_person
+    ON sibling.child_id = sibling_person.person_id
+    WHERE sibling_person.birth_date_precision != 'future'
     ),
 
     siblings AS (
-    SELECT ARRAY_AGG(child_id ORDER BY birth_date) AS sibling_ids
-    FROM (
-    SELECT DISTINCT child_id, birth_date
-    FROM parents JOIN persons ON child_id = person_id
-    WHERE parent_id IN (
-    SELECT parent_id FROM parents
-    WHERE child_id = '{person_id}'::uuid
-    )
-    AND birth_date_precision != 'future'
-    AND child_id != '{person_id}'::uuid
-    )
+    SELECT
+    person_id, ARRAY_AGG(sibling_id ORDER BY birth_date) AS sibling_ids
+    FROM sibling_pairs
+    GROUP BY person_id
     ),
 
     addy AS (
-    SELECT zip_code
-    FROM messaging.address_moves JOIN messaging.addresses USING (address_id)
-    WHERE person_id = '{person_id}'::uuid
-    ORDER BY start_date DESC
-    LIMIT 1
+    SELECT DISTINCT ON (person_id)
+    person_id, zip_code
+    FROM messaging.address_moves
+    JOIN messaging.addresses USING (address_id)
+    ORDER BY person_id, start_date DESC
     ),
 
     socials AS (
-    SELECT email_address, phone_number
+    SELECT
+    person_id, email_address, phone_number
     FROM messaging.contacts
-    WHERE person_id = '{person_id}'::uuid
     ),
 
     stats_1 AS (
-    SELECT COUNT (file_id) AS total_files, COUNT (DISTINCT project_year) AS total_years
+    SELECT
+    member_id AS person_id,
+    COUNT(file_id) AS total_files,
+    COUNT(DISTINCT project_year) AS total_years
     FROM project.files JOIN project.folders USING (folder_id)
-    WHERE member_id = '{person_id}'::uuid
+    GROUP BY member_id
     ),
 
     stats_2 AS (
-    select count(distinct project_Year) AS total_appearances
+    SELECT
+    member_id AS person_id,
+    COUNT(DISTINCT project_year) AS total_appearances
     FROM project.appearances
-    WHERE member_id = '{person_id}'::uuid
+    GROUP BY member_id
     )
 
-    SELECT person_id, first_name, middle_names, last_name, married_name, nick_name,
+    SELECT
+    person_id AS member_id, first_name, middle_names, last_name, married_name, nick_name,
     sex, prefix, suffix_to_text(suffix) AS suffix,
     parent_ids, spouse_ids, child_ids, expecting_ids, sibling_ids, pet_ids,
     birth_date::date, birth_date_precision, death_date::date, death_date_precision,
     union_date, union_date_precision, severance_date::date,
-    json_build_object('email_address', email_address, 'phone_number', phone_number, 'zip_code', zip_code) AS contact_info,
-    json_build_object('files', total_files, 'years', total_years, 'appearances', total_appearances) AS project_stats
+    JSON_BUILD_OBJECT('email_address', email_address, 'phone_number', phone_number,
+    'zip_code', zip_code) AS contact_info,
+    JSON_BUILD_OBJECT('files', COALESCE(total_files, 0), 'years', COALESCE(total_years, 0),
+    'appearances', COALESCE(total_appearances, 0)) AS project_stats
     FROM persons
-    CROSS JOIN folks
-    LEFT JOIN spouse ON TRUE
-    CROSS JOIN children
-    CROSS JOIN expectations
-    CROSS JOIN furries
-    CROSS JOIN siblings
-    LEFT JOIN socials ON TRUE
-    LEFT JOIN addy ON TRUE
-    CROSS JOIN stats_1 CROSS JOIN stats_2
-    WHERE person_id = '{person_id}'::uuid
+    LEFT JOIN folks USING (person_id)
+    LEFT JOIN spouse USING (person_id)
+    LEFT JOIN children USING (person_id)
+    LEFT JOIN expectations USING (person_id)
+    LEFT JOIN furries USING (person_id)
+    LEFT JOIN siblings USING (person_id)
+    LEFT JOIN socials USING (person_id)
+    LEFT JOIN addy USING (person_id)
+    LEFT JOIN stats_1 USING (person_id)
+    LEFT JOIN stats_2 USING (person_id)
     ;'''
     return read_sql(engine, sql)
 
-def fetch_animal_information(engine:Engine, animal_id:UUID) -> DataFrame:
+def fetch_animal_information(engine:Engine) -> DataFrame:
     sql = f'''
     WITH owners AS (
-    SELECT ARRAY_AGG(owner_id ORDER BY birth_date) AS owner_ids
-    FROM pets JOIN persons ON owner_id = person_id
-    WHERE pet_id = '{animal_id}'::uuid
+    SELECT pet_id AS animal_id,
+    ARRAY_AGG(owner_id ORDER BY gotcha_date NULLS LAST) AS owner_ids
+    FROM pets
+    GROUP BY pet_id
+    ),
+
+    owner_gotchas AS (
+    SELECT DISTINCT ON (pet_id)
+    pet_id AS animal_id,
+    gotcha_date, gotcha_date_precision
+    FROM pets
+    WHERE gotcha_date IS NOT NULL
+    ORDER BY pet_id, gotcha_date ASC
+    ),
+  
+    owner_addresses AS (
+    SELECT
+    pet_id AS animal_id,
+    person_id, zip_code, start_date
+    FROM pets 
+    JOIN messaging.address_moves ON person_id = owner_id
+    JOIN messaging.addresses USING (address_id)
     ),
 
     addy AS (
-    SELECT zip_code
-    FROM messaging.address_moves JOIN messaging.addresses USING (address_id)
-    WHERE person_id in (SELECT owner_id FROM pets WHERE pet_id = '{animal_id}'::uuid)
-    ORDER BY start_date DESC
-    LIMIT 1
+    SELECT DISTINCT ON (animal_id)
+    animal_id, zip_code
+    FROM owner_addresses
+    ORDER BY animal_id, start_date DESC
     ),
 
     stats_1 AS (
-    SELECT COUNT (file_id) AS total_files, COUNT (DISTINCT project_year) AS total_years
-    FROM project.files JOIN project.folders USING (folder_id)
-    WHERE member_id = '{animal_id}'::uuid
+    SELECT
+    member_id AS animal_id,
+    COUNT(file_id) AS total_files,
+    COUNT(DISTINCT project_year) AS total_years
+    FROM project.files
+    JOIN project.folders USING (folder_id)
+    GROUP BY member_id
     ),
 
     stats_2 AS (
-    select count(distinct project_Year) AS total_appearances
+    SELECT member_id AS animal_id,
+    COUNT(DISTINCT project_year) AS total_appearances
     FROM project.appearances
-    WHERE member_id = '{animal_id}'::uuid
-    )
+    GROUP BY member_id)
 
-    SELECT animal_id, first_name, middle_names, nick_name,
+    SELECT
+    animal_id AS member_id, first_name, middle_names, nick_name,
     sex, species, owner_ids,
-    birth_date::date, birth_date_precision, 
+    birth_date::date, birth_date_precision, death_date::date, death_date_precision,
     gotcha_date::date, gotcha_date_precision, 
-    death_date::date, death_date_precision,
-    json_build_object('zip_code', zip_code) AS contact_info,
-    json_build_object('files', total_files, 'years', total_years, 'appearances', total_appearances) AS project_stats
+    JSON_BUILD_OBJECT('zip_code', zip_code) AS contact_info,
+    JSON_BUILD_OBJECT('files', COALESCE(total_files, 0),'years', COALESCE(total_years, 0),
+    'appearances', COALESCE(total_appearances, 0)) AS project_stats
     FROM animals
-    LEFT JOIN pets ON pet_id = animal_id
-    CROSS JOIN owners
-    LEFT JOIN addy ON TRUE
-    CROSS JOIN stats_1 CROSS JOIN stats_2
-    WHERE animal_id = '{animal_id}'::uuid;
-    ;'''
+    LEFT JOIN owners USING (animal_id)
+    LEFT JOIN owner_gotchas USING (animal_id)
+    LEFT JOIN addy USING (animal_id)
+    LEFT JOIN stats_1 USING (animal_id)
+    LEFT JOIN stats_2 USING (animal_id);
+    ''';
     return read_sql(engine, sql)
