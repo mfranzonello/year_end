@@ -14,12 +14,12 @@ def fetch_image_information(engine:Engine, public_id:UUID) -> DataFrame:
     return read_sql(engine, sql)
 
 def update_image_information(engine:Engine, df:DataFrame):
-    val_cols = ['asset_id', 'public_id', 'version_number', 'upload_time', 'update_time', 'display_name']
+    val_cols = ['public_id', 'version_number', 'upload_time', 'update_time', 'display_name']
     val_ins = ', '.join(val_cols)
     values, params = build_values(df, val_cols)
     sql = f'''
     INSERT INTO config.images ({val_ins}) VALUES {values}
-    ON CONFLICT (asset_id) DO UPDATE
+    ON CONFLICT (public_id) DO UPDATE
     SET version_number = EXCLUDED.version_number,
     update_time = EXCLUDED.update_time,
     display_name = EXCLUDED.display_name

@@ -47,10 +47,6 @@ def get_version(engine:Engine, public_id:UUID) -> str:
     image_information = fetch_image_information(engine, public_id)
     if len(image_information):
         return image_information['version_number'].iloc[0]
-
-    #resource = fetch_resource(public_id)
-    #if resource:
-    #    return resource['version']
     
 def upload_image(engine:Engine, public_id:UUID, display_name:str, image_path:Path=None, binary_data=None):
     if binary_data:
@@ -63,7 +59,7 @@ def upload_image(engine:Engine, public_id:UUID, display_name:str, image_path:Pat
                                           display_name=display_name, asset_folder=PROFILES)
 
     image_information = DataFrame([response]).rename(columns=CLOUDINARY_RESPONSE_COLS)
-    image_information['update_time'] = image_information['upload_time'] #datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
+    image_information['update_time'] = image_information['upload_time'] 
     update_image_information(engine, image_information)
 
 def update_display_name(engine:Engine, public_id:UUID, display_name:str):

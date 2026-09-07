@@ -8,20 +8,24 @@ from database.db import read_sql
 
 def fetch_identity(engine: Engine, issuer_name: str, subject_id: str) -> DataFrame:
     """Find an identity using its provider and stable subject."""
-    return read_sql(engine, """
-        SELECT user_id, user_email, display_name FROM users.identities
-        WHERE issuer_name = :issuer AND subject_id = :subject
-    """, {"issuer": issuer_name, "subject": subject_id})
+    params = {"issuer": issuer_name, "subject": subject_id}
+    sql = f'''
+    SELECT user_id, user_email, display_name FROM users.identities
+    WHERE issuer_name = :issuer AND subject_id = :subject
+    ;'''
+    return read_sql(engine, sql, params)
 
 
 def fetch_identity_role(engine: Engine, issuer_name: str, subject_id: str) -> DataFrame:
     """Return every assigned role without caching permissions."""
-    return read_sql(engine, """
-        SELECT role_name FROM users.roles
-        JOIN users.identity_roles USING (role_id)
-        JOIN users.identities USING (user_id)
-        WHERE issuer_name = :issuer AND subject_id = :subject
-    """, {"issuer": issuer_name, "subject": subject_id})
+    params = {"issuer": issuer_name, "subject": subject_id}
+    sql = f'''
+    SELECT role_name FROM users.roles
+    JOIN users.identity_roles USING (role_id)
+    JOIN users.identities USING (user_id)
+    WHERE issuer_name = :issuer AND subject_id = :subject
+    ;'''
+    return read_sql(engine, sql, params)
 
 
 def create_identity(engine: Engine, issuer_name: str, subject_id: str,
@@ -51,7 +55,7 @@ def create_identity(engine: Engine, issuer_name: str, subject_id: str,
 
 
 def update_identity_role(engine: Engine, issuer_name: str, subject_id: str,
-                         role_name: str) -> None:
+                         role_name: str):
     """Replace all assigned roles with one existing role, or fail without changes."""
     with engine.begin() as conn:
         user_id = conn.execute(text("""
