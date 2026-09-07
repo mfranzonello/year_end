@@ -3,7 +3,7 @@
 import streamlit as st
 
 from pages.general import set_sidebar
-from streamlit_auth import require_admin
+from pages.streamlit_auth import require_admin
 
 
 set_sidebar()

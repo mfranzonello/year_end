@@ -96,18 +96,38 @@ Start the dashboard:
 .\.venv\Scripts\streamlit.exe run display.py
 ```
 
-The public dashboards remain available without signing in. Administrator access
-uses Streamlit's OpenID Connect support and an explicit owner allowlist. Copy the
-`[auth]`, `[auth.google]`, and `[authorization]` sections from
-`.streamlit/secrets.example.toml` into the ignored
-`.streamlit/secrets.toml`, configure the OAuth client for the environment's
-`/oauth2callback` URL, and start with an empty `admin_subjects` list. After the
-owner signs in, an administrator must obtain that account's stable OIDC `sub`
-claim through a private maintenance process, add it to `admin_subjects`, and
-restart the app. Login IDs are not displayed in the interface. The allowlist
-is stored in deployment secrets; this login flow does not persist accounts
-in the database. Email addresses
-are deliberately not used as authorization identifiers.
+The public dashboards remain available without signing in. Google login uses
+Streamlit's native OIDC support. Copy `[auth]` and `[auth.google]` from
+`.streamlit/secrets.example.toml` into the ignored `.streamlit/secrets.toml`
+and configure the environment's `/oauth2callback` URL.
+
+Account permissions come from `users.identities`, `users.identity_roles`, and
+`users.roles` in the configured database. The former secrets `admin_subjects`
+allowlist is no longer read and can be removed. Local and hosted deployments
+share permissions when they connect to the same database. Google identities
+use issuer label `Google` and the stable `sub` claim; email is profile data,
+not an authorization key. New identities and their Demo role are inserted
+atomically. Existing identities with no roles have no privileged access.
+
+`pages.streamlit_auth.current_tier()` returns the highest recognized tier.
+`require_tier("viewer")` allows Viewer, Member, and Administrator;
+`require_any_tier("member", "admin")` allows only the listed effective tiers.
+`require_admin()` remains a compatibility guard. Checks query roles afresh;
+role changes take effect on the next rerun or guarded action. These helpers
+do not yet switch public pages between demo and real data.
+
+`database.db_admin.update_identity_role` replaces all roles with one selected
+role. Role administration is currently performed privately; no management UI
+is implemented. Deleting an identity cascades to its role links. Deletion is
+not a ban: a later login registers a new Demo identity. Account IDs are not
+shown in the interface. `last_login` records the first observation in each
+Streamlit session, including sessions restored from an identity cookie.
+
+Run rollback-only database checks with:
+
+```powershell
+.\.venv\Scripts\python.exe -m tests.integration.check_identity_auth
+```
 
 Inspect the media CLI options:
 
