@@ -143,13 +143,28 @@ def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
     AND birth_date_precision != 'future'
     AND child_id != '{person_id}'::uuid
     )
+    ),
+
+    addy AS (
+    SELECT zip_code
+    FROM messaging.address_moves JOIN messaging.addresses USING (address_id)
+    WHERE person_id = '{person_id}'::uuid
+    ORDER BY start_date DESC
+    LIMIT 1
+    ),
+
+    socials AS (
+    SELECT email_address, phone_number
+    FROM messaging.contacts
+    WHERE person_id = '{person_id}'::uuid
     )
 
     SELECT person_id, first_name, middle_names, last_name, married_name, nick_name,
     sex, prefix, suffix_to_text(suffix) AS suffix,
     parent_ids, spouse_ids, child_ids, expecting_ids, sibling_ids, pet_ids,
     birth_date::date, birth_date_precision, death_date::date, death_date_precision,
-    union_date, union_date_precision, severance_date::date
+    union_date, union_date_precision, severance_date::date,
+    json_build_object('email_address', email_address, 'phone_number', phone_number, 'zip_code', zip_code) AS contact_info
     FROM persons
     CROSS JOIN folks
     LEFT JOIN spouse ON TRUE
@@ -157,6 +172,8 @@ def fetch_person_information(engine:Engine, person_id:UUID) -> DataFrame:
     CROSS JOIN expectations
     CROSS JOIN furries
     CROSS JOIN siblings
+    LEFT JOIN socials ON TRUE
+    LEFT JOIN addy ON TRUE
     WHERE person_id = '{person_id}'::uuid
     ;'''
     return read_sql(engine, sql)
@@ -167,16 +184,26 @@ def fetch_animal_information(engine:Engine, animal_id:UUID) -> DataFrame:
     SELECT ARRAY_AGG(owner_id ORDER BY birth_date) AS owner_ids
     FROM pets JOIN persons ON owner_id = person_id
     WHERE pet_id = '{animal_id}'::uuid
+    ),
+
+    addy AS (
+    SELECT zip_code
+    FROM messaging.address_moves JOIN messaging.addresses USING (address_id)
+    WHERE person_id in (SELECT owner_id FROM pets WHERE pet_id = '{animal_id}'::uuid)
+    ORDER BY start_date DESC
+    LIMIT 1
     )
 
     SELECT animal_id, first_name, middle_names, nick_name,
     sex, species, owner_ids,
+    json_build_object('zip_code', zip_code) AS contact_info,
     birth_date::date, birth_date_precision, 
     gotcha_date::date, gotcha_date_precision, 
     death_date::date, death_date_precision
     FROM animals
     LEFT JOIN pets ON pet_id = animal_id
     CROSS JOIN owners
+    LEFT JOIN addy ON TRUE
     WHERE animal_id = '{animal_id}'::uuid;
     ;'''
     return read_sql(engine, sql)

@@ -1,13 +1,14 @@
-﻿from uuid import UUID
-from datetime import date, timedelta
+﻿from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 
 import streamlit as st
+from pgeocode import Nominatim
+from pandas import DataFrame
 
-from database.db import get_engine
 from database.db_family import fetch_person_information, fetch_animal_information
-from family_tree.cloudy import get_image_url, upload_image, configure_cloud
-from pages.general import set_sidebar
+from family_tree.cloudy import get_image_url, upload_image
+
+nomi = Nominatim('us')
 
 def get_member_name_display(members, member_id):
     return members[members['member_id'] == member_id]['full_name'].iloc[0]
@@ -93,14 +94,23 @@ def get_plural(word, items, s='s', plural=None):
         plural = word + s
     return plural if (len(items) != 1) else word
 
-def fill_in_bio(engine, member_id, members, cloud_name):
-    member_type = members[members['member_id'] == member_id]['member_type'].iloc[0]
+def plot_map(zip_code):
+    if zip_code:
+        location = nomi.query_postal_code(zip_code)
+        location_data = DataFrame([[location.latitude, location.longitude]], columns=('lat', 'lon'))
+        st.map(location_data, height=300, zoom=10)
 
+def fill_in_bio(engine, member_id, members, cloud_name):
+    member_info = members[members['member_id'] == member_id]
+    member_type = member_info['member_type'].iloc[0]
+    
     if member_type == 'person':
         information = fetch_person_information(engine, member_id)
     elif member_type == 'animal':
         information = fetch_animal_information(engine, member_id)
+    
     sex = information['sex'].iloc[0]
+    contact_info = information['contact_info'].iloc[0]
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -216,6 +226,12 @@ def fill_in_bio(engine, member_id, members, cloud_name):
                 if death_date_precision != 'past':
                     owned_span = get_time_passed_display(gotcha_date, gotcha_date_precision, cut_date, include_years=True)
                     st.markdown(f'**Owned for**: {owned_span}')
+
+        # location information
+        zip_code = contact_info.get('zip_code')
+        if zip_code:
+            plot_map(zip_code)
+
 
     with col3:
         if member_type == 'person':

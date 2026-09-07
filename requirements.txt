@@ -6,3 +6,4 @@ webcolors==1.13
 Authlib==1.7.2
 graphviz==0.21
 cloudinary==1.44.1
+pgeocode==0.5.0
