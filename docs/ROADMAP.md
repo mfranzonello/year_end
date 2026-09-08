@@ -269,6 +269,18 @@ scraping and Adobe work. GitHub Actions may expose reviewed manual controls via
 workflow inputs, but should not become a substitute for an authenticated admin
 application.
 
+Target data-entry workflow: after initial database setup, routine additions and
+updates should run through authenticated Streamlit actions or GitHub Actions
+automation. Direct SQL edits by the owner or an agent are a transitional
+maintenance practice, not the intended everyday interface. Profile-image
+replacement already runs through Streamlit, and new-file detection uses hosted
+automation. Person creation, relationship edits, and account-role management
+still need dedicated administrative pages; they are planned, not implemented.
+Local Adobe/browser tools remain necessary for preparing and analyzing source
+material; plan their eventual database-write handoff through the supported
+application or automation flow. Schema migrations and exceptional repairs
+remain explicit maintenance operations with validation and rollback planning.
+
 ### Cross-cutting: identity and permissions
 
 The first authentication and authorization layer is implemented: Streamlit uses
@@ -358,6 +370,29 @@ remaining rendering/data issues.
 
 Review and improve the existing schema, constraints, checks, and dependent
 views without losing the integrity of the family and media records.
+
+Provide a reproducible database initializer for someone cloning the repository.
+Assume they have already provisioned a Neon account and an empty target database
+with credentials; they can then run the initializer locally from Python.
+Document this setup alongside the Streamlit and TOML configuration instructions.
+Provisioning Azure and other optional external infrastructure is outside this
+initializer's scope.
+
+- Check in reviewed SQL definitions for all application-owned schemas, including
+  `users`, plus required non-private reference data. Review platform-managed
+  schemas separately rather than copying provider internals.
+- Support normal setup with empty application tables and required seed data,
+  and demo setup with explicitly excluded schemas (including `users`) and a
+  smaller generated fictional dataset. Both modes use the same schema source.
+- Keep personal records, credentials, and production storage/media references
+  out of schema and seed artifacts. Demo authentication continues to use the
+  main database; demo content uses its separate connection.
+- Preview the target and planned operations, check dependencies for excluded
+  schemas, refuse populated targets by default, and validate the resulting
+  schema and application queries. Treat upgrades separately from initialization.
+- Update the versioned definitions as the live schema evolves, including the
+  review-based appearance model. The initializer is planned work, not an
+  existing installation command.
 
 The marriage migration is now substantially complete: provider-neutral `unions`
 and `union_members` replace husband/wife columns, pair membership is enforced
