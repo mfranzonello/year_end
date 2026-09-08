@@ -56,12 +56,18 @@ to the Python `graphviz` package. Without it, the page is hidden from navigation
 and direct links show an unavailable message before loading tree data. Local
 installations with Graphviz continue to show the page.
 
-The `dqa` branch restores `packages.txt` so the secondary Streamlit deployment can
+The `dev` branch restores `packages.txt` so the secondary Streamlit deployment can
 test Graphviz installation and recovery from the expired Debian Bullseye security
 repository metadata issue. Production on `main` keeps `packages.txt.disabled` to
 skip that installation step. Both branches retain the Graphviz availability check.
-The secondary app uses this repository's `dqa` branch and `display.py` entrypoint;
+The secondary app uses this repository's `dev` branch and `display.py` entrypoint;
 its intended subdomain is `franzonellodq.streamlit.app`.
+
+Normal development happens on `qa` and is tested locally. Merge `qa` into `dev`
+and push `dev` to test in the secondary Streamlit deployment. After cloud
+validation, merge `dev` into `main` and push `main` to release to production.
+Until the Debian issue is resolved, keep the restored `packages.txt` out of
+`main`; merging it would re-enable the failing production installation step.
 
 ## Setup
 

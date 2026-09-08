@@ -116,6 +116,10 @@
 
 ## Git workflow
 
+- Normally work on `qa` and test locally. Merge `qa` into `dev` for cloud
+  validation, then merge the tested `dev` changes into `main` for production.
+  Keep environment-specific deployment workarounds out of production until
+  validated. Branch promotion and publishing require the user's request.
 - The agent stages and commits intentional changes.
 - Do not push, create a pull request, or otherwise publish externally unless
   the user explicitly requests it.
