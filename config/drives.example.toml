@@ -1,71 +1,72 @@
+# Reference only. Copy to the runtime filename and replace every REPLACE_ME value.
 # Local storage, browser, and executable settings. Copy to drives.toml and
 # customize for the machine and project.
 
 [local_storage]
-quarantine = "Quarantine"
+quarantine = "REPLACE_ME"
 
 [local_storage.onedrive]
-videos = "Videos"
+videos = "REPLACE_ME"
 
 [local_storage.google_drive]
-videos = "Videos"
-shortcuts = ".shortcuts-targets-by-id"
+videos = "REPLACE_ME"
+shortcuts = "REPLACE_ME"
 
 [local_storage.adobe]
-projects = "Reviews"
-reviews = "Year End"
-project = "YIR"
-bin = "Videos"
-common = "_Common"
-label_preset = "Year End"
+projects = "REPLACE_ME"
+reviews = "REPLACE_ME"
+project = "REPLACE_ME"
+bin = "REPLACE_ME"
+common = "REPLACE_ME"
+label_preset = "REPLACE_ME"
 
 [ssd]
-name = "Media Drive"
-videos = "Videos"
+name = "REPLACE_ME"
+videos = "REPLACE_ME"
 
 [executables.windows.google_drive]
-vendor = "Google"
-name = "Drive File Stream"
-exe = "GoogleDriveFS"
+vendor = "REPLACE_ME"
+name = "REPLACE_ME"
+exe = "REPLACE_ME"
 
 [executables.windows.dropbox]
-vendor = "Dropbox"
-name = "Client"
-exe = "Dropbox"
+vendor = "REPLACE_ME"
+name = "REPLACE_ME"
+exe = "REPLACE_ME"
 
 [executables.windows.premiere]
-vendor = "Adobe"
-name = "Adobe Premiere Pro"
-exe = "Adobe Premiere Pro"
+vendor = "REPLACE_ME"
+name = "REPLACE_ME"
+exe = "REPLACE_ME"
 
 [executables.windows.chrome]
-vendor = "Google"
-name = "Chrome"
-exe = "chrome"
+vendor = "REPLACE_ME"
+name = "REPLACE_ME"
+exe = "REPLACE_ME"
 
 [executables.windows.edge]
-vendor = "Microsoft"
-name = "Edge"
-exe = ["msedge", "msedgedriver"]
+vendor = "REPLACE_ME"
+name = "REPLACE_ME"
+exe = "REPLACE_ME"
 
 [executables.macos.google_drive]
-name = "GoogleDrive"
+name = "REPLACE_ME"
 
 [executables.macos.dropbox]
-name = "Dropbox"
+name = "REPLACE_ME"
 
 [executables.macos.onedrive]
-name = "OneDrive"
+name = "REPLACE_ME"
 
 [executables.macos.premiere]
-name = "Adobe Premiere Pro"
+name = "REPLACE_ME"
 
 [executables.macos.chrome]
-name = "Google Chrome"
+name = "REPLACE_ME"
 
 [executables.macos.edge]
-name = "Microsoft Edge"
+name = "REPLACE_ME"
 
 [user_data]
-chrome = "Google/Chrome"
-edge = "Microsoft/Edge"
+chrome = "REPLACE_ME"
+edge = "REPLACE_ME"

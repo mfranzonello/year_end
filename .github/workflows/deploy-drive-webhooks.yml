@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
+      YEAR_END_CONFIG_API_TOML: ${{ vars.YEAR_END_CONFIG_API_TOML }}
+      YEAR_END_CONFIG_WEBHOOKS_TOML: ${{ vars.YEAR_END_CONFIG_WEBHOOKS_TOML }}
       AZURE_FUNCTION_APP_NAME: ${{ vars.AZURE_FUNCTION_APP_NAME }}
 
     steps:
@@ -69,8 +71,7 @@ jobs:
           cp function_app.py host.json "${package}/"
           cp requirements_webhooks.txt "${package}/requirements.txt"
           cp -R common integrations repositories "${package}/"
-          cp config/api.example.toml "${package}/config/api.toml"
-          cp config/webhooks.toml "${package}/config/webhooks.toml"
+          python -m common.config api webhooks --output-dir "${package}/config"
           echo "FUNCTION_PACKAGE=${package}" >> "${GITHUB_ENV}"
 
       - name: Sign in to Azure with GitHub OIDC

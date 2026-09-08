@@ -9,6 +9,7 @@
 # Local, non-secret installation configuration; copy the tracked examples.
 /config/api.toml
 /config/drives.toml
+/config/webhooks.toml
 
 *.TMP
 /debug_*

@@ -1,0 +1,14 @@
+# Reference only. Copy to the runtime filename and replace every REPLACE_ME value.
+# Provider-neutral policy for hosted webhook processing. Timing values are integers.
+
+[drive_changes.debounce]
+quiet_minutes = "REPLACE_ME"
+maximum_wait_minutes = "REPLACE_ME"
+
+[drive_changes.scope]
+media_root = "REPLACE_ME"
+onedrive_subscription_target = "REPLACE_ME"
+
+[drive_changes.subscriptions]
+onedrive_renew_before_days = "REPLACE_ME"
+google_drive_replace_before_days = "REPLACE_ME"

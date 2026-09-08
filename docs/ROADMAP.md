@@ -303,7 +303,7 @@ Remaining work:
 - observe the active daily lifecycle safely renewing the explicit
   OneDrive root subscription (with processing limited to `Videos`) and
   replacing the account-wide Google Drive `changes.watch` channel before
-  expiration; renewal lead times are versioned in `config/webhooks.toml` and
+  expiration; renewal lead times are supplied through deployment webhook configuration and
   replacement allows a brief overlap;
 - persist and advance Google delta/page cursors to filter account-wide notices
   to the configured `Videos` project hierarchy before dispatch;

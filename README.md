@@ -103,6 +103,11 @@ cloud-integration workflows:
 - `config/drives.example.toml` to `config/drives.toml` for local storage,
   browser, and desktop-application settings.
 
+- `config/webhooks.example.toml` to `config/webhooks.toml` for webhook policy.
+
+See [configuration and sync](docs/CONFIGURATION.md) for environment overrides,
+GitHub variable setup, and preview-first upload/download commands.
+
 The local configuration files are ignored. Adapt them for your environment
 rather than hardcoding paths or URLs in Python.
 
@@ -205,7 +210,7 @@ The event-driven receiver and both provider subscriptions are active. The Azure
 Function validates provider notifications, stores them
 durably, waits for a 10-minute quiet period (with a 30-minute maximum), and
 dispatches the appropriate existing workflow. Those values live in the
-checked-in, provider-neutral `config/webhooks.toml`, not in the implementation. See
+deployment-specific, provider-neutral webhook configuration, not in the implementation. See
 [Drive webhook deployment](docs/DRIVE_WEBHOOKS.md)
 for the lifecycle, recovery procedure, and provider-scope details. A separate
 daily workflow maintains the short-lived registrations;

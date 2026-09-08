@@ -1,8 +1,9 @@
+# Reference only. Copy to the runtime filename and replace every REPLACE_ME value.
 [microsoft.urls]
 identity = "https://login.microsoftonline.com/common/oauth2/v2.0"
 
 [microsoft.oauth]
-redirect_uri = "http://localhost:5000/authorize/azure/callback"
+redirect_uri = "REPLACE_ME"
 
 [onedrive.urls]
 graph = "https://graph.microsoft.com/v1.0"
@@ -11,7 +12,8 @@ graph = "https://graph.microsoft.com/v1.0"
 scopes = ["User.Read", "Files.ReadWrite", "offline_access"]
 
 [onedrive.limits]
-rate = 5
+# Replace with a positive numeric request rate.
+rate = "REPLACE_ME"
 
 [google.urls]
 authorize = "https://accounts.google.com/o/oauth2/v2/auth"

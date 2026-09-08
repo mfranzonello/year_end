@@ -6,14 +6,14 @@ written to Azure Queue Storage before the provider receives an acknowledgement.
 A one-minute timer folds them into provider-specific batches and dispatches the
 existing GitHub Actions workflows.
 
-The checked-in `config/webhooks.toml` policy currently specifies a 10-minute
-quiet period with a 30-minute maximum wait measured from the first notification.
+Deployment webhook configuration specifies a quiet period and a maximum wait
+measured from the first notification. See [configuration and sync](CONFIGURATION.md).
 A continuing upload therefore extends the quiet period, but it cannot postpone
 reconciliation indefinitely. Both values are positive minutes, and the quiet
 period cannot exceed the maximum wait. A debounce-policy change requires
 redeploying the Function package; it does not require rebuilding Azure
 infrastructure.
-The same file defines the cloud-media root (`Videos`) and the explicit OneDrive
+The same file defines the cloud-media root and the explicit OneDrive
 subscription target; both are separate from local mount configuration.
 
 | Signal | GitHub event | Work performed |
@@ -49,7 +49,7 @@ does not receive access to OneDrive, Google Drive, Neon, or media content.
 Microsoft Graph rejected an item-scoped subscription for this personal
 OneDrive. `config/webhooks.toml` therefore explicitly selects the drive root as
 the notification target. The inspection workflow still filters every resulting
-signal to the configured `Videos` hierarchy, so unrelated content is never
+signal to the configured media hierarchy, so unrelated content is never
 inventoried. The rejected `media_root` target remains a supported configuration
 choice for accounts where Graph accepts it; fallback is never inferred silently.
 
@@ -63,8 +63,8 @@ Google notification channels have a maximum lifetime of seven days and must be
 replaced, not renewed. OneDrive subscriptions also expire and must be renewed.
 `Renew drive webhook subscriptions` runs daily at 09:17 UTC (the checked-in cron
 time),
-renews OneDrive seven days before expiration, and replaces the Google channel
-two days before expiration. Those lead times live in `config/webhooks.toml`.
+renews OneDrive and replaces Google channels before expiration using configured
+lead times from local TOML or environment-supplied webhook configuration.
 Its manual trigger is a dry run unless `apply` is explicitly enabled; scheduled
 runs apply changes. The Google migration workflow itself has no cron schedule.
 

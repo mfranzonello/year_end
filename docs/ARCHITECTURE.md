@@ -239,9 +239,11 @@ publication of every local Premiere export.
 
 ## Configuration and dependency model
 
-- `config/api.example.toml` and `config/drives.example.toml` document the
+- The API, drives, and webhooks `.example.toml` files document the
   required non-secret provider and local-environment configuration. Copy them
-  to the ignored `api.toml` and `drives.toml` files before local use.
+  to the corresponding ignored runtime TOML files and fill placeholders before local use.
+  Environment TOML documents override local files; examples are never runtime inputs.
+  See [configuration and sync](CONFIGURATION.md).
 - `.secrets/secrets.toml` supports the local CLI and expanded integrations;
   `.streamlit/secrets.toml` holds the narrower Streamlit deployment set.
 - `requirements.txt` is the Streamlit/cloud baseline.

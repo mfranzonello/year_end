@@ -20,6 +20,11 @@
 - Keep provider endpoint URLs in `config/api.toml` as their single source of
   truth. Cloud integrations must not duplicate them in code; `config/drives.toml`
   is reserved for local storage, desktop applications, and browser settings.
+- Read installation configuration through `common.config.read_toml`, which
+  accepts the corresponding `YEAR_END_CONFIG_<NAME>_TOML` environment document
+  before the ignored local TOML file. Never consume `.example.toml` files at
+  runtime or in deployment; keep customizable values as explicit placeholders.
+  Configuration sync must remain preview-first and exclude credentials.
 - Keep persistent database models provider-neutral when the underlying concept
   is portable. Model the current canonical repository through relationships and
   configuration, not vendor-branded column names, unless an attribute truly
