@@ -118,8 +118,17 @@
 
 - Normally work on `qa` and test locally. Merge `qa` into `dev` for cloud
   validation, then merge the tested `dev` changes into `main` for production.
+  `qa` runs on local devices; `dev` backs the secondary Streamlit deployment;
+  `main` backs the production Streamlit deployment. Local success alone is not
+  sufficient for production promotion: verify the cloud build and relevant
+  behavior on `dev` first.
   Keep environment-specific deployment workarounds out of production until
   validated. Branch promotion and publishing require the user's request.
+- Neon database branching does not currently mirror this workflow. Do not
+  assume `qa` or `dev` uses an isolated database; check the configured target
+  before database writes and apply the existing external-action and migration
+  rules. Matching Neon branches are a future improvement to plan explicitly,
+  not part of routine Git branch creation or promotion.
 - The agent stages and commits intentional changes.
 - Do not push, create a pull request, or otherwise publish externally unless
   the user explicitly requests it.
