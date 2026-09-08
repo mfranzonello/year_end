@@ -126,6 +126,11 @@ the likely first implementation; a GitHub Pages front end is possible only with
 a separate authenticated API behind it. Family-facing write access is out of
 scope unless explicitly added later.
 
+Initial groundwork is now live: Streamlit has an administrator-guarded landing
+page, and member profile-image replacement is restricted to administrators.
+The remaining work is to turn that scaffold into a deliberate onboarding flow
+with validation, review, and provider-safe asset handling.
+
 ### 3. Streamlit and Vimeo
 
 Improve the Streamlit experience and extend Vimeo integration. This work is
@@ -133,6 +138,12 @@ product/UI focused rather than a local-to-cloud migration.
 
 Potential areas include clearer dashboard outputs, better navigation and
 presentation, and more complete Vimeo metadata or publishing workflows.
+
+The first dashboard/tree usability pass is implemented: member selection,
+biographical summaries, profile images, video statistics, family navigation,
+and a Graphviz tree explorer are now present. Continue improving visual
+polish, performance, and incomplete appearance-data handling without treating
+these early pages as the finished family-facing product.
 
 The Vimeo publishing workflow should be explicit and revision-safe:
 
@@ -260,8 +271,14 @@ application.
 
 ### Cross-cutting: identity and permissions
 
-Introduce authentication before making Streamlit pages available to people
-outside the project editor. Start with a small role-based model:
+The first authentication and authorization layer is implemented: Streamlit uses
+Google OIDC for sign-in, records the provider's stable subject in
+`users.identities`, and reads database-backed roles on every guarded access.
+New accounts receive the `demo` role; the administrator page and profile-image
+replacement already enforce the `admin` tier.
+
+The remaining access-policy work is to apply the intended page/data boundaries
+before broader family access. The target role model remains:
 
 - **Reader:** view-only access to specifically approved Streamlit pages.
 - **Administrator:** access to all approved pages and guarded editing actions.
@@ -326,27 +343,27 @@ synchronization that leaves configuration drift or unclear precedence.
 
 ### 4. Family tree presentation
 
-Finish the separate family-tree experience using the existing database. It is
-not part of the media or folder workflow, but it can reuse the people and
-relationship data already stored in Neon.
+Continue refining the separate family-tree experience using the existing
+database. It is not part of the media or folder workflow, but it can reuse the
+people and relationship data already stored in Neon.
 
-The intended maintained surface is a Streamlit page where a user can select any
-person from the `persons` table and explore their parents, spouses, children,
-pets, and other relevant relationships. Existing traversal methods and the
-`tree.py` developer script are exploratory foundations, not a long-term CLI.
-Focus on the desired visual style, readability at family scale, and remaining
-rendering/data issues.
+The maintained surface now includes a Streamlit page where a user can select a
+member and explore parents, spouses, children, pets, and other relevant
+relationships through the database-derived Graphviz contract. The former
+`tree.py` developer script remains exploratory, not a long-term CLI. Focus next
+on the desired visual style, readability and load behavior at family scale, and
+remaining rendering/data issues.
 
 ### 5. Database modernization
 
 Review and improve the existing schema, constraints, checks, and dependent
 views without losing the integrity of the family and media records.
 
-The current design contains useful structure, but some early modeling choices
-create avoidable application complexity. For example, `marriages` stores
-`husband_id` and `wife_id`; a spouse lookup must first account for sex, while a
-participant-based junction-table model would represent a marriage directly and
-support every couple consistently.
+The marriage migration is now substantially complete: provider-neutral `unions`
+and `union_members` replace husband/wife columns, pair membership is enforced
+at commit, and tree/calendar consumers use union-aware contracts. Continue
+auditing dependent views, naming behavior, and compatibility assumptions before
+making further relationship changes.
 
 Any migration must be planned against dependent views and application queries,
 then applied safely with validation and a rollback path. The goal is not change
@@ -384,7 +401,7 @@ Days, cancer-remission milestones, and selected pets' gotcha days. Events may
 optionally link to people or animals; shared observances need no member link.
 
 Keep birthdays derived from birth records and anniversaries derived from
-marriages. Only explicitly Calendar-enabled records should sync. Extend the
+unions. Only explicitly Calendar-enabled records should sync. Extend the
 provider mapping model so an explicit event can own a recurring Calendar master
 without encoding Google-specific concepts in the domain table. This will let
 currently ignored recurring events be reviewed and adopted instead of treated
@@ -428,7 +445,12 @@ targets and should not be assumed to run in hosted automation.
 
 ## Near-term sequence
 
-1. Document current architecture, module ownership, and local/cloud boundaries.
-2. Choose the first cloud-native media operation and implement it end to end.
-3. Define the person-onboarding data and asset flow.
-4. Improve Streamlit/Vimeo and the family tree as parallel product tracks.
+1. Stabilize the new Streamlit data/auth foundation: finish page-level access
+   boundaries, validate the member/profile-image experience, and resolve known
+   dashboard performance or incomplete-appearance cases.
+2. Define the person-onboarding write flow on top of the administrator shell,
+   including validation, image handling, and an auditable database boundary.
+3. Complete a durable cloud-media operation end to end, prioritizing hosted
+   token renewal, reconciliation, and safe recovery before broader automation.
+4. Continue family-tree layout refinement and deliberate Vimeo automation as
+   parallel product tracks once the foundation is stable.

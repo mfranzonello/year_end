@@ -6,7 +6,7 @@ This document is a curated map of the Neon Postgres database used by Year End
 and the family-tree work. It records database structure and application-facing
 relationships, not family records, credentials, tokens, or database exports.
 
-The inventory was verified against the primary `main` branch on 2026-09-02 via
+The inventory was verified against the primary `main` branch on 2026-09-07 via
 the connected Neon Postgres integration. It is intentionally not a raw DDL
 dump: migrations and database changes must update this document when they alter
 an application-facing contract.
@@ -19,13 +19,13 @@ an application-facing contract.
 | `tree` | Relationship-derived views used for family membership and tree traversal. | Documented here. |
 | `project` | Year-in-Review folders, files, sources, shares, appearances, and summaries. | Documented here. |
 | `dashboard` | Read-only application views and functions backed by the authoritative family/project data. | Documented here. |
-| `demo` | Synthetic tables matching the public Streamlit data contract without exposing family data. | Documented at a domain level. |
 | `config` | Media and Adobe/project reference data. | Documented at a domain level. |
 | `ingestion` | Submission-source, browser, repository, album, and contact metadata. | Documented at a domain level. |
 | `publishing` | Reviews and their music/publishing metadata. | Documented at a domain level. |
 | `nello` | Project-level family configuration, currently including the configured founder. | Documented at a domain level. |
 | `auth` | Application/session helper functions. | Internal; not a public data contract. |
 | `neon_auth` | Neon-managed authentication synchronization. | Platform-managed; do not modify casually. |
+| `users` | Application identities and role assignments used by Streamlit authorization. | Documented here. |
 | `_debugging` | Dependency/debugging views. | Internal tooling. |
 
 ## Core relationship model
@@ -43,8 +43,9 @@ erDiagram
   ANIMALS ||--o{ FOLDERS : "may be folder subject"
   SOURCES ||--o{ FOLDERS : "may be folder subject"
   FOLDERS ||--o{ FILES : "contains"
-  FOLDERS ||--o{ SHARES : "has provider share"
-  REPOSITORIES ||--o{ SHARES : "hosts"
+  FOLDERS ||--o{ FOLDER_LOCATIONS : "has provider location"
+  REPOSITORIES ||--o{ FOLDER_LOCATIONS : "hosts"
+  FOLDER_LOCATIONS ||--o{ SHARES : "has provider share"
 ```
 
 `tree` views derive family-specific membership and relationship structures from
@@ -107,10 +108,13 @@ deliberately chosen.
 ### `unions` and `union_members`
 
 `unions` is the provider-neutral pair-relationship record. It has `union_id`,
-`union_date`, `union_date_precision`, `union_type`, `last_name_person_id`, and
-`last_name_hyphen`. Current union types are `marriage`, `civil`, and `friends`.
-The optional last-name fields describe presentation behavior without assigning
-sex-specific partner roles.
+`union_date`, `union_date_precision`, `union_type`, `last_name_person_id`,
+`last_name_hyphen`, and `last_name_custom`. Current union types are `marriage`,
+`civil`, and `friends`. The optional last-name fields support a selected
+member's name, a hyphenated name, or an explicit display name without assigning
+sex-specific partner roles. `last_name_person_id` references `persons`; the
+application/view contract must validate that any selected person is a member of
+the same union before relying on it for presentation.
 
 `union_members` links each union to its people through `person_id` and
 `union_id`. Its composite primary key is `(person_id, union_id)`, both columns
@@ -149,13 +153,14 @@ a semantic question for a later review, not a reason to change its cardinality.
 - `members`: family/tree membership attributes, dates, member type, and related
   data used by `family_tree.ancestry`.
 - `partnerships`: one row per `marriage` or `civil` union, with
-  `partner_id_1`, `partner_id_2`, union date/precision, and union type.
+  `partner_id_1`, `partner_id_2`, union date/precision, union type, severance
+  date, and the derived married display name.
 - `partners`: directional partner projection with `person_id`, `spouse_id`,
   `union_id`, and union type, used by relationship traversal.
 - `friendships` and `friends`: corresponding pairwise and directional
   projections for `friends` unions.
-- `households` and `clans`: current and birth/household grouping for display and
-  representation logic.
+- `households` and `clans`: current/nee household grouping and clan details for
+  display and representation logic.
 - `heads`, `apexes`, and `nodes`: derived structural views used by tree layout
   and relationship calculations.
 
@@ -167,88 +172,34 @@ founder. Founder selection remains outside this schema, allowing tree structure
 to remain relationship-agnostic; trace indirect helper/view dependencies before
 changing the `nello.founder` configuration.
 
-## `dashboard` and `demo`: application-facing data contract
+## `dashboard`: application-facing data contract
 
-Streamlit reads application-facing relations from either `dashboard` or `demo`.
-The `dashboard` schema contains views over authoritative records; `demo`
-contains synthetic tables with the matching columns needed for public pages.
-Public application code must not combine the two schemas in one request.
+`dashboard` is the live, read-only application contract for Streamlit. It
+contains views over authoritative records, rather than copied dashboard data.
+There is no `demo` schema on the current primary branch; any future demo mode
+must be provisioned deliberately and kept separate from private family data.
 
-- `display_names` provides presentation-only member names.
-- `founder` exposes the configured family root without moving that configuration
-  out of `nello`.
-- `member_information` combines display names, current and prior clans,
-  clan-effective dates, member dates/types, and `is_clan_1_head`. Every member
-  has a current `clan_id_1`; `clan_id_2` is optional and represents a clan from
-  which the member came. A member cannot be a head of `clan_id_2`.
+- `display_names`, `founder`, `member_information`, `member_summary`, and
+  `relations_summary` provide display-ready family information. `member_information`
+  includes current and prior clans, their effective date, member dates, and type.
 - `folders_summary`, `years_summary`, `resolution_order`, and
-  `appearance_spans` provide chart-ready Year-in-Review data.
-- `relations_summary` provides display-oriented relationship descriptions.
-- `_family_members_old(start_member_id, cut_date, traversal_mode,
-  include_partner_branches)` returns every dashboard member once. Related
-  members receive a calculated generation and traversal metadata; unrelated
-  members receive `NULL`. Supported traversal modes are `up`, `down`,
-  `up_down`, and `bidirectional`. An omitted or `NULL` cutoff date uses the
-  database server's `CURRENT_DATE`.
-- `family_members` exposes the same traversal modes using direct parent,
-  pet-owner, and dated marriage/civil-union edges. It additionally identifies
-  the relationship type and whether the selected path entered through a
-  non-opening partner. Member birth dates, pet gotcha dates, and union dates
-  determine whether nodes and edges existed at the requested cutoff. Parent
-  rows have no relationship date, so the child entry date is their only
-  historical boundary. This function is intentionally parallel to the clan
-  implementation while their results are evaluated. It uses the same cutoff
-  default as `_family_members_old`.
-- The preferred `family_members` also classifies each member's parent/owner
-  node from the complete sorted set of parent or owner UUIDs. It returns a
-  deterministic UUIDv5 `parent_node_key`, node type, head IDs, nodes headed by the
-  member, sibling order, and integer-array `lineage`. One-head nodes are
-  `solo`, two-head nodes are `pair`, and larger sets are reported as `multiple`
-  rather than silently truncated. Its integer-array `ancestry` records the
-  opening-member branch followed by each parent's birth-ordered position during
-  upward traversal; unknown or equal birth dates use UUID as a stable
-  tie-breaker. Opening members and descendants retain an empty array.
-- `family_members_graph` wraps `family_members` without repeating its recursive
-  traversal. A node with two parent/owner heads is `shared`; a one-head node is
-  `core` when that head occupies the first side and `partner` when the head
-  occupies the second side. The seed is first and its opening partner is
-  second; descendant sides use non-in-law/in-law status, while ancestor sides
-  use the birth-ordered position already encoded by `ancestry`. Apex nodes,
-  nodes with more than two heads, and unclassifiable one-head nodes return
-  `NULL`. This branch value is intended for Graphviz-specific organization.
-- `family_graph` calls `family_members_graph` once and returns the complete
-  Graphviz contract as one table. Every person, animal, official union junction,
-  and synthetic multi-head junction has one universal UUID `node_id`. A row has
-  at most one vertical `parent_head_id` and one left-to-right `tail_id`, so Python
-  can create each edge once without reverse spouse or parent duplicates.
-  `tail_type = 'union'` identifies a visible partner-to-junction connection;
-  `tail_type = 'order'` identifies an invisible ordering connection. Official
-  junction rows retain `union_type`, `union_date`, and `union_date_precision` for
-  optional visible dots and anniversary hover text. `generation`, `unit_order`,
-  `unit_position`, and `x_order` provide the database-classified placement order.
-  Every descendant occupies its own lineage-ordered placement unit; a partner
-  and union junction share that unit when present. This keeps married and
-  unmarried siblings interleaved by sibling order, with animals after people
-  belonging to the same parental node. Its internal graph-order lineage follows
-  the selected discovery path and appends a `[branch_order, sibling_order]` pair
-  for every downward step (`core`, `shared`, `partner`, then unclassified).
-  This prevents sibling numbers calculated for overlapping one-head and
-  two-head parent nodes from colliding, while leaving the returned semantic
-  `lineage` unchanged.
-  Member rows also expose `parent_head_ids` immediately before
-  `parent_head_id`; the array preserves the underlying parent/owner set for
-  display-time family-boundary detection, while `parent_head_id` remains the
-  single Graphviz edge endpoint. Junction rows return `NULL` for the array.
-
-- `family_members_display` wraps `family_members` for the flattened timeline.
-  It assigns each related member to a UUIDv5 display unit, derives the unit's
-  generation, lineage, ancestry, depth, and global order, and supplies the
-  member's role and stable order inside that unit. Active childless
-  partnerships and unmarried adults age 30 or older can form display units
-  without adding timeline-specific logic to the traversal. Human parenthood,
-  but not animal ownership alone, also forms a timeline unit. Dependents are
-  redirected into a head's selected unit when that choice is unambiguous; an
-  animal inherits its owner's resolved unit and sorts after its human members.
+  `appearance_spans` provide chart-ready YIR counts, resolutions, and review
+  appearance spans.
+- `family_members(start_member_id, cut_date, traversal_mode,
+  include_partner_branches, pet_visibility, living_people_only)` is the core
+  traversal contract. It returns each discovered member with relationship,
+  generation, node-head, sibling, lineage, and ancestry metadata. A cutoff
+  defaults to `CURRENT_DATE`; the filters make historical and living-only
+  views explicit rather than application-side guesses.
+- `family_branches` exposes the same traversal with a graph-placement branch
+  classification.
+- `family_graph` returns the Graphviz-oriented node and edge contract. Its
+  `node_id` can identify people, animals, official union junctions, or synthetic
+  multi-head junctions. `parent_head_id`, `tail_id`, and `tail_type` let Python
+  create each vertical or partner/order edge once; placement fields keep the
+  layout logic database-derived.
+- `family_timeline` adds stable display-unit keys, generations, lineage,
+  ordering, and roles for flattened appearance/timeline views.
 
 ## `project`: media and Year-in-Review state
 
@@ -388,6 +339,9 @@ historical sender address into a current contact method.
 - `compilations`: review/Premiere compilation settings.
 - `member_labels`, `adobe_labels`, and `color_palette`: label and color
   configuration used by the Adobe workflow.
+- `images`: Cloudinary-facing image metadata keyed by the project-owned public
+  identifier. It stores version/update/display metadata, not a duplicate image
+  asset or provider secret.
 
 ## `publishing` and `nello`
 
@@ -405,7 +359,7 @@ historical sender address into a current contact method.
 | `repositories/inspect.py`, `repositories/migrate.py` | `project` tables/views and `config.media` |
 | `repositories/assemble.py`, `compile.py` | `project`, `config`, and `publishing` |
 | `scraping/`, `repositories/ingest.py` | `ingestion` source and album views |
-| Streamlit `pages/` | The selected `dashboard` or `demo` application contract; remaining direct operational-table reads are being retired |
+| Streamlit `pages/` | `dashboard` for read models, with narrowly scoped operational reads where an administrative page needs them |
 | `family_tree/` | `public` relationship tables plus `tree` membership, household, and partner views |
 | Future onboarding/reference API | `public`, `tree`, and `messaging`; must use scoped access controls |
 
@@ -433,7 +387,7 @@ historical sender address into a current contact method.
   divorce, or dissolution, and how should those affect tree and Calendar views?
 
 
-## Application identities and roles
+## `users`: application identities and roles
 
 `users.identities` uses generated integer `user_id` values and a unique
 `(issuer_name, subject_id)` identity key. Email, display name, first login, and
