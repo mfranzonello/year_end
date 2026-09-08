@@ -56,10 +56,12 @@ to the Python `graphviz` package. Without it, the page is hidden from navigation
 and direct links show an unavailable message before loading tree data. Local
 installations with Graphviz continue to show the page.
 
-`packages.txt` is temporarily renamed to `packages.txt.disabled` to skip Community
-Cloud's failing system-package installation (expired Debian Bullseye security
-repository metadata). Once the hosting issue is resolved, rename it back to
-`packages.txt` and redeploy to restore Graphviz installation and the cloud page.
+The `dqa` branch restores `packages.txt` so the secondary Streamlit deployment can
+test Graphviz installation and recovery from the expired Debian Bullseye security
+repository metadata issue. Production on `main` keeps `packages.txt.disabled` to
+skip that installation step. Both branches retain the Graphviz availability check.
+The secondary app uses this repository's `dqa` branch and `display.py` entrypoint;
+its intended subdomain is `franzonellodq.streamlit.app`.
 
 ## Setup
 
