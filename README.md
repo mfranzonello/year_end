@@ -51,6 +51,16 @@ be reconciled.
 application. `requirements_full.txt` adds local media, desktop, ingestion, and
 integration dependencies.
 
+The Family Tree page requires Graphviz's `dot` executable on `PATH`, in addition
+to the Python `graphviz` package. Without it, the page is hidden from navigation
+and direct links show an unavailable message before loading tree data. Local
+installations with Graphviz continue to show the page.
+
+`packages.txt` is temporarily renamed to `packages.txt.disabled` to skip Community
+Cloud's failing system-package installation (expired Debian Bullseye security
+repository metadata). Once the hosting issue is resolved, rename it back to
+`packages.txt` and redeploy to restore Graphviz installation and the cloud page.
+
 ## Setup
 
 Create and activate a virtual environment, then choose the appropriate

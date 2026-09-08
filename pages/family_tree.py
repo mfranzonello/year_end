@@ -1,3 +1,5 @@
+"""Display the interactive family tree when the Graphviz executable is available."""
+
 from uuid import UUID
 from datetime import date, timedelta
 
@@ -6,7 +8,16 @@ import streamlit as st
 from database.db import get_engine
 from database.db_display import fetch_member_summary, fetch_member_birth_date, fetch_family_tree, fetch_founder_id
 from charting.charts_family import tree_chart
-from pages.general import set_sidebar, plot_graphviz_chart
+from pages.general import set_sidebar, plot_graphviz_chart, graphviz_available
+
+# Guard direct page links before loading data or building the tree.
+set_sidebar()
+st.set_page_config(page_title='Franzonello Family YIR Appearances',
+                   layout='wide')
+if not graphviz_available():
+    st.info('The family tree is temporarily unavailable on this deployment. '
+            'Please choose another page from the sidebar.')
+    st.stop()
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')
@@ -21,11 +32,6 @@ GENERATION_LIMIT = 20
 engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 SCHEMA_NAME = 'dashboard' # demo if not logged in
-
-# set up page
-set_sidebar()
-st.set_page_config(page_title='Franzonello Family YIR Appearances',
-                   layout='wide')
 
 member_summary = fetch_member_summary(engine, schema_name=SCHEMA_NAME)
 persons = member_summary[member_summary['member_type'] == 'person'].sort_values(by='sort_order').reset_index(drop=True)

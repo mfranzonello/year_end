@@ -1,9 +1,18 @@
+"""Provide shared navigation and chart rendering for the Streamlit pages."""
+
 from pathlib import Path
+from shutil import which
 
 import streamlit as st
 from graphviz import Graph
 
 from pages.streamlit_auth import current_identity, render_account_controls
+
+
+def graphviz_available() -> bool:
+    """Check for Graphviz's system executable, separate from its Python package."""
+    return which('dot') is not None
+
 
 pages = [('yir_count', 'YIR Status', None),
          ('yir_growth', 'YIR Growth', None),
@@ -11,7 +20,8 @@ pages = [('yir_count', 'YIR Status', None),
          ('family_tree', 'Family Tree', ['viewer', 'member', 'admin']),
          ('family_member', 'Family Members', ['viewer', 'member', 'admin'])]
 existing_pages = [(page, n, g) for (p, n, g) in pages
-                  if (page := f'pages/{p}.py') and Path(page).exists()]
+                  if (page := f'pages/{p}.py') and Path(page).exists()
+                  and (p != 'family_tree' or graphviz_available())]
 
 def allow_page(page_gate):
     return page_gate is None or current_identity().tier in page_gate
