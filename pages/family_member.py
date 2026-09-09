@@ -7,7 +7,7 @@ import streamlit as st
 from database.db import get_engine
 from database.db_family import fetch_person_information, fetch_animal_information
 from database.db_display import fetch_member_summary
-from family_tree.cloudy import get_image_url, upload_image, configure_cloud
+from family_tree.cloudy import configure_cloud
 from pages.general import set_sidebar
 from charting.stats_member import fill_in_bio
 
@@ -24,20 +24,23 @@ configure_cloud(CLOUDINARY_CLOUD, CLOUDINARY_KEY, CLOUDINARY_SECRET)
 
 engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
-SCHEMA_NAME = 'dashboard'  # demo if not logged in
-
 # set up page
 set_sidebar()
-st.set_page_config(page_title='Franzonello Family YIR Appearances',
+st.set_page_config(page_title='Family Members',
                    layout='wide')
 
-members = fetch_member_summary(engine, schema_name=SCHEMA_NAME).sort_values('sort_order')
-known_index = members.index[members['member_id'] == st.session_state.get('member_id')]
-person_information = fetch_person_information(engine)
+@st.cache_data
+def get_member_data(_engine):
+    members = fetch_member_summary(_engine).sort_values('sort_order')
+    person_information = fetch_person_information(_engine)
 
-animal_information = fetch_animal_information(engine)
-member_informations = {'person': person_information,
-                       'animal': animal_information}
+    animal_information = fetch_animal_information(_engine)
+    member_informations = {'person': person_information,
+                           'animal': animal_information}
+    return members, member_informations
+
+members, member_informations = get_member_data(engine)
+known_index = members.index[members['member_id'] == st.session_state.get('member_id')]
 
 index = int(known_index[0]) if len(known_index) else None
 member_id = st.selectbox('Select Member', members['member_id'],
@@ -46,8 +49,8 @@ member_id = st.selectbox('Select Member', members['member_id'],
                          width=350,
                          index=index)
 
+st.session_state['member_id'] = member_id
 if member_id is not None:
-    st.session_state['member_id'] = member_id
     member_type = members[members['member_id'] == member_id]['member_type'].iloc[0]
     information = member_informations[member_type][member_informations[member_type]['member_id'] == member_id]
     list_id = fill_in_bio(engine, CLOUDINARY_CLOUD, members, information, member_type, member_id)

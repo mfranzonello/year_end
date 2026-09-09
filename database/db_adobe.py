@@ -5,16 +5,16 @@ from pandas import DataFrame
 
 from database.db import read_sql, execute_sql, build_values
 
-# # def fetch_member_labels(engine:Engine, year:int) -> DataFrame:
-# #     sql = f'''
-# #     SELECT project_year, folder_name, label_id, label_name, color_hex
-# #     FROM project.folders
-# #     JOIN config.member_labels USING (member_id)
-# #     JOIN config.adobe_labels USING (label_id)
-# #     JOIN config.color_palette USING (color_name)
-# #     WHERE project_year = {year}
-# #     ;'''
-# #     return read_sql(engine, sql)
+def fetch_member_labels(engine:Engine, year:int) -> DataFrame:
+    sql = f'''
+    SELECT project_year, folder_name, label_id, label_name, color_hex
+    FROM project.folders
+    JOIN config.member_labels USING (member_id)
+    JOIN config.adobe_labels USING (label_id)
+    JOIN config.color_palette USING (color_name)
+    WHERE project_year = {year}
+    ;'''
+    return read_sql(engine, sql)
 
 def fetch_color_labels(engine:Engine) -> DataFrame:
     sql = f'''
@@ -24,35 +24,35 @@ def fetch_color_labels(engine:Engine) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-# # def update_appearances(engine:Engine, df:DataFrame):
-# #     project_year = df['project_year'].iloc[0]
-# #     sql = f'''
-# #     DELETE FROM project.appearances WHERE project_year = {project_year}
-# #     ;'''
-# #     execute_sql(engine, sql)
+def update_appearances(engine:Engine, df:DataFrame):
+    review_id = df['review_id'].iloc[0]
+    sql = f'''
+    DELETE FROM project.appearances WHERE project_year = '{review_id}'::uuid
+    ;'''
+    execute_sql(engine, sql)
 
-# #     val_cols = ['project_year', 'member_id', 'start_time', 'end_time']
-# #     val_ins = ', '.join(val_cols)
-# #     values, params = build_values(df, val_cols)
-# #     sql = f'''
-# #     INSERT INTO project.appearances ({val_ins}) VALUES {values}
-# #     ;'''
-# #     execute_sql(engine, sql, params=params)
+    val_cols = ['review_id', 'member_id', 'start_time', 'end_time']
+    val_ins = ', '.join(val_cols)
+    values, params = build_values(df, val_cols)
+    sql = f'''
+    INSERT INTO project.appearances ({val_ins}) VALUES {values}
+    ;'''
+    execute_sql(engine, sql, params=params)
 
-# # def update_chapters(engine:Engine, df:DataFrame):
-# #     project_year = df['project_year'].iloc[0]
-# #     sql = f'''
-# #     DELETE FROM project.chapters WHERE project_year = {project_year}
-# #     ;'''
-# #     execute_sql(engine, sql)
+def update_chapters(engine:Engine, df:DataFrame):
+    review_id = df['review_id'].iloc[0]
+    sql = f'''
+    DELETE FROM project.chapters WHERE review_id = '{review_id}'::uuid
+    ;'''
+    execute_sql(engine, sql)
 
-# #     val_cols = ['project_year', 'chapter_name', 'start_time']
-# #     val_ins = ', '.join(val_cols)
-# #     values, params = build_values(df, val_cols)
-# #     sql = f'''
-# #     INSERT INTO project.chapters ({val_ins}) VALUES {values}
-# #     ;'''
-# #     execute_sql(engine, sql, params=params)
+    val_cols = ['review_id', 'chapter_name', 'start_time']
+    val_ins = ', '.join(val_cols)
+    values, params = build_values(df, val_cols)
+    sql = f'''
+    INSERT INTO project.chapters ({val_ins}) VALUES {values}
+    ;'''
+    execute_sql(engine, sql, params=params)
 
 def fetch_timeline_reviews(engine:Engine) -> DataFrame:
     sql = f'''
@@ -77,44 +77,44 @@ def fetch_markers(engine:Engine, review_id:UUID) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
-# # def fetch_compilation(engine:Engine, year:int) -> DataFrame:
-# #     sql = f'''
-# #     SELECT file_name, timeline_name, banned_bins
-# #     FROM config.compilations
-# #     WHERE project_year = {year}
-# #     ;'''
-# #     return read_sql(engine, sql)
-
-# # def fetch_music(engine:Engine, year:int, review_type:str) -> DataFrame:
-# #     sql = f'''
-# #     SELECT track_id, review_id, project_year,
-# #     track_title, artist_name, track_duration, track_url,
-# #     review_id, main_track, lyrics_url
-# #     FROM publishing.music JOIN publishing.reviews USING (review_id)
-# #     WHERE project_year = {year} AND review_type = '{review_type}'
-# #     ;'''
-# #     return read_sql(engine, sql)
-
-def update_projects(engine:Engine, df:DataFrame):
-    val_cols = []
-    values, params = build_values(df, val_cols)
+def fetch_compilation(engine:Engine, project_year:int, review_type:str) -> DataFrame:
     sql = f'''
-    INSERT INTO publishing.reviews
-    (review_type,
-    project_year,
-    video_theme,
-    video_duration,
-    video_resolution)
-    
-    VALUES {values}
-    ON CONFLICT (review_type, project_year)
-    DO UPDATE
-    SET
-      video_theme      = COALESCE(review.video_theme,      EXCLUDED.video_theme),
-      video_duration   = COALESCE(review.video_duration,   EXCLUDED.video_duration),
-      video_resolution = COALESCE(review.video_resolution, EXCLUDED.video_resolution)
-    WHERE
-      (review.video_theme      IS NULL AND EXCLUDED.video_theme      IS NOT NULL)
-      OR (review.video_duration   IS NULL AND EXCLUDED.video_duration   IS NOT NULL)
-      OR (review.video_resolution IS NULL AND EXCLUDED.video_resolution IS NOT NULL);
+    SELECT review_id, file_name, timeline_name, banned_bins
+    FROM config.compilations JOIN publishing.reviews USING (review_id)
+    WHERE project_year = {project_year} AND review_type = '{review_type}'
     ;'''
+    return read_sql(engine, sql)
+
+def fetch_music(engine:Engine, project_year:int, review_type:str) -> DataFrame:
+    sql = f'''
+    SELECT track_id, review_id, project_year,
+    track_title, artist_name, track_duration, track_url,
+    review_id, main_track, lyrics_url
+    FROM publishing.music JOIN publishing.reviews USING (review_id)
+    WHERE project_year = {project_year} AND review_type = '{review_type}'
+    ;'''
+    return read_sql(engine, sql)
+
+# # def update_projects(engine:Engine, df:DataFrame):
+# #     val_cols = []
+# #     values, params = build_values(df, val_cols)
+# #     sql = f'''
+# #     INSERT INTO publishing.reviews
+# #     (review_type,
+# #     project_year,
+# #     video_theme,
+# #     video_duration,
+# #     video_resolution)
+    
+# #     VALUES {values}
+# #     ON CONFLICT (review_type, project_year)
+# #     DO UPDATE
+# #     SET
+# #       video_theme      = COALESCE(review.video_theme,      EXCLUDED.video_theme),
+# #       video_duration   = COALESCE(review.video_duration,   EXCLUDED.video_duration),
+# #       video_resolution = COALESCE(review.video_resolution, EXCLUDED.video_resolution)
+# #     WHERE
+# #       (review.video_theme      IS NULL AND EXCLUDED.video_theme      IS NOT NULL)
+# #       OR (review.video_duration   IS NULL AND EXCLUDED.video_duration   IS NOT NULL)
+# #       OR (review.video_resolution IS NULL AND EXCLUDED.video_resolution IS NOT NULL);
+# #     ;'''

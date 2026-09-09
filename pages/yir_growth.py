@@ -16,11 +16,15 @@ engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 # set up page
 set_sidebar()
-st.set_page_config(page_title='Franzonello Family YIR Growth',
+st.set_page_config(page_title='Family YIR Growth',
                    layout='wide')
-st.title(f'Franzonello YIR Growth')
+st.title(f'Year In Review Growth')
 
-year_values = fetch_years_summary(engine)
+@st.cache_data(ttl='15m')
+def get_years_summary(_engine):
+    return fetch_years_summary(_engine)
+
+year_values = get_years_summary(engine)
 
 resolution_order = fetch_resolution_order(engine)
 charts = growth_charts(year_values, resolution_order)
