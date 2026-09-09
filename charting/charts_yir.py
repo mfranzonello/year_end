@@ -347,6 +347,10 @@ def timeline_chart(engine, actor_spans:DataFrame, markers:DataFrame, cloud_name:
                    .merge(spans_sorted.drop(columns=['start_time']).groupby('member_id').first().reset_index(), on='member_id')
                    )
 
+    # convert uuids to strings for plotting
+    for col in ['member_id', 'clan_id']:
+        spans_sorted[col] = spans_sorted[col].astype(str)
+
     spans_sorted = spans_sorted.merge(appearances[['member_id', 'min_start', 'total_spans', 'total_time']], how='left', on='member_id')
 
     blue = get_color_rgb_hex('lightblue')
@@ -360,7 +364,7 @@ def timeline_chart(engine, actor_spans:DataFrame, markers:DataFrame, cloud_name:
                                                                 pixels=100,
                                                                 ),
                                         axis=1)
-    )
+                                 )
 
     chart = (
         alt.Chart(spans_sorted)
