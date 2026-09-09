@@ -9,7 +9,7 @@ from database.db_family import fetch_person_information, fetch_animal_informatio
 from database.db_display import fetch_member_summary
 from family_tree.cloudy import configure_cloud
 from pages.general import set_sidebar, get_hash_funcs, get_member_name_display
-from charting.stats_member import fill_in_bio
+from charting.stats_member import fill_image, fill_personal, fill_lineage
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')
@@ -55,12 +55,38 @@ st.selectbox(
     'Select Member',
     members['member_id'], placeholder='Choose a family member to view',
     format_func=lambda x: get_member_name_display(members, x), index=None,
+    width=350,
     key='member_select', on_change=select_member,
     )
 
 member_id = st.session_state.member_id
 
+def get_basics(members, member_id):
+    sex = information['sex'].iloc[0]
+
+    birth_date = information['birth_date'].iloc[0]
+    birth_date_precision = information['birth_date_precision'].iloc[0]
+    is_future = ((birth_date is None or birth_date > date.today()) or birth_date_precision == 'future')
+
+    death_date = information['death_date'].iloc[0]
+    death_date_precision = information['death_date_precision'].iloc[0]
+    is_deceased = ((death_date is not None and death_date > date.today()) or death_date_precision == 'past')
+
+    return sex, is_future, is_deceased
+
 if member_id is not None:
     member_type = members[members['member_id'] == member_id]['member_type'].iloc[0]
     information = member_informations[member_type][member_informations[member_type]['member_id'] == member_id]
-    list_id = fill_in_bio(engine, CLOUDINARY_CLOUD, members, information, member_type, member_id)
+    #list_id = fill_in_bio(engine, CLOUDINARY_CLOUD, members, information, member_type, member_id)
+
+    sex, is_future, is_deceased = get_basics(members, member_id)
+
+    cols = st.columns(3)
+    with cols[0]:
+        fill_image(engine, CLOUDINARY_CLOUD, members, member_type, member_id)
+
+    with cols[1]:
+        fill_personal(information, member_type, sex, is_future, is_deceased)
+
+    with cols[2]:
+        fill_lineage(information, members, member_type, sex, is_future)
