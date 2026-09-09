@@ -31,21 +31,23 @@ GENERATION_LIMIT = 20
 
 engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
-SCHEMA_NAME = 'dashboard' # demo if not logged in
+@st.cache_data
+def get_member_summary(_engine):
+    return fetch_member_summary(_engine)
 
-member_summary = fetch_member_summary(engine, schema_name=SCHEMA_NAME)
+member_summary = get_member_summary(engine)
 persons = member_summary[member_summary['member_type'] == 'person'].sort_values(by='sort_order').reset_index(drop=True)
 
 cols = st.columns(5)
 with cols[0]:
-    founder_id = fetch_founder_id(engine, schema_name=SCHEMA_NAME)
+    founder_id = fetch_founder_id(engine)
     person_id:UUID = st.selectbox('Person to Center', persons['member_id'],
                                   format_func=lambda x: persons[persons['member_id']==x]['full_name'].iloc[0],
                                   index = int(persons[persons['member_id'] == founder_id].index[0]),
                                   width=400)
 
 with cols[1]:
-    cut_date = st.date_input('As of Date', value=None, min_value=fetch_member_birth_date(engine, person_id, schema_name=SCHEMA_NAME),
+    cut_date = st.date_input('As of Date', value=None, min_value=fetch_member_birth_date(engine, person_id),
                              help='Only show family members who were alive on or before this date.')
 
 with cols[3]:
@@ -81,12 +83,21 @@ direction = 'up_down'  # default to up_down for now, can add extended option lat
 
 st.title(f'Family Tree')
 
-tree_data = fetch_family_tree(engine, person_id, schema_name=SCHEMA_NAME, cut_date=cut_date, direction=direction,
-                              exclude_persons=exclude_persons, include_animals=include_animals)
+@st.cache_data(ttl='1d')
+def get_tree_data(_engine, person_id, cut_date, direction, exclude_persons, include_animals):
+    return fetch_family_tree(_engine, person_id, cut_date=cut_date, direction=direction,
+                             exclude_persons=exclude_persons, include_animals=include_animals)
+
+tree_data = get_tree_data(engine, person_id, cut_date, direction, exclude_persons, include_animals)
+
+@st.cache_data(ttl='1d')
+def create_tree_chart(_engine, tree_data, cloud_name, use_images, generation_limit):
+    graph = tree_chart(_engine, tree_data, cloud_name=cloud_name,
+                       use_images=use_images, generation_limit=generation_limit)
+    plot_graphviz_chart(graph, use_images=use_images)
 
 if len(tree_data):
     # graph with nodes and edges
     with st.spinner('Building tree...', show_time=True):
-        graph = tree_chart(engine, tree_data, cloud_name=CLOUDINARY_CLOUD,
-                           use_images=use_images, generation_limit=GENERATION_LIMIT)
-    plot_graphviz_chart(graph, use_images=use_images)
+        create_tree_chart(engine, tree_data, CLOUDINARY_CLOUD, use_images, GENERATION_LIMIT)
+    

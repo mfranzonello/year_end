@@ -21,13 +21,17 @@ engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 # set up page
 set_sidebar()
-st.set_page_config(page_title='Franzonello Family YIR Stats',
+st.set_page_config(page_title='Family YIR Stats',
                    layout='wide')
 years = fetch_project_years(engine) ##.sort_values('project_year')
 year:int = st.selectbox('Year to Review', years, len(years) - 1, width=100)
-st.title(f'Franzonello YIR {year}')
+st.title(f'Project Year {year}')
 
-folder_values = fetch_folder_summaries(engine, year)
+@st.cache_data(ttl='15m')
+def get_folder_summaries(_engine, year):
+    return fetch_folder_summaries(_engine, year)
+
+folder_values = get_folder_summaries(engine, year)
 
 # quantity selection
 options = {'video_count': 'count',
@@ -77,16 +81,19 @@ match quantity:
 if submission_string:
     st.write(f'{submission_string} submitted this year!')
 
-chart = submission_chart(engine, folder_values, quantity, cloud_name=CLOUDINARY_CLOUD,
-                         cap=cap, order=order)
-plot_altair_chart(chart)
+@st.cache_data(ttl='15m')
+def create_submission_chart(_engine, folder_values, quantity, cloud_name, cap, order):
+    chart = submission_chart(_engine, folder_values, quantity, cloud_name, cap, order)
+    plot_altair_chart(chart)
+
+create_submission_chart(engine, folder_values, quantity, cloud_name=CLOUDINARY_CLOUD,
+                        cap=cap, order=order)
 
 # pie chart for review amount
-year_values = fetch_years_summary(engine)
-chart = review_pie(year_values, year, MIN_STARS)
+@st.cache_data(ttl='15m')
+def create_review_chart(_engine, year, min_stars):
+    year_values = fetch_years_summary(_engine)
+    chart = review_pie(year_values, year, min_stars)
+    plot_altair_chart(chart)
 
-plot_altair_chart(chart)
-
-# # # family tree
-# # chart = family_tree()
-# # st.graphviz_chart(chart)
+create_review_chart(engine, year, MIN_STARS)

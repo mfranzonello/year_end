@@ -6,27 +6,27 @@ from pandas import DataFrame
 
 from database.db import read_sql
 
-def fetch_founder_id(engine:Engine, schema_name:str='demo') -> UUID:
+def fetch_founder_id(engine:Engine) -> UUID:
     sql = f'''
     select founder_id from nello.founder_id()
     ;'''
     return read_sql(engine, sql).squeeze()
 
-def fetch_display_names(engine:Engine, schema_name:str='demo') -> DataFrame:
+def fetch_display_names(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT member_id, full_name
-    FROM {schema_name}.display_names
+    FROM dashboard.display_names
     ;'''
     return read_sql(engine, sql)
 
-def fetch_member_summary(engine:Engine, schema_name:str='demo') -> DataFrame:
+def fetch_member_summary(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT member_id, full_name, member_type, sort_order
-    FROM {schema_name}.member_summary
+    FROM dashboard.member_summary
     ;'''
     return read_sql(engine, sql)
 
-def fetch_member_information(engine:Engine, schema_name:str='demo', cut_date:date|None=None) -> DataFrame:
+def fetch_member_information(engine:Engine, cut_date:date|None=None) -> DataFrame:
     if cut_date is None:
         cut_date = 'infinity'
     sql = f'''
@@ -37,22 +37,17 @@ def fetch_member_information(engine:Engine, schema_name:str='demo', cut_date:dat
     entry_date, entry_date_precision, member_type
     birth_date, birth_date_precision, death_date, death_date_precision,
     entry_date, entry_date_precision, member_type
-    FROM {schema_name}.member_information
+    FROM dashboard.member_information
     ;'''
     return read_sql(engine, sql)
 
-def fetch_actor_spans(engine:Engine, review_id:UUID, schema_name:str='demo', cut_date:date=date.today(),
+def fetch_actor_spans(engine:Engine, review_id:UUID, cut_date:date=date.today(),
                       direction:str='up_down', partner_branches:bool=True) -> DataFrame:
-
-    if schema_name == 'dashboard':
-        parameters = f"((SELECT founder_id FROM {schema_name}.founder), '{cut_date}'::date, '{direction}', {partner_branches})"
-    else:
-        parameters = ''
-
     sql = f'''
     WITH relatives AS (
     SELECT member_id, display_unit_key, display_unit_order, display_order
-    FROM {schema_name}.family_timeline{parameters}
+    FROM dashboard.family_timeline((SELECT founder_id FROM dashboard.founder), '{cut_date}'::date, '{direction}', {partner_branches})
+
     JOIN dashboard.member_information USING (member_id)
     WHERE (death_date IS NULL OR death_date > '{cut_date}'::date)
     AND (death_date_precision IS NULL OR death_date_precision != 'past')
@@ -82,18 +77,15 @@ def fetch_actor_spans(engine:Engine, review_id:UUID, schema_name:str='demo', cut
 
     return read_sql(engine, sql)
 
-def fetch_family_tree(engine: Engine, founder_id:UUID, schema_name:str='demo', cut_date:date|None=None,
+def fetch_family_tree(engine: Engine, founder_id:UUID, cut_date:date|None=None,
                       direction:str='up_down', partner_branches:bool=True,
                       exclude_persons=False, include_animals='all') -> DataFrame:
     if cut_date is None:
         cut_date = 'infinity'
-    if schema_name == 'dashboard':
-        parameters = f"('{founder_id}'::uuid, '{cut_date}'::date, '{direction}', {partner_branches}, '{include_animals}', {exclude_persons})"
-    else:
-        parameters = ''
+
     sql = f'''
     WITH dfg AS (
-    SELECT * FROM {schema_name}.family_graph{parameters}
+    SELECT * FROM dashboard.family_graph('{founder_id}'::uuid, '{cut_date}'::date, '{direction}', {partner_branches}, '{include_animals}', {exclude_persons})
     )
 
     SELECT node_id, node_type,
@@ -125,14 +117,14 @@ def fetch_resolution_order(engine:Engine) -> list[str]:
     ;'''
     return read_sql(engine, sql)['resolution'].tolist()
 
-def fetch_member_birth_date(engine:Engine, member_id:UUID, schema_name='demo') -> date:
+def fetch_member_birth_date(engine:Engine, member_id:UUID) -> date:
     sql = f'''
     SELECT
     CASE WHEN COALESCE(birth_date_precision, entry_date_precision) IS NULL OR
     COALESCE(birth_date_precision, entry_date_precision) = 'past' THEN CURRENT_DATE - 100*365
     WHEN COALESCE(birth_date_precision, entry_date_precision) = 'future' THEN CURRENT_DATE + 365
     ELSE LEAST(birth_date, entry_date) END AS start_date
-    FROM {schema_name}.member_information
+    FROM dashboard.member_information
     WHERE member_id = '{member_id}'::uuid
     ;'''
     return read_sql(engine, sql).squeeze()

@@ -1,6 +1,7 @@
 from uuid import UUID
 from datetime import date, timedelta
 
+from altair.utils.core import R
 import streamlit as st
 
 from database.db import get_engine
@@ -19,8 +20,6 @@ CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
 
 engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
-DASHBOARD_SCHEMA = 'dashboard' # demo if not logged in
-
 def get_review_name(reviews, review_id:UUID) -> str:
     review = reviews[reviews['review_id']==review_id]
     review_type = review['review_type'].iloc[0]
@@ -29,7 +28,7 @@ def get_review_name(reviews, review_id:UUID) -> str:
             add_on = f'{review["project_year"].iloc[0]} YIR'
         case 'decade':
             add_on = f'{review["project_year"].iloc[0]}s DIR'
-        case 'era':
+        case 'history':
             add_on = ' Era'
         case _:
             add_on = ''
@@ -67,8 +66,13 @@ st.title(get_review_name(reviews, review_id))
 
 cut_date = get_cut_date(reviews, review_id)
 
-actor_spans = fetch_actor_spans(engine, review_id, schema_name=DASHBOARD_SCHEMA, cut_date=cut_date)
-markers = fetch_markers(engine, review_id)
+@st.cache_data(ttl='15min')
+def get_timeline_data(_engine, review_id, cut_date):
+    actor_spans = fetch_actor_spans(_engine, review_id, cut_date=cut_date)
+    markers = fetch_markers(_engine, review_id)
+    return actor_spans, markers
+
+actor_spans, markers = get_timeline_data(engine, review_id, cut_date)
 
 # gantt chart of appearances
 if len(actor_spans.dropna(subset=['start_time'])):

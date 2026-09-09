@@ -5,7 +5,7 @@ import altair as alt
 from pandas import DataFrame, concat, json_normalize
 from webcolors import name_to_hex
 
-from family_tree.cloudy import get_image_url
+from pages.general import get_profile_image
 
 def get_color_hexes(color_names:list[str]) -> list[str]:
     return [name_to_hex(c) for c in color_names]
@@ -112,10 +112,10 @@ def submission_chart(engine, folder_values:DataFrame, quantity:str, cloud_name:s
                                     .fillna('_ROOT')
                                     )
 
-    video_counts['image_url'] = video_counts.apply(lambda x: get_image_url(engine, cloud_name, x['member_id'],
-                                                                           grayscale=x[sort_quantity]==0,
-                                                                           pixels=100,
-                                                                           ),
+    video_counts['image_url'] = video_counts.apply(lambda x: get_profile_image(engine, cloud_name, x['member_id'],
+                                                                               grayscale=x[sort_quantity]==0,
+                                                                               pixels=100,
+                                                                               ),
                                                    axis=1)
 
     order_list = (
@@ -356,12 +356,12 @@ def timeline_chart(engine, actor_spans:DataFrame, markers:DataFrame, cloud_name:
     red = get_color_rgb_hex('firebrick')
     actor_images = appearances[appearances['member_id'].notna()]
     actor_images['image_url'] = (actor_images
-                                 .apply(lambda x: get_image_url(engine, cloud_name, x['member_id'],
-                                                                grayscale=not x['total_spans'],
-                                                                border_color=blue if x['total_spans'] else red,
-                                                                border_width=10,
-                                                                pixels=100,
-                                                                ),
+                                 .apply(lambda x: get_profile_image(engine, cloud_name, x['member_id'],
+                                                                    grayscale=not x['total_spans'],
+                                                                    border_color=blue if x['total_spans'] else red,
+                                                                    border_width=10,
+                                                                    pixels=100,
+                                                                    ),
                                         axis=1)
     )
 

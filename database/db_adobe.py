@@ -56,7 +56,7 @@ def update_chapters(engine:Engine, df:DataFrame):
 
 def fetch_timeline_reviews(engine:Engine) -> DataFrame:
     sql = f'''
-    SELECT review_id, review_id, review_type, video_theme
+    SELECT review_id, project_year, review_type, video_theme
     FROM publishing.reviews
     ;'''
     return read_sql(engine, sql)
