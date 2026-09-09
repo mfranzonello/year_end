@@ -107,12 +107,11 @@ def get_plural(word:str, count:int=None, items:list=None, s:str='s', plural:str=
 
     return plural if (quantity != 1) else word
 
-@st.cache_data
 def plot_map(zip_code:int):
     if zip_code:
         location = nomi.query_postal_code(zip_code)
         location_data = DataFrame([[location.latitude, location.longitude]], columns=('lat', 'lon'))
-        st.map(location_data, height=300, zoom=10)
+        return location_data
 
 def fill_image(_engine, cloud_name, members, member_type, member_id):
     # member image
@@ -141,7 +140,6 @@ def fill_image(_engine, cloud_name, members, member_type, member_id):
                 get_version.clear(_engine, member_id)
                 st.rerun()
 
-@st.cache_data
 def fill_personal(information, member_type, sex, is_future, is_deceased):
     # born and living marker
     death_date = information["death_date"].iloc[0]
@@ -250,7 +248,8 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
     contact_info = information['contact_info'].iloc[0]
     zip_code = contact_info.get('zip_code')
     if zip_code:
-        plot_map(zip_code)
+        location_data = plot_map(zip_code)
+        st.map(location_data, height=300, zoom=10)
 
 def fill_lineage(information, members, member_type, sex, is_future):
     future = 'Future ' if is_future else ''

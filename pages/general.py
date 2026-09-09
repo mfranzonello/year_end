@@ -5,6 +5,7 @@ from shutil import which
 
 import streamlit as st
 from graphviz import Graph
+from sqlalchemy import Engine
 
 from family_tree.cloudy import get_image_url
 from pages.streamlit_auth import current_identity, render_account_controls
@@ -45,6 +46,10 @@ def set_sidebar():
             )
         st.divider()
         render_account_controls(identity)
+
+def get_hash_funcs():
+    hash_funcs = {Engine: lambda x: x.url}
+    return hash_funcs
 
 # plot altair chart
 def plot_altair_chart(chart):

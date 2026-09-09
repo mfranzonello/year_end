@@ -8,7 +8,7 @@ from database.db import get_engine
 from database.db_family import fetch_person_information, fetch_animal_information
 from database.db_display import fetch_member_summary
 from family_tree.cloudy import configure_cloud
-from pages.general import set_sidebar
+from pages.general import set_sidebar, get_hash_funcs
 from charting.stats_member import fill_in_bio
 
 PGHOST = st.secrets['postgresql']['host']
@@ -29,12 +29,12 @@ set_sidebar()
 st.set_page_config(page_title='Family Members',
                    layout='wide')
 
-@st.cache_data
-def get_member_data(_engine):
-    members = fetch_member_summary(_engine).sort_values('sort_order')
-    person_information = fetch_person_information(_engine)
+@st.cache_data(hash_funcs=get_hash_funcs())
+def get_member_data(engine):
+    members = fetch_member_summary(engine).sort_values('sort_order')
+    person_information = fetch_person_information(engine)
 
-    animal_information = fetch_animal_information(_engine)
+    animal_information = fetch_animal_information(engine)
     member_informations = {'person': person_information,
                            'animal': animal_information}
     return members, member_informations

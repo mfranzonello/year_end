@@ -5,7 +5,7 @@ from database.db import get_engine
 from database.db_project import fetch_project_years, fetch_folder_summaries, fetch_years_summary
 from database.db_display import fetch_resolution_order
 from charting.charts_yir import submission_chart, review_pie
-from pages.general import set_sidebar, plot_altair_chart
+from pages.general import set_sidebar, get_hash_funcs, plot_altair_chart
 
 PGHOST = st.secrets['postgresql']['host']
 PGPORT = st.secrets['postgresql'].get('port', '5432')
@@ -19,17 +19,17 @@ MIN_STARS = 3
 
 engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
-@st.cache_data
-def get_project_years(_engine):
-    return fetch_project_years(_engine)
+@st.cache_data(hash_funcs=get_hash_funcs())
+def get_project_years(engine):
+    return fetch_project_years(engine)
 
-@st.cache_data(ttl='15m')
-def get_folder_summaries(_engine, year):
-    return fetch_folder_summaries(_engine, year)
+@st.cache_data(ttl='15m', hash_funcs=get_hash_funcs())
+def get_folder_summaries(engine, year):
+    return fetch_folder_summaries(engine, year)
 
-@st.cache_data(ttl='15m')
-def get_years_summary(_engine):
-    return fetch_years_summary(_engine)
+@st.cache_data(ttl='15m', hash_funcs=get_hash_funcs())
+def get_years_summary(engine):
+    return fetch_years_summary(engine)
 
 # set up page
 set_sidebar()
