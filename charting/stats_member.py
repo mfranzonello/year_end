@@ -9,11 +9,13 @@ from pandas import DataFrame
 
 from family_tree.cloudy import get_version, get_image_url, upload_image
 from pages.streamlit_auth import current_tier, require_admin
+from pages.general import get_member_name_display
 
 nomi = Nominatim('us')
 
-def get_member_name_display(members, member_id):
-    return members[members['member_id'] == member_id]['full_name'].iloc[0]
+def go_to_member(member_id):
+    st.session_state.member_id = member_id
+    st.session_state.member_select = member_id
 
 def get_date_display(entry_date, entry_date_precision):
     if entry_date is not None:
@@ -92,9 +94,8 @@ def get_list_display(members, list_ids, callout):
 
     with st.container(width='content'):
         for list_id in list_ids:
-            if st.button(get_member_name_display(members, list_id), type='secondary'):
-                st.session_state['member_id'] = list_id
-                st.rerun()
+            st.button(get_member_name_display(members, list_id), type='secondary',
+                      on_click=go_to_member, args=(list_id, ))
 
 def get_plural(word:str, count:int=None, items:list=None, s:str='s', plural:str=None):
     if plural is None:

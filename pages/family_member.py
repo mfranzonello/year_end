@@ -8,7 +8,7 @@ from database.db import get_engine
 from database.db_family import fetch_person_information, fetch_animal_information
 from database.db_display import fetch_member_summary
 from family_tree.cloudy import configure_cloud
-from pages.general import set_sidebar, get_hash_funcs
+from pages.general import set_sidebar, get_hash_funcs, get_member_name_display
 from charting.stats_member import fill_in_bio
 
 PGHOST = st.secrets['postgresql']['host']
@@ -42,20 +42,20 @@ def get_member_data(engine):
 members, member_informations = get_member_data(engine)
 
 # Initialize / validate the selection
-if ('member_id' not in st.session_state
-    or st.session_state.member_id not in members['member_id'].values):
+if 'member_id' not in st.session_state:
     st.session_state.member_id = None
+
+if 'member_select' not in st.session_state:
+    st.session_state.member_select = st.session_state.member_id
+
+def select_member():
+    st.session_state.member_id = st.session_state.member_select
 
 st.selectbox(
     'Select Member',
-    members['member_id'],
-    placeholder='Choose a family member to view',
-    format_func=lambda x: members.loc[
-        members['member_id'] == x, 'full_name'
-    ].iloc[0],
-    width=350,
-    index=None,
-    key='member_id',
+    members['member_id'], placeholder='Choose a family member to view',
+    format_func=lambda x: get_member_name_display(members, x), index=None,
+    key='member_select', on_change=select_member,
     )
 
 member_id = st.session_state.member_id

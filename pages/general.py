@@ -51,6 +51,9 @@ def get_hash_funcs():
     hash_funcs = {Engine: lambda x: x.url}
     return hash_funcs
 
+def get_member_name_display(members, member_id):
+    return members[members['member_id'] == member_id]['full_name'].iloc[0]
+
 # plot altair chart
 def plot_altair_chart(chart):
     if chart:
