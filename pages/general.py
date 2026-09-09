@@ -6,6 +6,7 @@ from shutil import which
 import streamlit as st
 from graphviz import Graph
 
+from family_tree.cloudy import get_image_url
 from pages.streamlit_auth import current_identity, render_account_controls
 
 
@@ -28,7 +29,7 @@ def allow_page(page_gate):
 
 # set up page
 def set_sidebar():
-    st.set_page_config(page_title='Franzonello Family')
+    st.set_page_config(page_title='Family Fun Times')
     identity = current_identity()
 
     with st.sidebar:

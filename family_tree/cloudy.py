@@ -10,19 +10,18 @@ import cloudinary.api
 import cloudinary.uploader
 from cloudinary.exceptions import NotFound
 from pandas import DataFrame
+import streamlit as st
 
 from database.db import Engine
 from database.db_images import fetch_image_information, update_image_information
 
-CLOUDINARY_DOMAIN = 'https://res.cloudinary.com'
-PROFILES = 'profile_images'
-
-IMAGE_CACHE = Path('.cache/family-tree-images')
-CLOUDINARY_DOMAIN = 'https://res.cloudinary.com'
-
+PROFILES = 'profile_images' ## this should move to a config/secrets file
 CLOUDINARY_RESPONSE_COLS = {'version': 'version_number',
                             'created_at': 'upload_time',
                             }
+CLOUDINARY_DOMAIN = 'https://res.cloudinary.com'
+
+IMAGE_CACHE = Path('.cache/family-tree-images')
 
 IMAGE_TYPES = {'person': 0, 'animal': 1}
 
@@ -43,8 +42,9 @@ def fetch_resource(public_id:UUID) -> bool:
     except NotFound:
         return False
 
-def get_version(engine:Engine, public_id:UUID) -> str:
-    image_information = fetch_image_information(engine, public_id)
+@st.cache_data
+def get_version(_engine:Engine, public_id:UUID) -> str:
+    image_information = fetch_image_information(_engine, public_id)
     if len(image_information):
         return image_information['version_number'].iloc[0]
     
