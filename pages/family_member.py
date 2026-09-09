@@ -40,16 +40,26 @@ def get_member_data(engine):
     return members, member_informations
 
 members, member_informations = get_member_data(engine)
-known_index = members.index[members['member_id'] == st.session_state.get('member_id')]
 
-index = int(known_index[0]) if len(known_index) else None
-member_id = st.selectbox('Select Member', members['member_id'],
-                         placeholder='Choose a family member to view',
-                         format_func=lambda x: members[members['member_id'] == x]['full_name'].iloc[0],
-                         width=350,
-                         index=index)
+# Initialize / validate the selection
+if ('member_id' not in st.session_state
+    or st.session_state.member_id not in members['member_id'].values):
+    st.session_state.member_id = None
 
-st.session_state['member_id'] = member_id
+st.selectbox(
+    'Select Member',
+    members['member_id'],
+    placeholder='Choose a family member to view',
+    format_func=lambda x: members.loc[
+        members['member_id'] == x, 'full_name'
+    ].iloc[0],
+    width=350,
+    index=None,
+    key='member_id',
+    )
+
+member_id = st.session_state.member_id
+
 if member_id is not None:
     member_type = members[members['member_id'] == member_id]['member_type'].iloc[0]
     information = member_informations[member_type][member_informations[member_type]['member_id'] == member_id]
