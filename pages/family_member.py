@@ -26,11 +26,11 @@ engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 # set up page
 set_sidebar()
-st.set_page_config(page_title='Franzonello Family YIR Appearances',
+st.set_page_config(page_title='Family Members',
                    layout='wide')
 
 @st.cache_data
-def get_data(_engine):
+def get_member_data(_engine):
     members = fetch_member_summary(_engine).sort_values('sort_order')
     person_information = fetch_person_information(_engine)
 
@@ -39,7 +39,7 @@ def get_data(_engine):
                            'animal': animal_information}
     return members, member_informations
 
-members, member_informations = get_data(engine)
+members, member_informations = get_member_data(engine)
 known_index = members.index[members['member_id'] == st.session_state.get('member_id')]
 
 index = int(known_index[0]) if len(known_index) else None

@@ -335,10 +335,7 @@ def timeline_chart(engine, actor_spans:DataFrame, markers:DataFrame, cloud_name:
     combined['friends'] = combined['clan_id'] == UUID(int=0)
     combined['y_label'] = combined.apply(lambda x: ' ' if x['boundary'] else x['full_name'], axis=1)
 
-    spans_sorted = concat([DataFrame({'full_name': '', 'clan_id': UUID(int=0xffffffffffffffffffffffffffffffff), 'y_label': ' ', 'boundary': True}, index=[0]),
-                           combined.sort_values(by=['display_unit_order', 'display_order'])
-                           ]
-    )
+    spans_sorted = combined.sort_values(by=['display_unit_order', 'display_order'])
     spans_sorted['sort_order'] = range(len(spans_sorted))
     spans_sorted['y_position'] = spans_sorted.apply(lambda x: str(x['member_id']) if not x['boundary'] else ('+' + str(x['clan_id'])), axis=1)
 

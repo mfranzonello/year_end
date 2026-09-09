@@ -12,7 +12,7 @@ from pages.general import set_sidebar, plot_graphviz_chart, graphviz_available
 
 # Guard direct page links before loading data or building the tree.
 set_sidebar()
-st.set_page_config(page_title='Franzonello Family YIR Appearances',
+st.set_page_config(page_title='Family Tree',
                    layout='wide')
 if not graphviz_available():
     st.info('The family tree is temporarily unavailable on this deployment. '

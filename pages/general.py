@@ -29,7 +29,7 @@ def allow_page(page_gate):
 
 # set up page
 def set_sidebar():
-    st.set_page_config(page_title='Franzonello Family')
+    st.set_page_config(page_title='Family Fun Times')
     identity = current_identity()
 
     with st.sidebar:

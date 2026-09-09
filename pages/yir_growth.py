@@ -16,9 +16,9 @@ engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 # set up page
 set_sidebar()
-st.set_page_config(page_title='Franzonello Family YIR Growth',
+st.set_page_config(page_title='Family YIR Growth',
                    layout='wide')
-st.title(f'Franzonello YIR Growth')
+st.title(f'Year In Review Growth')
 
 year_values = fetch_years_summary(engine)
 
