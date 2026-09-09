@@ -84,6 +84,10 @@
 
 ## Python and code style
 
+- Prefer f-strings for Python string formatting over `%` formatting or
+  `.format()`. Keep database values in bound SQL parameters and use the
+  database driver's identifier composition for SQL identifiers; do not
+  interpolate untrusted values into SQL with f-strings.
 - List comprehensions are welcome; use explicit or nested loops when clearer.
 - Prefer `match`/`case` to long `if`/`elif` chains when it fits the domain.
 - Do not add `from __future__ import annotations`.

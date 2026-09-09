@@ -284,3 +284,12 @@ data.
 
 See [AGENTS.md](AGENTS.md) for the repository’s development, testing, privacy,
 database, and Git conventions.
+
+## Reproducible database setup
+
+After provisioning an empty Neon database and storing its connection settings
+in an ignored secrets file, use `python -m database.db_create` to inspect/export
+an existing schema or initialize a normal/demo database from the versioned SQL
+bundle. Operations preview by default; initialization refuses existing objects.
+See [Database setup and schema maintenance](docs/DATABASE_SETUP.md) for commands,
+requirements, mode differences, and the schema-update workflow.

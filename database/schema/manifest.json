@@ -1,0 +1,52 @@
+{
+  "format_version": 1,
+  "minimum_server_version": 160000,
+  "schemas": [
+    "_debugging",
+    "public",
+    "config",
+    "dashboard",
+    "ingestion",
+    "messaging",
+    "nello",
+    "project",
+    "publishing",
+    "tree",
+    "users"
+  ],
+  "excluded_platform_schemas": [
+    "auth",
+    "neon_auth"
+  ],
+  "extensions": [
+    "citext",
+    "uuid-ossp"
+  ],
+  "schema_file": "schema.sql",
+  "demo_excluded_schemas": [
+    "users"
+  ],
+  "seed_files": {
+    "normal": [
+      "reference.sql",
+      "users.sql"
+    ],
+    "demo": [
+      "reference.sql",
+      "demo.sql"
+    ]
+  },
+  "validation_queries": {
+    "normal": [
+      "SELECT * FROM dashboard.appearance_spans LIMIT 0",
+      "SELECT * FROM tree.members LIMIT 0",
+      "SELECT role_name FROM users.roles"
+    ],
+    "demo": [
+      "SELECT * FROM dashboard.appearance_spans",
+      "SELECT * FROM dashboard.member_information",
+      "SELECT * FROM dashboard.family_graph(nello.founder_id())",
+      "SELECT * FROM dashboard.folders_summary"
+    ]
+  }
+}

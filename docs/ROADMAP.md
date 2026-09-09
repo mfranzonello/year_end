@@ -371,7 +371,8 @@ remaining rendering/data issues.
 Review and improve the existing schema, constraints, checks, and dependent
 views without losing the integrity of the family and media records.
 
-Provide a reproducible database initializer for someone cloning the repository.
+The reproducible database initializer is implemented in `database/db_create.py`;
+see [Database setup](DATABASE_SETUP.md) for commands and bundle maintenance.
 Assume they have already provisioned a Neon account and an empty target database
 with credentials; they can then run the initializer locally from Python.
 Document this setup alongside the Streamlit and TOML configuration instructions.
@@ -391,8 +392,8 @@ initializer's scope.
   schemas, refuse populated targets by default, and validate the resulting
   schema and application queries. Treat upgrades separately from initialization.
 - Update the versioned definitions as the live schema evolves, including the
-  review-based appearance model. The initializer is planned work, not an
-  existing installation command.
+  review-based appearance model. Initial creation and export are implemented;
+  migrations of existing databases and application demo routing remain separate work.
 
 The marriage migration is now substantially complete: provider-neutral `unions`
 and `union_members` replace husband/wife columns, pair membership is enforced
