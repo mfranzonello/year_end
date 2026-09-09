@@ -32,7 +32,7 @@ GENERATION_LIMIT = 20
 engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 @st.cache_data
-def get_founder(_engine):
+def get_founder_id(_engine):
     return fetch_founder_id(engine)
 
 @st.cache_data
