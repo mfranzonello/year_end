@@ -7,7 +7,7 @@ import streamlit as st
 from database.db import get_engine
 from database.db_family import fetch_person_information, fetch_animal_information
 from database.db_display import fetch_member_summary
-from family_tree.cloudy import get_image_url, upload_image, configure_cloud
+from family_tree.cloudy import configure_cloud
 from pages.general import set_sidebar
 from charting.stats_member import fill_in_bio
 

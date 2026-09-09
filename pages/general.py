@@ -57,11 +57,3 @@ def plot_graphviz_chart(graph:Graph, use_images=False):
             st.image(graph.pipe(format='png'))
         else:
             st.graphviz_chart(graph)
-
-@st.cache_data
-def get_profile_image(_engine, cloud_name:str, profile_id:str, profile_type:str=None,
-                      grayscale=False, border_color=None, border_width=5,
-                      pixels=None, square=False):
-    return get_image_url(_engine, cloud_name, profile_id, profile_type=profile_type,
-                         grayscale=grayscale, border_color=border_color, border_width=border_width,
-                         pixels=pixels, square=square)

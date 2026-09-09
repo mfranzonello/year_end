@@ -7,9 +7,8 @@ import streamlit as st
 from pgeocode import Nominatim
 from pandas import DataFrame
 
-from family_tree.cloudy import get_image_url, upload_image
+from family_tree.cloudy import get_version, get_image_url, upload_image
 from pages.streamlit_auth import current_tier, require_admin
-from pages.general import get_profile_image
 
 nomi = Nominatim('us')
 
@@ -117,7 +116,7 @@ def plot_map(zip_code:int):
 
 def fill_image(_engine, cloud_name, members, member_type, member_id):
     # member image
-    image_url = get_profile_image(_engine, cloud_name, member_id, profile_type=member_type, square=True)
+    image_url = get_image_url(_engine, cloud_name, member_id, profile_type=member_type, square=True)
     st.image(image_url, width=350)
 
     if current_tier() == "admin":
@@ -139,7 +138,7 @@ def fill_image(_engine, cloud_name, members, member_type, member_id):
                 display_name = members[members['member_id'] == member_id]['full_name'].iloc[0]
                 upload_image(_engine, public_id=member_id, image_path=replace_image_path, display_name=display_name)
                 st.session_state['image_replacement_key'] += 1
-                get_profile_image.clear(_engine, cloud_name, member_id, member_type)
+                get_version.clear(_engine, member_id)
                 st.rerun()
 
 @st.cache_data
