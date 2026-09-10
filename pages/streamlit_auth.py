@@ -7,13 +7,28 @@ from sqlalchemy.exc import SQLAlchemyError
 from database.db import get_engine
 from database import db_admin
 from dataclasses import dataclass
-
 import streamlit as st
-
 
 TIERS = ("demo", "viewer", "member", "admin")
 logger = logging.getLogger(__name__)
 
+def get_database_credentials(admin=False, demo=False):
+    PGHOST = st.secrets['postgresql']['host']
+    PGPORT = st.secrets['postgresql'].get('port', '5432')
+    if admin:
+        PGDBNAME = PGDBNAME = st.secrets['postgresql']['database']
+    elif demo:
+        PGDBNAME = PGDBNAME = st.secrets['postgresql']['demobase']
+    else:
+        match current_tier():
+            case 'viewer' | 'member' | 'admin':
+                PGDBNAME = st.secrets['postgresql']['database']
+            case 'anonymous' | 'demo' | _:
+                PGDBNAME = st.secrets['postgresql']['demobase']
+    PGUSER = st.secrets['postgresql']['user']
+    PGPASSWORD = st.secrets['postgresql']['password']
+
+    return PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD
 
 @dataclass(frozen=True)
 class AppIdentity:
@@ -76,9 +91,12 @@ def authentication_configured() -> bool:
 @st.cache_resource
 def identity_engine():
     """Reuse the deployment database pool without caching authorization results."""
-    settings = st.secrets["postgresql"]
-    return get_engine(settings["host"], settings.get("port", "5432"),
-                      settings["database"], settings["user"], settings["password"])
+    PGHOST = st.secrets['postgresql']['host']
+    PGPORT = st.secrets['postgresql'].get('port', '5432')
+    PGDBNAME = PGDBNAME = st.secrets['postgresql']['database']
+    PGUSER = st.secrets['postgresql']['user']
+    PGPASSWORD = st.secrets['postgresql']['password']
+    return get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
 
 
 def current_identity() -> AppIdentity:

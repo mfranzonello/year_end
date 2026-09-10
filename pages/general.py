@@ -7,8 +7,7 @@ import streamlit as st
 from graphviz import Graph
 
 from family_tree.cloudy import get_image_url
-from pages.streamlit_auth import current_identity, render_account_controls
-
+from pages.streamlit_auth import get_database_credentials, current_identity, current_tier, render_account_controls
 
 def graphviz_available() -> bool:
     """Check for Graphviz's system executable, separate from its Python package."""

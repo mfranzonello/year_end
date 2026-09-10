@@ -4,15 +4,10 @@ from database.db import get_engine
 from database.db_display import fetch_resolution_order
 from database.db_project import fetch_years_summary
 from charting.charts_yir import growth_charts
+from pages.streamlit_auth import get_database_credentials
 from pages.general import set_sidebar, plot_altair_chart
 
-PGHOST = st.secrets['postgresql']['host']
-PGPORT = st.secrets['postgresql'].get('port', '5432')
-PGDBNAME = st.secrets['postgresql']['database']
-PGUSER = st.secrets['postgresql']['user']
-PGPASSWORD = st.secrets['postgresql']['password']
-
-engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
+engine = get_engine(*get_database_credentials())
 
 # set up page
 set_sidebar()

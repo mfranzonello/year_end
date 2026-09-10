@@ -8,6 +8,7 @@ import streamlit as st
 from database.db import get_engine
 from database.db_display import fetch_member_summary, fetch_member_birth_date, fetch_family_tree, fetch_founder_id
 from charting.charts_family import tree_chart
+from pages.streamlit_auth import get_database_credentials
 from pages.general import set_sidebar, plot_graphviz_chart, graphviz_available
 
 # Guard direct page links before loading data or building the tree.
@@ -19,17 +20,11 @@ if not graphviz_available():
             'Please choose another page from the sidebar.')
     st.stop()
 
-PGHOST = st.secrets['postgresql']['host']
-PGPORT = st.secrets['postgresql'].get('port', '5432')
-PGDBNAME = st.secrets['postgresql']['database']
-PGUSER = st.secrets['postgresql']['user']
-PGPASSWORD = st.secrets['postgresql']['password']
-
 CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
 
 GENERATION_LIMIT = 20
 
-engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
+engine = get_engine(*get_database_credentials())
 
 @st.cache_data
 def get_founder(_engine):

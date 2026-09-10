@@ -43,6 +43,12 @@ class ConnectionSettings:
             raise ValueError('Provide a valid connection section with host, database, user, and password.') from None
         return cls(values)
 
+    @classmethod
+    def from_credentials(cls, host: str, port:int, dbname: str, user: str, password: str):
+        values = dict(host=host, port=port, dbname=dbname, user=user, password=password,
+                      sslmode='require', connect_timeout=15)
+        return cls(values)
+
     def connect(self):
         """Connect without including credentials in commands or output."""
         return psycopg.connect(**self.values)

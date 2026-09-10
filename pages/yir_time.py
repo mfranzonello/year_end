@@ -8,17 +8,12 @@ from database.db import get_engine
 from database.db_display import fetch_actor_spans
 from database.db_adobe import fetch_timeline_reviews, fetch_markers
 from charting.charts_yir import timeline_chart
+from pages.streamlit_auth import get_database_credentials
 from pages.general import set_sidebar, plot_altair_chart
-
-PGHOST = st.secrets['postgresql']['host']
-PGPORT = st.secrets['postgresql'].get('port', '5432')
-PGDBNAME = st.secrets['postgresql']['database']
-PGUSER = st.secrets['postgresql']['user']
-PGPASSWORD = st.secrets['postgresql']['password']
 
 CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
 
-engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
+engine = get_engine(*get_database_credentials())
 
 def get_review_name(reviews, review_id:UUID) -> str:
     review = reviews[reviews['review_id']==review_id]

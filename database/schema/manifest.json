@@ -16,7 +16,8 @@
   ],
   "excluded_platform_schemas": [
     "auth",
-    "neon_auth"
+    "neon_auth",
+    "_debugging"
   ],
   "extensions": [
     "citext",

@@ -8,21 +8,16 @@ from database.db import get_engine
 from database.db_family import fetch_person_information, fetch_animal_information
 from database.db_display import fetch_member_summary
 from family_tree.cloudy import configure_cloud
+from pages.streamlit_auth import get_database_credentials
 from pages.general import set_sidebar
 from charting.stats_member import fill_in_bio
-
-PGHOST = st.secrets['postgresql']['host']
-PGPORT = st.secrets['postgresql'].get('port', '5432')
-PGDBNAME = st.secrets['postgresql']['database']
-PGUSER = st.secrets['postgresql']['user']
-PGPASSWORD = st.secrets['postgresql']['password']
 
 CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
 CLOUDINARY_KEY = st.secrets['cloudinary']['api_key']
 CLOUDINARY_SECRET = st.secrets['cloudinary']['api_secret']
 configure_cloud(CLOUDINARY_CLOUD, CLOUDINARY_KEY, CLOUDINARY_SECRET)
 
-engine = get_engine(PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD)
+engine = get_engine(*get_database_credentials())
 
 # set up page
 set_sidebar()
