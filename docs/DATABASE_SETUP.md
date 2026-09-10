@@ -95,6 +95,12 @@ For demo data:
 .\.venv\Scripts\python.exe -m database.db_create initialize --connection demo --mode demo --seed 42 --apply
 ```
 
+Restore settings (including the temporary empty `search_path`) are transaction-local,
+so they cannot affect later requests on a pooled backend. Application database
+transactions explicitly select `public` for unqualified functions and types;
+this also handles pooled sessions affected by earlier initializer versions.
+An existing demo database does not need rebuilding for this fix.
+
 All initialization DDL, seeds, exclusions, and validation execute in one
 transaction. A failure rolls back the new objects and data. Concurrent runs of
 this initializer serialize with an advisory lock. Demo exclusion happens only

@@ -1,13 +1,18 @@
 """Shared database connection and parameterized query helpers."""
 
-from sqlalchemy import create_engine, text, Engine
+from sqlalchemy import create_engine, event, text, Engine
 from pandas import read_sql_query, DataFrame
 
 def get_engine(host:str, port:str, dbname:str, user:str, password:str):
     """Create a pool that replaces disconnected connections before reuse."""
     engine = create_engine(f'postgresql+psycopg://{user}:{password}@{host}:{port}/{dbname}',
                            pool_pre_ping=True)
+    event.listen(engine, 'begin', set_application_search_path)
     return engine
+
+def set_application_search_path(connection) -> None:
+    """Resolve application functions independently of pooled session settings."""
+    connection.exec_driver_sql('SET LOCAL search_path TO public')
 
 def build_values(df: DataFrame, cols:list[str]) -> tuple[str, dict[str, object]]:
     # get values and params for complex calls

@@ -110,6 +110,17 @@ def bundle_file(bundle: Path, name: str) -> Path:
     return target
 
 
+def localize_dump_settings(content: str) -> str:
+    """Keep pg_dump restore settings from leaking into pooled server sessions."""
+    settings = ('statement_timeout|lock_timeout|idle_in_transaction_session_timeout|'
+                'transaction_timeout|client_encoding|standard_conforming_strings|'
+                'check_function_bodies|xmloption|client_min_messages|row_security|'
+                'default_tablespace|default_table_access_method')
+    content = re.sub(rf'^SET ({settings}) =', r'SET LOCAL \1 =', content, flags=re.MULTILINE)
+    return content.replace("SELECT pg_catalog.set_config('search_path', '', false);",
+                           "SELECT pg_catalog.set_config('search_path', '', true);")
+
+
 def normalize_dump(content: str, extensions: list[str]) -> str:
     """Remove pg_dump client markers and allow the standard public schema."""
     lines = []
@@ -125,7 +136,7 @@ def normalize_dump(content: str, extensions: list[str]) -> str:
         if not re.fullmatch(r'[a-zA-Z0-9_-]+', extension):
             raise ValueError('Invalid extension name in manifest.')
         prefix += f'CREATE EXTENSION IF NOT EXISTS "{extension}" WITH SCHEMA public;\n'
-    return prefix + result.strip() + '\n'
+    return prefix + localize_dump_settings(result.strip()) + '\n'
 
 
 def export_schema(settings: ConnectionSettings, bundle: Path, output: Path,
@@ -218,6 +229,7 @@ def initialize_database(settings: ConnectionSettings, bundle: Path = BUNDLE,
     manifest = load_manifest(bundle)
     names = [manifest['schema_file'], *manifest['seed_files'][mode]]
     scripts = [(name, bundle_file(bundle, name).read_text(encoding='utf-8')) for name in names]
+    scripts[0] = (scripts[0][0], localize_dump_settings(scripts[0][1]))
     with settings.connect() as connection:
         # Serializes two initializer instances against the same target.
         connection.execute("SELECT set_config('lock_timeout', '5s', true)")

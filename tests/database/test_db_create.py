@@ -6,10 +6,18 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from database.db_create import BUNDLE, ConnectionSettings, bundle_file, export_schema, load_manifest, normalize_dump
+from database.db_create import BUNDLE, ConnectionSettings, bundle_file, export_schema, load_manifest, normalize_dump, localize_dump_settings
 
 
 class DatabaseBundleTests(TestCase):
+    def test_dump_settings_are_transaction_local_and_idempotent(self):
+        raw = "SET statement_timeout = 0;\nSELECT pg_catalog.set_config('search_path', '', false);\n"
+        result = localize_dump_settings(raw)
+        self.assertIn('SET LOCAL statement_timeout = 0;', result)
+        self.assertIn("set_config('search_path', '', true)", result)
+        self.assertEqual(localize_dump_settings(result), result)
+        self.assertEqual(normalize_dump(raw, []), normalize_dump(result, []))
+
     def test_credentials_remain_out_of_repr_and_child_arguments(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'secrets.toml'

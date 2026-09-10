@@ -7,16 +7,16 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
 
 
 
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
-SET check_function_bodies = false;
-SET xmloption = content;
-SET client_min_messages = warning;
-SET row_security = off;
+SET LOCAL statement_timeout = 0;
+SET LOCAL lock_timeout = 0;
+SET LOCAL idle_in_transaction_session_timeout = 0;
+SET LOCAL client_encoding = 'UTF8';
+SET LOCAL standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', true);
+SET LOCAL check_function_bodies = false;
+SET LOCAL xmloption = content;
+SET LOCAL client_min_messages = warning;
+SET LOCAL row_security = off;
 
 --
 -- Name: _debugging; Type: SCHEMA; Schema: -; Owner: -
@@ -1863,9 +1863,9 @@ CREATE VIEW _debugging.__view_definitions AS
   ORDER BY ((table_schema)::name = 'public'::name) DESC, table_schema, table_name;
 
 
-SET default_tablespace = '';
+SET LOCAL default_tablespace = '';
 
-SET default_table_access_method = heap;
+SET LOCAL default_table_access_method = heap;
 
 --
 -- Name: adobe_labels; Type: TABLE; Schema: config; Owner: -

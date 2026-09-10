@@ -1,15 +1,54 @@
 """Validate schema bundles in disposable localhost databases, never in Neon."""
 
 import argparse
+from contextlib import contextmanager
 import json
 from pathlib import Path
 import shutil
 import tempfile
 from uuid import uuid4
+from unittest.mock import patch
 
 from psycopg import sql
+from sqlalchemy import text
 
 from database.db_create import BUNDLE, ConnectionSettings, initialize_database, export_schema, inspect_database
+from database.db import get_engine
+
+
+def initialize_and_check_session(target, mode):
+    """Retain the restore session to detect settings leaking after commit."""
+    with target.connect() as connection:
+        connection.autocommit = True
+        before = {row[0]: row[1] for row in connection.execute('SHOW ALL').fetchall()}
+
+        @contextmanager
+        def retained_connection():
+            with connection.transaction():
+                yield connection
+
+        with patch.object(ConnectionSettings, 'connect', return_value=retained_connection()):
+            assert initialize_database(target, mode=mode, apply=True)['applied']
+        after = {row[0]: row[1] for row in connection.execute('SHOW ALL').fetchall()}
+        changed = [name for name, value in before.items() if after.get(name) != value]
+        assert not changed, f'Restore leaked session settings: {changed}'
+        # Extensions can register settings; the temporary demo seed must reset.
+        assert connection.execute("SELECT current_setting('year_end.demo_seed', true)").fetchone()[0] == ''
+
+
+def check_pooled_search_path(target):
+    """Simulate a reused backend with the empty path left by an older restore."""
+    values = target.values
+    engine = get_engine(values['host'], values['port'], values['dbname'], values['user'], values['password'])
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT set_config('search_path', '', false)"))
+            connection.commit()
+            assert connection.execute(text('SELECT uuid_nil()')).scalar() is not None
+            connection.rollback()
+            assert connection.execute(text('SELECT uuid_nil()')).scalar() is not None
+    finally:
+        engine.dispose()
 
 
 def main():
@@ -34,7 +73,8 @@ def main():
         for mode, target in zip(('normal', 'demo'), targets):
             assert not initialize_database(target, mode=mode)['applied']
             assert not inspect_database(target)['objects']
-            assert initialize_database(target, mode=mode, apply=True)['applied']
+            initialize_and_check_session(target, mode)
+            check_pooled_search_path(target)
             try:
                 initialize_database(target, mode=mode, apply=True)
             except ValueError as error:
