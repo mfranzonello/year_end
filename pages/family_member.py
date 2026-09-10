@@ -61,11 +61,13 @@ def get_basics(members, member_id):
 
     birth_date = information['birth_date'].iloc[0]
     birth_date_precision = information['birth_date_precision'].iloc[0]
-    is_future = ((birth_date is None or birth_date > date.today()) or birth_date_precision == 'future')
+    is_future = (birth_date_precision == 'future' or
+                 (birth_date_precision != 'past' and birth_date is not None and birth_date > date.today()))
 
     death_date = information['death_date'].iloc[0]
     death_date_precision = information['death_date_precision'].iloc[0]
-    is_deceased = ((death_date is not None and death_date > date.today()) or death_date_precision == 'past')
+    is_deceased = (death_date_precision != 'future' and 
+                   (death_date is not None and death_date <= date.today()) or death_date_precision == 'past')
 
     return sex, is_future, is_deceased
 
