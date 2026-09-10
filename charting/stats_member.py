@@ -248,7 +248,7 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
     zip_code = contact_info.get('zip_code')
     if zip_code:
         location = nomi.query_postal_code(zip_code)
-        st.markdown(f'**Lives Near**: {location.place_name}, {location.state_code}')
+        st.markdown(f'**Lives near**: {location.place_name}, {location.state_code}')
         location_data = plot_map(location)
         st.map(location_data, height=300, width=350, zoom=10)
 
