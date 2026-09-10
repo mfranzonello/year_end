@@ -7,7 +7,7 @@ from pandas.api.types import is_list_like
 from webcolors import name_to_hex
 
 from database.db import Engine
-from family_tree.cloudy import get_image_path
+from charting.cloudy import get_image_path
 
 def get_color_hexes(color_names:list[str]) -> list[str]:
     return [name_to_hex(c) for c in color_names]

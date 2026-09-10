@@ -5,9 +5,9 @@ from shutil import which
 
 import streamlit as st
 from graphviz import Graph
+from sqlalchemy import Engine
 
-from family_tree.cloudy import get_image_url
-from pages.streamlit_auth import get_database_credentials, current_identity, current_tier, render_account_controls
+from pages.streamlit_auth import current_identity, render_account_controls
 
 def graphviz_available() -> bool:
     """Check for Graphviz's system executable, separate from its Python package."""
@@ -17,8 +17,8 @@ def graphviz_available() -> bool:
 pages = [('yir_count', 'YIR Status', None),
          ('yir_growth', 'YIR Growth', None),
          ('yir_time', 'YIR Timeline', None),
-         ('family_tree', 'Family Tree', ['viewer', 'member', 'admin']),
-         ('family_member', 'Family Members', ['viewer', 'member', 'admin'])]
+         ('family_tree', 'Family Tree', None),
+         ('family_member', 'Family Members', None)]
 existing_pages = [(page, n, g) for (p, n, g) in pages
                   if (page := f'pages/{p}.py') and Path(page).exists()
                   and (p != 'family_tree' or graphviz_available())]
@@ -44,6 +44,13 @@ def set_sidebar():
             )
         st.divider()
         render_account_controls(identity)
+
+def get_hash_funcs():
+    hash_funcs = {Engine: lambda x: x.url}
+    return hash_funcs
+
+def get_member_name_display(members, member_id):
+    return members[members['member_id'] == member_id]['full_name'].iloc[0]
 
 # plot altair chart
 def plot_altair_chart(chart):

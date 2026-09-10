@@ -96,7 +96,6 @@ def get_image_url(engine:Engine, cloud_name:str, profile_id:str, profile_type:st
         if not version:
             # check if any version exists in the cloud
             image_url_test = f'{url_start}/{profile_id}'
-            print(f'{image_url_test=}')
 
             if url_is_404(image_url_test):
                 return None
@@ -112,7 +111,6 @@ def get_image_url(engine:Engine, cloud_name:str, profile_id:str, profile_type:st
                     (f'c_fill,ar_1:1', square)
                     ]
         image_url = url_start + ('/'.join(m for m, b in url_mids if b) + f'{version_str}/{profile_id}').replace('//', '/')
-        print(f'FINAL {image_url=}')
 
         return image_url
 

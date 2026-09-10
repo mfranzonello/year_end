@@ -7,9 +7,9 @@ import streamlit as st
 
 from database.db import get_engine
 from database.db_display import fetch_member_summary, fetch_member_birth_date, fetch_family_tree, fetch_founder_id
-from charting.charts_family import tree_chart
 from pages.streamlit_auth import get_database_credentials
-from pages.general import set_sidebar, plot_graphviz_chart, graphviz_available
+from pages.general import set_sidebar, get_hash_funcs, plot_graphviz_chart, graphviz_available
+from charting.charts_family import tree_chart
 
 # Guard direct page links before loading data or building the tree.
 set_sidebar()
@@ -26,22 +26,27 @@ GENERATION_LIMIT = 20
 
 engine = get_engine(*get_database_credentials())
 
-@st.cache_data
-def get_founder(_engine):
+@st.cache_data(hash_funcs=get_hash_funcs())
+def get_founder_id(engine):
     return fetch_founder_id(engine)
 
-@st.cache_data
-def get_member_summary(_engine):
-    return fetch_member_summary(_engine)
+@st.cache_data(hash_funcs=get_hash_funcs())
+def get_member_summary(engine):
+    return fetch_member_summary(engine)
 
-@st.cache_data
-def get_member_birth_date(_engine, person_id):
-    return fetch_member_birth_date(_engine, person_id)
+@st.cache_data(hash_funcs=get_hash_funcs())
+def get_member_birth_date(engine, person_id):
+    return fetch_member_birth_date(engine, person_id)
 
-@st.cache_data
-def get_tree_data(_engine, person_id, cut_date, direction, exclude_persons, include_animals):
-    return fetch_family_tree(_engine, person_id, cut_date=cut_date, direction=direction,
-                             exclude_persons=exclude_persons, include_animals=include_animals)
+@st.cache_data(hash_funcs=get_hash_funcs())
+def get_tree_data(engine, person_id, cut_date, direction, exclude_persons, include_animals):
+    tree_data = fetch_family_tree(engine, person_id, cut_date=cut_date, direction=direction,
+                                  exclude_persons=exclude_persons, include_animals=include_animals)
+
+    for col in ['parent_ids', 'lineage', 'ancestry']:
+        tree_data[col] = tree_data[col].apply(lambda x: tuple(x) if isinstance(x, list) else x)
+
+    return tree_data
 
 
 member_summary = get_member_summary(engine)
@@ -95,14 +100,14 @@ st.title(f'Family Tree')
 
 tree_data = get_tree_data(engine, person_id, cut_date, direction, exclude_persons, include_animals)
 
-@st.cache_data(ttl='1d')
-def create_tree_chart(_engine, tree_data, cloud_name, use_images, generation_limit):
-    graph = tree_chart(_engine, tree_data, cloud_name=cloud_name,
-                       use_images=use_images, generation_limit=generation_limit)
-    plot_graphviz_chart(graph, use_images=use_images)
+@st.cache_data(ttl='1d', hash_funcs=get_hash_funcs()) ## need to change lists in tree_data
+def create_tree_chart(engine, tree_data, cloud_name, use_images, generation_limit):
+    return tree_chart(engine, tree_data, cloud_name=cloud_name,
+                      use_images=use_images, generation_limit=generation_limit)
 
 if len(tree_data):
     # graph with nodes and edges
     with st.spinner('Building tree...', show_time=True):
-        create_tree_chart(engine, tree_data, CLOUDINARY_CLOUD, use_images, GENERATION_LIMIT)
+        graph = create_tree_chart(engine, tree_data, CLOUDINARY_CLOUD, use_images, GENERATION_LIMIT)
+        plot_graphviz_chart(graph, use_images=use_images)
     

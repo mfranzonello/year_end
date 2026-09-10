@@ -5,7 +5,6 @@ from sqlalchemy import Engine, text
 
 from database.db import read_sql
 
-
 def fetch_identity(engine: Engine, issuer_name: str, subject_id: str) -> DataFrame:
     """Find an identity using its provider and stable subject."""
     params = {"issuer": issuer_name, "subject": subject_id}

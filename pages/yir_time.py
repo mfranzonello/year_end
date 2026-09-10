@@ -7,9 +7,9 @@ import streamlit as st
 from database.db import get_engine
 from database.db_display import fetch_actor_spans
 from database.db_adobe import fetch_timeline_reviews, fetch_markers
-from charting.charts_yir import timeline_chart
 from pages.streamlit_auth import get_database_credentials
-from pages.general import set_sidebar, plot_altair_chart
+from pages.general import set_sidebar, get_hash_funcs, plot_altair_chart
+from charting.charts_yir import timeline_chart
 
 CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
 
@@ -61,10 +61,10 @@ st.title(get_review_name(reviews, review_id))
 
 cut_date = get_cut_date(reviews, review_id)
 
-@st.cache_data(ttl='15min')
-def get_timeline_data(_engine, review_id, cut_date):
-    actor_spans = fetch_actor_spans(_engine, review_id, cut_date=cut_date)
-    markers = fetch_markers(_engine, review_id)
+@st.cache_data(ttl='15min', hash_funcs=get_hash_funcs())
+def get_timeline_data(engine, review_id, cut_date):
+    actor_spans = fetch_actor_spans(engine, review_id, cut_date=cut_date)
+    markers = fetch_markers(engine, review_id)
     return actor_spans, markers
 
 actor_spans, markers = get_timeline_data(engine, review_id, cut_date)

@@ -4,10 +4,11 @@ from collections.abc import Iterable, Mapping
 import logging
 
 from sqlalchemy.exc import SQLAlchemyError
-from database.db import get_engine
-from database import db_admin
 from dataclasses import dataclass
 import streamlit as st
+
+from database.db import get_engine
+from database.db_admin import fetch_identity, create_identity, update_identity_login, fetch_identity_role
 
 TIERS = ("demo", "viewer", "member", "admin")
 logger = logging.getLogger(__name__)
@@ -115,16 +116,16 @@ def current_identity() -> AppIdentity:
     try:
         engine = identity_engine()
         operation = "fetch_identity"
-        record = db_admin.fetch_identity(engine, *key)
+        record = fetch_identity(engine, *key)
         if record.empty:
             operation = "create_identity"
-            db_admin.create_identity(engine, *key, user.get("email"), user.get("name"))
+            create_identity(engine, *key, user.get("email"), user.get("name"))
         if st.session_state.get("identity_login_observed") != key:
             operation = "update_identity_login"
-            db_admin.update_identity_login(engine, *key)
+            update_identity_login(engine, *key)
             st.session_state["identity_login_observed"] = key
         operation = "fetch_identity_role"
-        roles = db_admin.fetch_identity_role(engine, *key)["role_name"].tolist()
+        roles = fetch_identity_role(engine, *key)["role_name"].tolist()
     except (SQLAlchemyError, ValueError) as error:
         logger.error(
             "Account access failed: operation=%s error_type=%s connection_invalidated=%s",

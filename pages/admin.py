@@ -2,9 +2,9 @@
 
 import streamlit as st
 
-from pages.general import set_sidebar
-from pages.streamlit_auth import get_database_credentials, require_admin
 from database.db_create import initialize_database, ConnectionSettings
+from pages.streamlit_auth import get_database_credentials, require_admin
+from pages.general import set_sidebar
 
 set_sidebar()
 identity = require_admin()

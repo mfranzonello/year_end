@@ -5,15 +5,17 @@ from dateutil.relativedelta import relativedelta
 
 import streamlit as st
 from pgeocode import Nominatim
-from pandas import DataFrame
+from pandas import DataFrame, Series
 
-from family_tree.cloudy import get_version, get_image_url, upload_image
 from pages.streamlit_auth import current_tier, require_admin
+from pages.general import get_member_name_display
+from charting.cloudy import get_version, get_image_url, upload_image
 
 nomi = Nominatim('us')
 
-def get_member_name_display(members, member_id):
-    return members[members['member_id'] == member_id]['full_name'].iloc[0]
+def go_to_member(member_id):
+    st.session_state.member_id = member_id
+    st.session_state.member_select = member_id
 
 def get_date_display(entry_date, entry_date_precision):
     if entry_date is not None:
@@ -92,9 +94,8 @@ def get_list_display(members, list_ids, callout):
 
     with st.container(width='content'):
         for list_id in list_ids:
-            if st.button(get_member_name_display(members, list_id), type='secondary'):
-                st.session_state['member_id'] = list_id
-                st.rerun()
+            st.button(get_member_name_display(members, list_id), type='secondary',
+                      on_click=go_to_member, args=(list_id, ))
 
 def get_plural(word:str, count:int=None, items:list=None, s:str='s', plural:str=None):
     if plural is None:
@@ -107,12 +108,9 @@ def get_plural(word:str, count:int=None, items:list=None, s:str='s', plural:str=
 
     return plural if (quantity != 1) else word
 
-@st.cache_data
-def plot_map(zip_code:int):
-    if zip_code:
-        location = nomi.query_postal_code(zip_code)
-        location_data = DataFrame([[location.latitude, location.longitude]], columns=('lat', 'lon'))
-        st.map(location_data, height=300, zoom=10)
+def plot_map(location:Series):
+    location_data = DataFrame([[location.latitude, location.longitude]], columns=('lat', 'lon'))
+    return location_data
 
 def fill_image(_engine, cloud_name, members, member_type, member_id):
     # member image
@@ -141,7 +139,6 @@ def fill_image(_engine, cloud_name, members, member_type, member_id):
                 get_version.clear(_engine, member_id)
                 st.rerun()
 
-@st.cache_data
 def fill_personal(information, member_type, sex, is_future, is_deceased):
     # born and living marker
     death_date = information["death_date"].iloc[0]
@@ -250,7 +247,10 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
     contact_info = information['contact_info'].iloc[0]
     zip_code = contact_info.get('zip_code')
     if zip_code:
-        plot_map(zip_code)
+        location = nomi.query_postal_code(zip_code)
+        st.markdown(f'**Lives Near**: {location.place_name}, {location.state_code}')
+        location_data = plot_map(location)
+        st.map(location_data, height=300, width=350, zoom=10)
 
 def fill_lineage(information, members, member_type, sex, is_future):
     future = 'Future ' if is_future else ''
