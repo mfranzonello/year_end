@@ -25,11 +25,11 @@ st.set_page_config(page_title='Add and Edit Family Members',
 members = fetch_member_summary(engine)
 persons = members[members['member_type'] == 'person']
 homeless = fetch_homeless(engine)
-homeless['bum'] = homeless['person_id'].apply(lambda x: get_member_name_display(members, x))
 
 def list_homeless():
-    with st.expander('Homeless', width=300):
-        st.dataframe(homeless[['bum']])
+    with st.expander('Show Homeless', type='compact', width=300):
+        for _, (person_id, ) in homeless[['person_id']].iterrows():
+            st.write(f':gray-background[{get_member_name_display(members, person_id)}]')
 
 @st.dialog('Add Address')
 def add_address():
