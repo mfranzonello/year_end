@@ -7,7 +7,7 @@ import streamlit as st
 
 from database.db import get_engine
 from database.db_display import fetch_member_summary, fetch_member_birth_date, fetch_family_tree, fetch_founder_id
-from pages.streamlit_auth import get_database_credentials
+from pages.streamlit_auth import get_database_credentials, get_cloud_credentials
 from pages.general import set_sidebar, get_hash_funcs, plot_graphviz_chart, graphviz_available
 from charting.charts_family import tree_chart
 

@@ -7,17 +7,13 @@ import streamlit as st
 from database.db import get_engine
 from database.db_family import fetch_person_information, fetch_animal_information
 from database.db_display import fetch_member_summary
-from pages.streamlit_auth import get_database_credentials
+from pages.streamlit_auth import get_database_credentials, get_cloud_credentials
 from pages.general import set_sidebar, get_hash_funcs, get_member_name_display
 from charting.cloudy import configure_cloud
 from charting.stats_member import fill_image, fill_personal, fill_lineage
 
-CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
-CLOUDINARY_KEY = st.secrets['cloudinary']['api_key']
-CLOUDINARY_SECRET = st.secrets['cloudinary']['api_secret']
-configure_cloud(CLOUDINARY_CLOUD, CLOUDINARY_KEY, CLOUDINARY_SECRET)
-
 engine = get_engine(*get_database_credentials())
+cloud = configure_cloud(*get_cloud_credentials())
 
 # set up page
 set_sidebar()
@@ -36,7 +32,7 @@ def get_member_data(engine):
 
 members, member_informations = get_member_data(engine)
 
-# Initialize / validate the selection
+# initialize / validate the selection
 if 'member_id' not in st.session_state:
     st.session_state.member_id = None
 
@@ -61,24 +57,23 @@ def get_basics(members, member_id):
 
     birth_date = information['birth_date'].iloc[0]
     birth_date_precision = information['birth_date_precision'].iloc[0]
-    is_future = ((birth_date is None or birth_date > date.today()) or birth_date_precision == 'future')
+    is_future = (birth_date is not None and birth_date > date.today()) or (birth_date_precision == 'future')
 
     death_date = information['death_date'].iloc[0]
     death_date_precision = information['death_date_precision'].iloc[0]
-    is_deceased = ((death_date is not None and death_date > date.today()) or death_date_precision == 'past')
+    is_deceased = (death_date is not None and death_date <= date.today()) or (death_date_precision == 'past')
 
     return sex, is_future, is_deceased
 
 if member_id is not None:
     member_type = members[members['member_id'] == member_id]['member_type'].iloc[0]
     information = member_informations[member_type][member_informations[member_type]['member_id'] == member_id]
-    #list_id = fill_in_bio(engine, CLOUDINARY_CLOUD, members, information, member_type, member_id)
 
     sex, is_future, is_deceased = get_basics(members, member_id)
 
     cols = st.columns(3)
     with cols[0]:
-        fill_image(engine, CLOUDINARY_CLOUD, members, member_type, member_id)
+        fill_image(engine, cloud.cloud_name, members, member_type, member_id)
 
     with cols[1]:
         fill_personal(information, member_type, sex, is_future, is_deceased)

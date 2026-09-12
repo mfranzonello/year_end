@@ -26,10 +26,10 @@ IMAGE_CACHE = Path('.cache/family-tree-images')
 IMAGE_TYPES = {'person': 0, 'animal': 1}
 
 def configure_cloud(cloud_name:str, api_key:str, api_secret:str):
-    _ = cloudinary.config(cloud_name=cloud_name,
-                          api_key=api_key,
-                          api_secret=api_secret,
-                          secure=True)
+    return cloudinary.config(cloud_name=cloud_name,
+                             api_key=api_key,
+                             api_secret=api_secret,
+                             secure=True)
 
 def is_cloundinary_image(image_url:str) -> bool:
     # sample url: dua0zy8wu/image/upload/v1762830428/agent_5_wbcywo.png

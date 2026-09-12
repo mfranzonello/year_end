@@ -112,9 +112,9 @@ def plot_map(location:Series):
     location_data = DataFrame([[location.latitude, location.longitude]], columns=('lat', 'lon'))
     return location_data
 
-def fill_image(_engine, cloud_name, members, member_type, member_id):
+def fill_image(engine, cloud_name, members, member_type, member_id):
     # member image
-    image_url = get_image_url(_engine, cloud_name, member_id, profile_type=member_type, square=True)
+    image_url = get_image_url(engine, cloud_name, member_id, profile_type=member_type, square=True)
     st.image(image_url, width=350)
 
     if current_tier() == "admin":
@@ -125,18 +125,19 @@ def fill_image(_engine, cloud_name, members, member_type, member_id):
             image_replacement_key = 0
             st.session_state['image_replacement_key'] = image_replacement_key
         replace_image_path = st.file_uploader('Replace Image', type=['jpg', 'jpeg', 'png'],
-                                                help='Upload a new image to replace the current one.',
-                                                key=f'image_replacement_key{image_replacement_key}',
-                                                width=350)
+                                              help='Upload a new image to replace the current one.',
+                                              key=f'image_replacement_key{image_replacement_key}',
+                                              width=350)
+
         if replace_image_path:
             replace = st.button('Replace', type='primary')
 
             if replace:
                 require_admin()
                 display_name = members[members['member_id'] == member_id]['full_name'].iloc[0]
-                upload_image(_engine, public_id=member_id, image_path=replace_image_path, display_name=display_name)
+                upload_image(engine, public_id=member_id, image_path=replace_image_path, display_name=display_name)
                 st.session_state['image_replacement_key'] += 1
-                get_version.clear(_engine, member_id)
+                get_version.clear(engine, member_id)
                 st.rerun()
 
 def fill_personal(information, member_type, sex, is_future, is_deceased):
@@ -295,26 +296,3 @@ def fill_lineage(information, members, member_type, sex, is_future):
         owners = information['owner_ids'].iloc[0]
         if owners:
             get_list_display(members, owners, '**Pet of**:')
-
-
-def fill_in_bio(engine, cloud_name, members, information, member_type, member_id):
-    sex = information['sex'].iloc[0]
-
-    birth_date = information['birth_date'].iloc[0]
-    birth_date_precision = information['birth_date_precision'].iloc[0]
-    is_future = ((birth_date is None or birth_date > date.today()) or birth_date_precision == 'future')
-
-    death_date = information['death_date'].iloc[0]
-    death_date_precision = information['death_date_precision'].iloc[0]
-    is_deceased = ((death_date is not None and death_date > date.today()) or death_date_precision == 'past')
-
-    cols = st.columns(3)
-    with cols[0]:
-        fill_image(engine, cloud_name, members, member_type, member_id)
-
-    with cols[1]:
-        fill_personal(information, member_type, sex, is_future, is_deceased)
-
-    with cols[2]:
-        fill_lineage(information, members, member_type, sex, is_future)
-

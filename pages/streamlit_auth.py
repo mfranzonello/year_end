@@ -31,6 +31,12 @@ def get_database_credentials(admin=False, demo=False):
 
     return PGHOST, PGPORT, PGDBNAME, PGUSER, PGPASSWORD
 
+def get_cloud_credentials():
+    CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
+    CLOUDINARY_KEY = st.secrets['cloudinary']['api_key']
+    CLOUDINARY_SECRET = st.secrets['cloudinary']['api_secret']
+    return CLOUDINARY_CLOUD, CLOUDINARY_KEY, CLOUDINARY_SECRET
+
 @dataclass(frozen=True)
 class AppIdentity:
     """Normalized identity and authorization state for one Streamlit session."""

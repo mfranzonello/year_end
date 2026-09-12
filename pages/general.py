@@ -1,4 +1,4 @@
-"""Provide shared navigation and chart rendering for the Streamlit pages."""
+﻿"""Provide shared navigation and chart rendering for the Streamlit pages."""
 
 from pathlib import Path
 from shutil import which
@@ -13,18 +13,26 @@ def graphviz_available() -> bool:
     """Check for Graphviz's system executable, separate from its Python package."""
     return which('dot') is not None
 
+pages = {'project': [{'link': 'yir_count', 'label': 'YIR Status', 'icon': '📊'},
+                     {'link': 'yir_growth', 'label': 'YIR Growth', 'icon': '📈'},
+                     {'link': 'yir_time', 'label': 'YIR Timeline', 'icon': '🎞️'},
+                     ],
+         'family': [{'link': 'family_tree', 'label': 'Family Tree', 'icon': '🌳'},
+                    {'link': 'family_member', 'label': 'Family Members', 'icon': '👨‍👩‍👧‍👦'},
+                    ],
+         'admin': [{'link': 'admin', 'label': 'Administration', 'icon': ':material/admin_panel_settings:', 'tiers': ['admin']},
+                   {'link': 'edit_member', 'label': 'Edit Members', 'icon': '👥', 'tiers': ['admin']},
+                   ],
+         }
 
-pages = [('yir_count', 'YIR Status', None),
-         ('yir_growth', 'YIR Growth', None),
-         ('yir_time', 'YIR Timeline', None),
-         ('family_tree', 'Family Tree', None),
-         ('family_member', 'Family Members', None)]
-existing_pages = [(page, n, g) for (p, n, g) in pages
-                  if (page := f'pages/{p}.py') and Path(page).exists()
-                  and (p != 'family_tree' or graphviz_available())]
+def allow_page(page):
+    return page.get('tiers') is None or current_identity().tier in page['tiers']
 
-def allow_page(page_gate):
-    return page_gate is None or current_identity().tier in page_gate
+def get_icon(page):
+    return page.get('icon')
+
+def get_link(page):
+    return f'pages/{page["link"]}.py'
 
 # set up page
 def set_sidebar():
@@ -32,17 +40,14 @@ def set_sidebar():
     identity = current_identity()
 
     with st.sidebar:
-        st.page_link('display.py', label='Home')
-        for page_py, page_name, page_gate in existing_pages:
-            if allow_page(page_gate):
-                st.page_link(page_py, label=page_name)
-        if identity.is_admin:
-            st.page_link(
-                'pages/admin.py',
-                label='Administration',
-                icon=':material/admin_panel_settings:',
-            )
+        st.page_link('display.py', label='Home', icon='🏠')
         st.divider()
+        for grouping in pages:
+            for page in pages[grouping]:
+                if allow_page(page):
+                    st.page_link(get_link(page), label=page['label'], icon=get_icon(page))
+            st.divider()
+
         render_account_controls(identity)
 
 def get_hash_funcs():

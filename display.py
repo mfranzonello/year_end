@@ -1,15 +1,18 @@
+from math import e
 import streamlit as st
 
-from pages.general import set_sidebar, existing_pages, allow_page
+from pages.general import set_sidebar, pages, allow_page, get_link
 
 set_sidebar()
 
 st.title(f'Family Fun Times')
 st.write(f'Choose your adventure!')
 
-viewable_ages = [p for p in existing_pages if allow_page(p[-1])]
-cols = st.columns(len(viewable_ages))
-for col, (page_py, page_name, page_gate) in zip(cols, viewable_ages):
-    with col:
-        if st.button(page_name):
-            st.switch_page(page_py)
+for grouping in pages:
+    with st.container(horizontal_alignment='center'):
+        allowable_pages = [page for page in pages[grouping] if allow_page(page)]
+        cols = st.columns(len(allowable_pages))
+        for p, page in enumerate(allowable_pages):
+            with cols[p]:
+                if st.button(page['label']):
+                    st.switch_page(get_link(page))
