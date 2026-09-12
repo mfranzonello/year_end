@@ -2,10 +2,75 @@
 
 from collections.abc import Iterable
 
-from sqlalchemy import Engine, text
-
+from sqlalchemy import text
 from integrations.google.google_calendar.sync import SyncResult
 
+from database.db import read_sql, execute_sql, Engine, DataFrame
+
+def fetch_addresses(engine: Engine) -> DataFrame:
+    sql = f'''
+    SELECT address_id, address_name, zip_code
+    FROM messaging.addresses
+    ;'''
+    return read_sql(engine, sql)
+
+def insert_address(engine: Engine, information: dict):
+    sql = f'''
+    INSERT INTO messaging.addresses (address_name, zip_code)
+    VALUES (:address_name, :zip_code)
+    RETURNING address_id;'''
+    return execute_sql(engine, sql, params=information, returning=True)[0][0]
+
+def update_address(engine: Engine, information: dict):
+    sql = f'''
+    UPDATE messaging.addresses
+    SET address_name = :address_name, zip_code = :zip_code
+    WHERE address_id = :address_id
+    ;'''
+    execute_sql(engine, sql, params=information)
+
+def remove_address(engine: Engine, address_id: int):
+    sql = f'''
+    DELETE FROM messaging.addresses
+    WHERE address_id = :address_id
+    ;'''
+    execute_sql(engine, sql, params={'address_id': address_id})
+
+def fetch_address_moves(engine: Engine):
+    sql = f'''
+    SELECT address_id, address_name, zip_code, move_id, person_id, start_date
+    FROM messaging.addresses JOIN messaging.address_moves USING (address_id)
+    ;'''
+    return read_sql(engine, sql)
+
+def insert_address_move(engine: Engine, information: dict):
+    sql = f'''
+    INSERT INTO messaging.address_moves (address_id, person_id, start_date)
+    VALUES (:address_id, :person_id, :start_date)
+    ;'''
+    execute_sql(engine, sql, params=information)
+
+def update_address_move(engine: Engine, information):
+    sql = f'''
+    UPDATE messaging.address_moves
+    SET start_date = :start_date
+    WHERE move_id = :move_id
+    ;'''
+    execute_sql(engine, sql, params=information)
+
+def remove_address_move(engine: Engine, move_id: int):
+    sql = f'''
+    DELETE FROM messaging.address_moves
+    WHERE move_id = :move_id
+    ;'''
+    execute_sql(engine, sql, params={'move_id': move_id})
+
+def fetch_homeless(engine: Engine) -> DataFrame:
+    sql = f'''
+    SELECT person_id FROM persons WHERE NOT EXISTS
+    (SELECT 1 FROM messaging.address_moves WHERE persons.person_id = address_moves.person_id)
+    ;'''
+    return read_sql(engine, sql)
 
 def fetch_kickoff_folder_links(engine: Engine, project_year: int):
     """Return eligible people and their active project-folder share links."""

@@ -4,15 +4,15 @@ import streamlit as st
 from database.db import get_engine
 from database.db_project import fetch_project_years, fetch_folder_summaries, fetch_years_summary
 from database.db_display import fetch_resolution_order
-from pages.streamlit_auth import get_database_credentials
+from pages.streamlit_auth import get_database_credentials, get_cloud_credentials
 from pages.general import set_sidebar, get_hash_funcs, plot_altair_chart
 from charting.charts_yir import submission_chart, review_pie
-
-CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
+from charting.cloudy import configure_cloud
 
 MIN_STARS = 3
 
 engine = get_engine(*get_database_credentials())
+cloud = configure_cloud(*get_cloud_credentials())
 
 @st.cache_data(hash_funcs=get_hash_funcs())
 def get_project_years(engine):
@@ -84,7 +84,7 @@ match quantity:
 if submission_string:
     st.write(f'{submission_string} submitted this year!')
 
-chart = submission_chart(engine, folder_values, quantity, CLOUDINARY_CLOUD, cap=cap, order=order)
+chart = submission_chart(engine, folder_values, quantity, cloud, cap=cap, order=order)
 plot_altair_chart(chart)
 
 # pie chart for review amount

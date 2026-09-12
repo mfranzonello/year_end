@@ -7,13 +7,13 @@ import streamlit as st
 from database.db import get_engine
 from database.db_display import fetch_actor_spans
 from database.db_adobe import fetch_timeline_reviews, fetch_markers
-from pages.streamlit_auth import get_database_credentials
+from pages.streamlit_auth import get_database_credentials, get_cloud_credentials
 from pages.general import set_sidebar, get_hash_funcs, plot_altair_chart
 from charting.charts_yir import timeline_chart
-
-CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
+from charting.cloudy import configure_cloud
 
 engine = get_engine(*get_database_credentials())
+cloud = configure_cloud(*get_cloud_credentials())
 
 def get_review_name(reviews, review_id:UUID) -> str:
     review = reviews[reviews['review_id']==review_id]
@@ -72,7 +72,7 @@ actor_spans, markers = get_timeline_data(engine, review_id, cut_date)
 # gantt chart of appearances
 if len(actor_spans.dropna(subset=['start_time'])):
     with st.spinner('Building chart...', show_time=True):
-        chart = timeline_chart(engine, actor_spans, markers, cloud_name=CLOUDINARY_CLOUD)
+        chart = timeline_chart(engine, actor_spans, markers, cloud=cloud)
     plot_altair_chart(chart)
 else:
     st.write("This review hasn't been reviewed yet.")

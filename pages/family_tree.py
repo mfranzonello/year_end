@@ -10,6 +10,7 @@ from database.db_display import fetch_member_summary, fetch_member_birth_date, f
 from pages.streamlit_auth import get_database_credentials, get_cloud_credentials
 from pages.general import set_sidebar, get_hash_funcs, plot_graphviz_chart, graphviz_available
 from charting.charts_family import tree_chart
+from charting.cloudy import configure_cloud
 
 # Guard direct page links before loading data or building the tree.
 set_sidebar()
@@ -20,11 +21,10 @@ if not graphviz_available():
             'Please choose another page from the sidebar.')
     st.stop()
 
-CLOUDINARY_CLOUD = st.secrets['cloudinary']['cloud_name']
-
 GENERATION_LIMIT = 20
 
 engine = get_engine(*get_database_credentials())
+cloud = configure_cloud(*get_cloud_credentials())
 
 @st.cache_data(hash_funcs=get_hash_funcs())
 def get_founder_id(engine):
@@ -101,13 +101,13 @@ st.title(f'Family Tree')
 tree_data = get_tree_data(engine, person_id, cut_date, direction, exclude_persons, include_animals)
 
 @st.cache_data(ttl='1d', hash_funcs=get_hash_funcs()) ## need to change lists in tree_data
-def create_tree_chart(engine, tree_data, cloud_name, use_images, generation_limit):
-    return tree_chart(engine, tree_data, cloud_name=cloud_name,
+def create_tree_chart(engine, tree_data, cloud, use_images, generation_limit):
+    return tree_chart(engine, tree_data, cloud=cloud,
                       use_images=use_images, generation_limit=generation_limit)
 
 if len(tree_data):
     # graph with nodes and edges
     with st.spinner('Building tree...', show_time=True):
-        graph = create_tree_chart(engine, tree_data, CLOUDINARY_CLOUD, use_images, GENERATION_LIMIT)
+        graph = create_tree_chart(engine, tree_data, cloud, use_images, GENERATION_LIMIT)
         plot_graphviz_chart(graph, use_images=use_images)
     

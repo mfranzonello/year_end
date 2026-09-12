@@ -5,7 +5,8 @@ import altair as alt
 from pandas import DataFrame, concat, json_normalize
 from webcolors import name_to_hex
 
-from charting.cloudy import get_image_url
+from database.db import Engine
+from charting.cloudy import get_image_url, CloudConfig
 
 def get_color_hexes(color_names:list[str]) -> list[str]:
     return [name_to_hex(c) for c in color_names]
@@ -58,7 +59,7 @@ def get_percent_hq(resolutions:dict, resolution_order:list, hq_min:str) -> float
 
 
 ''' main status review charts '''
-def submission_chart(engine, folder_values:DataFrame, quantity:str, cloud_name:str,
+def submission_chart(engine:Engine, folder_values:DataFrame, quantity:str, cloud:CloudConfig,
                      cap:bool=False, order:list|None=None) -> alt.Chart:
 
     single_bars = ['video_count', 'video_duration', 'file_size']
@@ -112,7 +113,7 @@ def submission_chart(engine, folder_values:DataFrame, quantity:str, cloud_name:s
                                     .fillna('_ROOT')
                                     )
 
-    video_counts['image_url'] = video_counts.apply(lambda x: get_image_url(engine, cloud_name, x['member_id'],
+    video_counts['image_url'] = video_counts.apply(lambda x: get_image_url(engine, cloud, x['member_id'],
                                                                            grayscale=x[sort_quantity]==0,
                                                                            pixels=100,
                                                                            ),
@@ -314,7 +315,7 @@ def growth_charts(year_values, resolution_order:list) -> tuple[alt.Chart]:
 
 
 ''' actor appearances '''
-def timeline_chart(engine, actor_spans:DataFrame, markers:DataFrame, cloud_name:str) -> alt.Chart:
+def timeline_chart(engine:Engine, actor_spans:DataFrame, markers:DataFrame, cloud:CloudConfig) -> alt.Chart:
     time_format = (
         "floor(datum.value/60) + ':' + "
         "(datum.value % 60 < 10 ? '0' : '') + "
@@ -357,7 +358,7 @@ def timeline_chart(engine, actor_spans:DataFrame, markers:DataFrame, cloud_name:
     red = get_color_rgb_hex('firebrick')
     actor_images = appearances[appearances['member_id'].notna()]
     actor_images['image_url'] = (actor_images
-                                 .apply(lambda x: get_image_url(engine, cloud_name, x['member_id'],
+                                 .apply(lambda x: get_image_url(engine, cloud, x['member_id'],
                                                                 grayscale=not x['total_spans'],
                                                                 border_color=blue if x['total_spans'] else red,
                                                                 border_width=10,

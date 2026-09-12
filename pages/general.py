@@ -6,6 +6,7 @@ from shutil import which
 import streamlit as st
 from graphviz import Graph
 from sqlalchemy import Engine
+from cloudinary import Config as CloudConfig
 
 from pages.streamlit_auth import current_identity, render_account_controls
 
@@ -22,11 +23,13 @@ pages = {'project': [{'link': 'yir_count', 'label': 'YIR Status', 'icon': '📊'
                     ],
          'admin': [{'link': 'admin', 'label': 'Administration', 'icon': ':material/admin_panel_settings:', 'tiers': ['admin']},
                    {'link': 'edit_member', 'label': 'Edit Members', 'icon': '👥', 'tiers': ['admin']},
+                   {'link': 'edit_address', 'label': 'Edit Addresses', 'icon': '🗺️', 'tiers': ['admin']},
                    ],
          }
 
 def allow_page(page):
-    return page.get('tiers') is None or current_identity().tier in page['tiers']
+    if Path(f'pages/{page["link"]}.py').exists():
+        return page.get('tiers') is None or current_identity().tier in page['tiers']
 
 def get_icon(page):
     return page.get('icon')
@@ -51,11 +54,16 @@ def set_sidebar():
         render_account_controls(identity)
 
 def get_hash_funcs():
-    hash_funcs = {Engine: lambda x: x.url}
+    hash_funcs = {Engine: lambda x: x.url,
+                  CloudConfig: lambda x: x.cloud_name}
     return hash_funcs
 
 def get_member_name_display(members, member_id):
     return members[members['member_id'] == member_id]['full_name'].iloc[0]
+
+def get_value(x):
+    if x != '':
+        return x
 
 # plot altair chart
 def plot_altair_chart(chart):

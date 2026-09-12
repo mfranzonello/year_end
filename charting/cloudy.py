@@ -9,11 +9,13 @@ import cloudinary
 import cloudinary.api
 import cloudinary.uploader
 from cloudinary.exceptions import NotFound
+from cloudinary import Config as CloudConfig
 from pandas import DataFrame
 import streamlit as st
 
 from database.db import Engine
 from database.db_images import fetch_image_information, update_image_information
+from pages.general import get_hash_funcs
 
 PROFILES = 'profile_images' ## this should move to a config/secrets file
 CLOUDINARY_RESPONSE_COLS = {'version': 'version_number',
@@ -25,7 +27,7 @@ IMAGE_CACHE = Path('.cache/family-tree-images')
 
 IMAGE_TYPES = {'person': 0, 'animal': 1}
 
-def configure_cloud(cloud_name:str, api_key:str, api_secret:str):
+def configure_cloud(cloud_name:str, api_key:str, api_secret:str) -> CloudConfig:
     return cloudinary.config(cloud_name=cloud_name,
                              api_key=api_key,
                              api_secret=api_secret,
@@ -42,9 +44,9 @@ def fetch_resource(public_id:UUID) -> bool:
     except NotFound:
         return False
 
-@st.cache_data
-def get_version(_engine:Engine, public_id:UUID) -> str:
-    image_information = fetch_image_information(_engine, public_id)
+@st.cache_data(hash_funcs=get_hash_funcs())
+def get_version(engine:Engine, public_id:UUID) -> str:
+    image_information = fetch_image_information(engine, public_id)
     if len(image_information):
         return image_information['version_number'].iloc[0]
     
@@ -81,10 +83,10 @@ def border_image(image_url: str, border_color:str) -> str|None:
     if image_url:
         return image_url.replace('/upload/', '/upload/e_grayscale/')
 
-def get_image_url(engine:Engine, cloud_name:str, profile_id:str, profile_type:str=None,
+def get_image_url(engine:Engine, cloud:CloudConfig, profile_id:str, profile_type:str=None,
                   grayscale=False, border_color=None, border_width=5, pixels=None, square=False) -> str|None:
     if profile_id:
-        url_start = f'{CLOUDINARY_DOMAIN}/{cloud_name}/image/upload/'
+        url_start = f'{CLOUDINARY_DOMAIN}/{cloud.cloud_name}/image/upload/'
         version = get_version(engine, profile_id)
 
         if not version:
@@ -114,7 +116,7 @@ def get_image_url(engine:Engine, cloud_name:str, profile_id:str, profile_type:st
 
         return image_url
 
-def get_image_path(engine:Engine, cloud_name: str, node_id: UUID, node_type: str) -> Path:
+def get_image_path(engine:Engine, cloud:CloudConfig, node_id:UUID, node_type:str) -> Path:
 
     # use cached folder
     IMAGE_CACHE.mkdir(parents=True, exist_ok=True)
@@ -126,7 +128,7 @@ def get_image_path(engine:Engine, cloud_name: str, node_id: UUID, node_type: str
         default_image_path = IMAGE_CACHE / f'{UUID(int=i)}.png'
         if not default_image_path.exists():
             # download default image
-            image_url = get_image_url(engine, cloud_name, UUID(int=i), pixels=100)
+            image_url = get_image_url(engine, cloud.cloud_name, UUID(int=i), pixels=100)
             default_image_path.write_bytes(urlopen(image_url, timeout=10).read())
         default_image_paths[n] = default_image_path
         
@@ -141,7 +143,7 @@ def get_image_path(engine:Engine, cloud_name: str, node_id: UUID, node_type: str
         version = get_version(engine, node_id)
         if version:
             # download image
-            image_url = get_image_url(engine, cloud_name, node_id, pixels=100)
+            image_url = get_image_url(engine, cloud.cloud_name, node_id, pixels=100)
             image_path.write_bytes(urlopen(image_url, timeout=10).read())
         else:
             # use default

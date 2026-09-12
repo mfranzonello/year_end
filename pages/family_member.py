@@ -1,6 +1,4 @@
-from uuid import UUID
-from datetime import date, timedelta
-from dateutil.relativedelta import relativedelta
+from datetime import date
 
 import streamlit as st
 
@@ -34,13 +32,13 @@ members, member_informations = get_member_data(engine)
 
 # initialize / validate the selection
 if 'member_id' not in st.session_state:
-    st.session_state.member_id = None
+    st.session_state['member_id'] = None
 
 if 'member_select' not in st.session_state:
-    st.session_state.member_select = st.session_state.member_id
+    st.session_state['member_select'] = st.session_state['member_id']
 
 def select_member():
-    st.session_state.member_id = st.session_state.member_select
+    st.session_state['member_id'] = st.session_state.get('member_select')
 
 st.selectbox(
     'Select Member',
@@ -73,7 +71,7 @@ if member_id is not None:
 
     cols = st.columns(3)
     with cols[0]:
-        fill_image(engine, cloud.cloud_name, members, member_type, member_id)
+        fill_image(engine, cloud, members, member_type, member_id)
 
     with cols[1]:
         fill_personal(information, member_type, sex, is_future, is_deceased)

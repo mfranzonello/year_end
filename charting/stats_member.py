@@ -7,9 +7,10 @@ import streamlit as st
 from pgeocode import Nominatim
 from pandas import DataFrame, Series
 
+from database.db import Engine
 from pages.streamlit_auth import current_tier, require_admin
 from pages.general import get_member_name_display
-from charting.cloudy import get_version, get_image_url, upload_image
+from charting.cloudy import get_version, get_image_url, upload_image, CloudConfig
 
 nomi = Nominatim('us')
 
@@ -108,13 +109,24 @@ def get_plural(word:str, count:int=None, items:list=None, s:str='s', plural:str=
 
     return plural if (quantity != 1) else word
 
-def plot_map(location:Series):
+def get_location(zip_code: int):
+    return nomi.query_postal_code(zip_code)
+
+def get_location_data(location: Series):
     location_data = DataFrame([[location.latitude, location.longitude]], columns=('lat', 'lon'))
     return location_data
 
-def fill_image(engine, cloud_name, members, member_type, member_id):
+def plot_map(zip_code, height=300, width=350, zoom=10, markdown=None):
+    location = get_location(zip_code)
+    location_data = get_location_data(location)
+
+    markdown_text = f'**{markdown}**: ' if markdown else ''
+    st.markdown(f'{markdown_text}{location.place_name}, {location.state_code}')
+    st.map(location_data, height=height, width=width, zoom=zoom)
+
+def fill_image(engine:Engine, cloud:CloudConfig, members, member_type, member_id):
     # member image
-    image_url = get_image_url(engine, cloud_name, member_id, profile_type=member_type, square=True)
+    image_url = get_image_url(engine, cloud, member_id, profile_type=member_type, square=True)
     st.image(image_url, width=350)
 
     if current_tier() == "admin":
@@ -248,10 +260,7 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
     contact_info = information['contact_info'].iloc[0]
     zip_code = contact_info.get('zip_code')
     if zip_code:
-        location = nomi.query_postal_code(zip_code)
-        st.markdown(f'**Lives Near**: {location.place_name}, {location.state_code}')
-        location_data = plot_map(location)
-        st.map(location_data, height=300, width=350, zoom=10)
+        plot_map(zip_code, markdown='Lives near')
 
 def fill_lineage(information, members, member_type, sex, is_future):
     future = 'Future ' if is_future else ''

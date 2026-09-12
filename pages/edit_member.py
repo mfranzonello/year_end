@@ -10,7 +10,7 @@ from database.db_family import (
     remove_person, remove_animal, remove_parents, remove_pets, remove_partners)
 from database.db_display import fetch_member_summary
 from pages.streamlit_auth import get_database_credentials, get_cloud_credentials
-from pages.general import set_sidebar, get_hash_funcs, get_member_name_display
+from pages.general import set_sidebar, get_hash_funcs, get_member_name_display, get_value
 from charting.cloudy import configure_cloud, get_image_url, upload_image, get_version
 
 engine = get_engine(*get_database_credentials())
@@ -52,10 +52,6 @@ def get_last_name_display(x):
             return 'theirs'
         case _:
             return 'neither'
-
-def get_value(x):
-    if x != '':
-        return x
 
 def check_date_precisions(date_value, date_precision):
     return ((date_value is None and date_precision in ['past', 'future']) or
@@ -436,7 +432,7 @@ if member_id is not None:
                 st.text_area('Notes', information['notes'].iloc[0], key='notes')
 
             with cols[2]:
-                image_url = get_image_url(engine, cloud.cloud_name, member_id, profile_type=member_type, square=True)
+                image_url = get_image_url(engine, cloud, member_id, profile_type=member_type, square=True)
                 st.image(image_url, width=350)
 
                 if 'image_replacement_key' in st.session_state:
