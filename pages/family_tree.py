@@ -21,7 +21,7 @@ if not graphviz_available():
             'Please choose another page from the sidebar.')
     st.stop()
 
-GENERATION_LIMIT = 20
+###GENERATION_LIMIT = 20
 
 engine = get_engine(*get_database_credentials())
 cloud = configure_cloud(*get_cloud_credentials())
@@ -52,7 +52,7 @@ def get_tree_data(engine, person_id, cut_date, direction, exclude_persons, inclu
 member_summary = get_member_summary(engine)
 persons = member_summary[member_summary['member_type'] == 'person'].sort_values(by='sort_order').reset_index(drop=True)
 
-cols = st.columns(5)
+cols = st.columns([3, 2, 1, 1, 1, 1])
 with cols[0]:
     founder_id = get_founder_id(engine)
     person_id:UUID = st.selectbox('Person to Center', persons['member_id'],
@@ -91,7 +91,8 @@ with cols[4]:
                           format_func=lambda x: {True: 'Images', False: 'Text'}[x],
                           help='Show the graph with images or text-only')
     
-# # with cols[5]:
+with cols[5]:
+    generation_limit = st.number_input('Generation Limit', min_value=20, max_value=None, value=20, key='generation_limit')
 # #     extended = st.checkbox('Extended Tree', value=False, help='Include all known family members, even if not directly related to the selected person.')
 # #     direction = 'bidirectional' if extended else 'up_down'
 direction = 'up_down'  # default to up_down for now, can add extended option later
@@ -108,6 +109,6 @@ def create_tree_chart(engine, tree_data, cloud, use_images, generation_limit):
 if len(tree_data):
     # graph with nodes and edges
     with st.spinner('Building tree...', show_time=True):
-        graph = create_tree_chart(engine, tree_data, cloud, use_images, GENERATION_LIMIT)
+        graph = create_tree_chart(engine, tree_data, cloud, use_images, generation_limit)
         plot_graphviz_chart(graph, use_images=use_images)
     
