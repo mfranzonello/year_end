@@ -38,22 +38,30 @@ def remove_address(engine: Engine, address_id: int):
 
 def fetch_address_moves(engine: Engine):
     sql = f'''
-    SELECT address_id, address_name, zip_code, move_id, person_id, start_date
+    SELECT address_id, address_name, zip_code, move_id, person_id, move_date
     FROM messaging.addresses JOIN messaging.address_moves USING (address_id)
     ;'''
     return read_sql(engine, sql)
 
 def insert_address_move(engine: Engine, information: dict):
     sql = f'''
-    INSERT INTO messaging.address_moves (address_id, person_id, start_date)
-    VALUES (:address_id, :person_id, :start_date)
+    INSERT INTO messaging.address_moves (address_id, person_id, move_date)
+    VALUES (:address_id, :person_id, :move_date)
     ;'''
     execute_sql(engine, sql, params=information)
 
 def update_address_move(engine: Engine, information):
     sql = f'''
     UPDATE messaging.address_moves
-    SET start_date = :start_date
+    SET move_date = :move_date
+    WHERE move_id = :move_id
+    ;'''
+    execute_sql(engine, sql, params=information)
+
+def update_move(engine: Engine, information):
+    sql = f'''
+    UPDATE messaging.address_moves
+    SET move_date = :move_date, address_id = :address_id
     WHERE move_id = :move_id
     ;'''
     execute_sql(engine, sql, params=information)
@@ -71,6 +79,52 @@ def fetch_homeless(engine: Engine) -> DataFrame:
     (SELECT 1 FROM messaging.address_moves WHERE persons.person_id = address_moves.person_id)
     ;'''
     return read_sql(engine, sql)
+
+def fetch_member_moves(engine: Engine):
+    sql = f'''
+    WITH
+    person_addy AS (
+    SELECT person_id,
+    ARRAY_AGG(json_build_object('move_id', move_id, 'address_id', address_id, 'address_name', address_name,
+        'zip_code', zip_code, 'move_date', move_date)
+    ORDER BY move_date NULLS FIRST) AS moves
+    FROM messaging.address_moves
+    JOIN messaging.addresses USING (address_id)
+    GROUP BY person_id
+    ),
+
+    owners AS (
+    SELECT pet_id AS animal_id,
+    ARRAY_AGG(owner_id ORDER BY gotcha_date NULLS LAST) AS owner_ids
+    FROM pets
+    GROUP BY pet_id
+    ),
+
+    owner_addresses AS (
+    SELECT pet_id AS animal_id, move_id, address_id, address_name, zip_code, move_date
+    FROM pets JOIN animals ON animal_id = pet_id
+    JOIN messaging.address_moves ON person_id = owner_id
+    JOIN messaging.addresses USING (address_id)
+    WHERE (death_date IS NULL OR move_date IS NULL OR move_date <= death_date) AND relation_type = 'adoptive'
+    ),
+
+    animal_addy AS (
+    SELECT animal_id,
+    ARRAY_AGG(json_build_object('move_id', move_id, 'address_id', address_id, 'address_name', address_name,
+        'zip_code', zip_code, 'move_date', move_date)
+    ORDER BY move_date NULLS FIRST) AS moves
+    FROM owner_addresses
+    GROUP BY animal_id
+    )
+
+    SELECT person_id AS member_id, 'person' AS member_type, moves
+    FROM persons LEFT JOIN person_addy USING (person_id)
+    UNION ALL
+    SELECT animal_id AS member_id, 'animal' AS member_type, moves
+    FROM animals LEFT JOIN animal_addy USING (animal_id)
+    ;'''
+    return read_sql(engine, sql)
+
 
 def fetch_kickoff_folder_links(engine: Engine, project_year: int):
     """Return eligible people and their active project-folder share links."""

@@ -96,7 +96,7 @@ def get_list_display(members, list_ids, callout):
     with st.container(width='content'):
         for list_id in list_ids:
             st.button(get_member_name_display(members, list_id), type='secondary',
-                      on_click=go_to_member, args=(list_id, ))
+                      on_click=go_to_member, args=(list_id, ), key=f'member_{list_id}')
 
 def get_plural(word:str, count:int=None, items:list=None, s:str='s', plural:str=None):
     if plural is None:

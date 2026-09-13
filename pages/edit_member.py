@@ -10,7 +10,7 @@ from database.db_family import (
     remove_person, remove_animal, remove_parents, remove_pets, remove_partners)
 from database.db_display import fetch_member_summary
 from pages.streamlit_auth import get_database_credentials, get_cloud_credentials
-from pages.general import set_sidebar, get_hash_funcs, get_member_name_display, get_value
+from pages.general import set_sidebar, get_hash_funcs, get_member_name_display, get_value, get_index, parse_db_error
 from charting.cloudy import configure_cloud, get_image_url, upload_image, get_version
 
 engine = get_engine(*get_database_credentials())
@@ -31,10 +31,6 @@ relation_types = {'person': ['biological', 'adoptive', 'step'],
 partner_types = ['marriage', 'civil']
 connect_types = ['friends']
 union_types = partner_types + connect_types
-
-def get_index(values, value):
-    if value in values:
-        return values.index(value)
 
 @st.cache_data(hash_funcs=get_hash_funcs())
 def get_member_data(engine):
@@ -62,10 +58,10 @@ if 'member_id' not in st.session_state:
     st.session_state['member_id'] = None
 
 if 'member_select' not in st.session_state:
-    st.session_state['member_select'] = st.session_state.member_id
+    st.session_state['member_select'] = st.session_state['member_id']
 
 def select_member():
-    st.session_state.member_id = st.session_state.member_select
+    st.session_state['member_id'] = st.session_state['member_select']
 
 @st.dialog('Add New Person', width='medium')
 def add_new_person():
@@ -116,9 +112,12 @@ def add_new_person():
                         'birth_date', 'birth_date_precision', 'death_date', 'death_date_precision',
                         'notes']
                 information = {k: get_value(st.session_state[f'{k}_new']) for k in keys}
-                st.session_state['member_id'] = insert_person(engine, information)
-                get_member_data.clear()
-                st.rerun()
+                try:
+                    insert_person(engine, information)
+                    get_member_data.clear()
+                    st.rerun()
+                except Exception as e:
+                    parse_db_error(e)
 
 @st.dialog('Add New Animal', width='medium')
 def add_new_animal():
@@ -166,9 +165,12 @@ def add_new_animal():
                         'birth_date', 'birth_date_precision', 'death_date', 'death_date_precision',
                         'notes']
                 information = {k: get_value(st.session_state[f'{k}_new']) for k in keys}
-                st.session_state['member_id'] = insert_animal(engine, information)
-                get_member_data.clear()
-                st.rerun()
+                try:
+                    st.session_state['member_id'] = insert_animal(engine, information)
+                    get_member_data.clear()
+                    st.rerun()
+                except Exception as e:
+                    parse_db_error(e, 'Insert Animal')
 
 @st.dialog('Add New Parent', width='medium')
 def add_new_parent(persons, person_id):
@@ -191,8 +193,11 @@ def add_new_parent(persons, person_id):
                 keys = ['parent_id', 'relation_type']
                 information = {'child_id': person_id}
                 information.update({k: get_value(st.session_state[f'{k}_new']) for k in keys})
-                insert_parents(engine, information)
-                st.rerun()
+                try:
+                    insert_parents(engine, information)
+                    st.rerun()
+                except Exception as e:
+                    parse_db_error(e, 'Insert Parents')
 
 @st.dialog('Add New Owner', width='medium')
 def add_new_owner(persons, animal_id):
@@ -226,8 +231,11 @@ def add_new_owner(persons, animal_id):
                 keys = ['owner_id', 'relation_type', 'gotcha_date', 'gotcha_date_precision']
                 information = {'pet_id': animal_id}
                 information.update({k: get_value(st.session_state[f'{k}_new']) for k in keys})
-                insert_pets(engine, information)
-                st.rerun()
+                try:
+                    insert_pets(engine, information)
+                    st.rerun()
+                except Exception as e:
+                    parse_db_error(e, 'Insert Pets')
 
 @st.dialog('Add New Partner', width='medium')
 def add_new_partner(persons, person_id):
@@ -277,9 +285,12 @@ def add_new_partner(persons, person_id):
                                'last_name_person_id': {True: person_id,
                                                        False: st.session_state['partner_id_new']}.get(st.session_state['last_name_primary_new'])}
                 information.update({k: get_value(st.session_state[f'{k}_new']) for k in keys})
-                insert_partners(engine, information)
-                get_member_data.clear()
-                st.rerun()
+                try:
+                    insert_partners(engine, information)
+                    get_member_data.clear()
+                    st.rerun()
+                except Exception as e:
+                    parse_db_error(e, 'Insert Partners')
 
 @st.dialog('Add New Friend', width='medium')
 def add_new_friend(persons, person_id):
@@ -308,14 +319,17 @@ def add_new_friend(persons, person_id):
 
         st.divider()
         with st.container(horizontal_alignment='right'):
-            if st.form_submit_button('Add Partnership', type='primary'):
+            if st.form_submit_button('Add Frienship', type='primary'):
                 keys = ['parnter_id', 'union_type', 'union_date', 'union_date_precision']
                 keys_2 = ['last_name_person_id', 'last_name_custom', 'last_name_hyphen']
                 information = {'person_id': person_id}
                 information.update({k: get_value(st.session_state[f'{k}_new']) for k in keys})
                 information.update({k: None for k in keys_2})
-                insert_partners(engine, information)
-                st.rerun()
+                try:
+                    insert_partners(engine, information)
+                    st.rerun()
+                except Exception as e:
+                    parse_db_error(e, 'Insert Friends')
 
 @st.dialog('Delete a Member', width='medium')
 def delete_member(member_id):
@@ -324,14 +338,17 @@ def delete_member(member_id):
                 f'This cannot be undone.'))
     with st.container(horizontal_alignment='right'):
         if st.button('Confirm', type='primary'):
-            match member_type:
-                case 'person':
-                    remove_person(engine, member_id)
-                case 'animal':
-                    remove_animal(engine, member_id)
-            st.session_state['member_id'] = None
-            get_member_data.clear()
-            st.rerun()
+            try:
+                match member_type:
+                    case 'person':
+                        remove_person(engine, member_id)
+                    case 'animal':
+                        remove_animal(engine, member_id)
+                st.session_state['member_id'] = None
+                get_member_data.clear()
+                st.rerun()
+            except Exception as e:
+                parse_db_error(e, f'Remove {member_type.title()}')
 
 members = get_member_data(engine)
 persons = members[members['member_type'] == 'person'].reset_index(drop=True)
@@ -465,7 +482,7 @@ if member_id is not None:
                             with cols[2]:
                                 st.selectbox(f'Relation type', options=relation_types[member_type],
                                              index=relation_types[member_type].index(relation_type),
-                                             key=f'parent_relation_{p}')
+                                             key=f'relation_type_{p}')
 
             case 'animal':
                 pets = fetch_pets(engine, animal_id=member_id)
@@ -489,7 +506,7 @@ if member_id is not None:
                             with cols[2]:
                                 st.selectbox(f'Relation Type', options=relation_types[member_type],
                                              index=relation_types[member_type].index(relation_type),
-                                             key=f'owner_relation_{p}')
+                                             key=f'relation_type_{p}')
                             with cols[3]:
                                 st.date_input('Gotcha Date', gotcha_date,
                                               min_value=date.min, max_value=date.max, key=f'gotcha_date_{p}')
@@ -506,12 +523,13 @@ if member_id is not None:
                 st.divider()
                 with st.container():
                     spouses = partners[partners['union_type'].isin(partner_types)]
-                    for p, (partner_id, union_type,
+                    for p, (partner_id, union_id, union_type,
                             union_date, union_date_precision,
                             last_name_person_id, last_name_hyphen, last_name_custom) in \
-                                spouses[['partner_id',
+                                spouses[['partner_id', 'union_id',
                                          'union_type', 'union_date', 'union_date_precision',
                                          'last_name_person_id', 'last_name_hyphen', 'last_name_custom']].iterrows():
+                        st.session_state[f'union_id_{p}'] = union_id
                         with st.container():
                             cols = st.columns([1, 6, 2, 3, 2, 1], vertical_alignment='bottom')
                             with cols[0]:
@@ -527,7 +545,7 @@ if member_id is not None:
                                              index=union_types.index(union_type),
                                              key=f'union_type_{p}')
                             with cols[3]:
-                                st.date_input('Union Date', union_date,
+                                st.date_input('Union date', union_date,
                                               min_value=date.min, max_value=date.max,key=f'union_date_{p}')
                             with cols[4]:
                                 st.selectbox('Precision',
@@ -537,9 +555,18 @@ if member_id is not None:
                         with st.container():
                             cols = st.columns([1, 6, 2, 2, 3, 1])
                             with cols[1]:
-                                st.text_input('Custom Name', value=last_name_custom, key=f'last_name_custom_{p}')
+                                st.text_input('Custom name', value=last_name_custom, key=f'last_name_custom_{p}')
                             with cols[2]:
-                                st.checkbox('Primary Name', value=last_name_person_id==member_id, key=f'primary_name_{p}')
+                                if last_name_person_id == member_id:
+                                    last_name_index = 0
+                                elif last_name_person_id == partner_id:
+                                    last_name_index = 1
+                                else:
+                                    last_name_index = 2
+                                st.radio('Primary name', options=[True, False, None],
+                                         index=last_name_index,
+                                         format_func=lambda x: get_last_name_display(x),
+                                         key=f'last_name_primary_{p}')
                             with cols[3]:                            
                                 st.checkbox('Hyphenated', value=last_name_hyphen, key=f'uses_hyphen_{p}')
 
@@ -565,7 +592,7 @@ if member_id is not None:
                                          index=union_types.index(union_type),
                                          key=f'union_type_{p+q}')
                         with cols[3]:
-                            st.date_input('Union Date', union_date,
+                            st.date_input('Union date', union_date,
                                           min_value=date.min, max_value=date.max, key=f'union_date_{p+q}')
                         with cols[4]:
                             st.selectbox('Precision',
@@ -628,7 +655,10 @@ if member_id is not None:
                                 keys = ['parent_id', 'relation_type']
                                 information = {'child_id': member_id}
                                 information.update({k: get_value(st.session_state.get(f'{k}_{i}')) for k in keys})
-                                update_parents(engine, information)
+                                try:
+                                    update_parents(engine, information)
+                                except Exception as e:
+                                    parse_db_error(e, 'Update Parents')
 
                         # update partners
                         for i in range(len(partners)):
@@ -638,9 +668,18 @@ if member_id is not None:
                                 remove_partners(engine, information)
                             else:
                                 keys = ['union_id', 'union_date', 'union_date_precision', 'union_type',
-                                        'last_name_person_id', 'last_name_hyphen', 'last_name_custom']
-                                information = {k: get_value(st.session_state.get(f'{k}_{i}')) for k in keys}
-                                update_parents(engine, information)
+                                        'last_name_hyphen', 'last_name_custom']
+                                information = {'last_name_person_id': 
+                                               {True: member_id,
+                                                False: st.session_state[f'partner_id_{i}']}\
+                                                    .get(st.session_state[f'last_name_primary_{i}'])}
+                                information.update({k: get_value(st.session_state.get(f'{k}_{i}')) for k in keys})
+                                print('VEEP2')
+                                print(f'{information=}')
+                                try:
+                                    update_partners(engine, information)
+                                except Exception as e:
+                                    parse_db_error(e, 'Update Partners')
 
                     case 'animal':
                         # update owners
@@ -653,7 +692,10 @@ if member_id is not None:
                                 keys = ['owner_id', 'relation_type', 'gotcha_date', 'gotcha_date_precion']
                                 information = {'pet_id': member_id}
                                 information.update({k: get_value(st.session_state.get(f'{k}_{i}')) for k in keys})
-                                update_pets(engine, information)
+                                try:
+                                    update_pets(engine, information)
+                                except Exception as e:
+                                    parse_db_error(e, 'Update Pets')
 
                 # refresh cache for new names
                 ##if pre_name != post_name:

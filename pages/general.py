@@ -7,6 +7,7 @@ import streamlit as st
 from graphviz import Graph
 from sqlalchemy import Engine
 from cloudinary import Config as CloudConfig
+from psycopg.errors import NotNullViolation, ForeignKeyViolation, UniqueViolation, CheckViolation
 
 from pages.streamlit_auth import current_identity, render_account_controls
 
@@ -24,6 +25,7 @@ pages = {'project': [{'link': 'yir_count', 'label': 'YIR Status', 'icon': '📊'
          'admin': [{'link': 'admin', 'label': 'Administration', 'icon': ':material/admin_panel_settings:', 'tiers': ['admin']},
                    {'link': 'edit_member', 'label': 'Edit Members', 'icon': '👥', 'tiers': ['admin']},
                    {'link': 'edit_address', 'label': 'Edit Addresses', 'icon': '🗺️', 'tiers': ['admin']},
+                   {'link': 'edit_move', 'label': 'Edit Moves', 'icon': '📦', 'tiers': ['admin']},
                    ],
          }
 
@@ -65,6 +67,10 @@ def get_value(x):
     if x != '':
         return x
 
+def get_index(values, value):
+    if value in values:
+        return values.index(value)
+
 # plot altair chart
 def plot_altair_chart(chart):
     if chart:
@@ -76,3 +82,20 @@ def plot_graphviz_chart(graph:Graph, use_images=False):
             st.image(graph.pipe(format='png'))
         else:
             st.graphviz_chart(graph)
+
+def parse_db_error(e: Exception, function: str):
+    error = e.orig
+    if isinstance(error, NotNullViolation):
+        st.error(f'**{function}**: `{error.diag.column_name}` is required.')
+
+    elif isinstance(error, ForeignKeyViolation):
+        st.error(f'**{function}**: This record cannot be changed because other records depend on it.')
+       
+    elif isinstance(error, UniqueViolation):
+        st.error(f'**{function}**: A record with these values already exists.')
+
+    elif isinstance(error, CheckViolation):
+        st.error(f'**{function}**: One or more values are not valid.')
+
+    else:
+        st.error(f'**{function}**: The database rejected this change.')

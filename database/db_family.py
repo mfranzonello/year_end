@@ -182,7 +182,7 @@ def update_partners(engine:Engine, partner_information:dict):
     UPDATE unions SET union_type = :union_type,
     union_date = :union_date, union_date_precision = :union_date_precision,
     last_name_person_id = :last_name_person_id,
-    last_name_hyphen = :last_name_person_id, last_name_custom = :last_name_custom
+    last_name_hyphen = :last_name_hyphen, last_name_custom = :last_name_custom
     WHERE union_id = :union_id
     ;'''
     execute_sql(engine, sql, params=partner_information)
@@ -337,7 +337,7 @@ def fetch_person_information(engine:Engine) -> DataFrame:
     person_id, zip_code
     FROM messaging.address_moves
     JOIN messaging.addresses USING (address_id)
-    ORDER BY person_id, start_date DESC NULLS LAST
+    ORDER BY person_id, move_date DESC NULLS LAST
     ),
 
     socials AS (
@@ -406,29 +406,19 @@ def fetch_animal_information(engine:Engine) -> DataFrame:
     ),
   
     owner_addresses AS (
-    SELECT
-        p.pet_id AS animal_id,
-        person_id,
-        zip_code,
-        start_date
-    FROM pets p
-    JOIN animals an
-        ON animal_id = pet_id
-    JOIN messaging.address_moves
-        ON person_id = owner_id
-    JOIN messaging.addresses
-        USING (address_id)
-    WHERE
-        death_date IS NULL
-        OR start_date IS NULL
-        OR start_date <= death_date
+    SELECT pet_id AS animal_id, person_id, zip_code, move_date
+    FROM pets 
+    JOIN animals ON animal_id = pet_id
+    JOIN messaging.address_moves ON person_id = owner_id
+    JOIN messaging.addresses USING (address_id)
+    WHERE death_date IS NULL OR move_date IS NULL OR move_date <= death_date
     ),
 
     addy AS (
     SELECT DISTINCT ON (animal_id)
     animal_id, zip_code
     FROM owner_addresses
-    ORDER BY animal_id, start_date DESC NULLS LAST
+    ORDER BY animal_id, move_date DESC NULLS LAST
     ),
 
     stats_1 AS (
