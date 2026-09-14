@@ -117,7 +117,7 @@ def add_new_person():
                     get_member_data.clear()
                     st.rerun()
                 except Exception as e:
-                    parse_db_error(e)
+                    parse_db_error(e, 'Insert Person')
 
 @st.dialog('Add New Animal', width='medium')
 def add_new_animal():

@@ -21,8 +21,6 @@ if not graphviz_available():
             'Please choose another page from the sidebar.')
     st.stop()
 
-###GENERATION_LIMIT = 20
-
 engine = get_engine(*get_database_credentials())
 cloud = configure_cloud(*get_cloud_credentials())
 
@@ -52,7 +50,7 @@ def get_tree_data(engine, person_id, cut_date, direction, exclude_persons, inclu
 member_summary = get_member_summary(engine)
 persons = member_summary[member_summary['member_type'] == 'person'].sort_values(by='sort_order').reset_index(drop=True)
 
-cols = st.columns([3, 2, 1, 1, 1, 1])
+cols = st.columns([2.5, 2, 1, 1, 1, 1.5])
 with cols[0]:
     founder_id = get_founder_id(engine)
     person_id:UUID = st.selectbox('Person to Center', persons['member_id'],

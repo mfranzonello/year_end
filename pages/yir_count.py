@@ -9,7 +9,7 @@ from pages.general import set_sidebar, get_hash_funcs, plot_altair_chart
 from charting.charts_yir import submission_chart, review_pie
 from charting.cloudy import configure_cloud
 
-MIN_STARS = 3
+##MIN_STARS = 3
 
 engine = get_engine(*get_database_credentials())
 cloud = configure_cloud(*get_cloud_credentials())
@@ -44,7 +44,7 @@ options = {'video_count': 'count',
            'resolution_count': 'resolution'}
 
 quantity = st.radio(label='Display Quantity', options=options.keys(), format_func=lambda x: options[x],
-                    horizontal=True)
+                            horizontal=True)
 
 # bar chart for submissions
 cap = False
@@ -88,6 +88,9 @@ chart = submission_chart(engine, folder_values, quantity, cloud, cap=cap, order=
 plot_altair_chart(chart)
 
 # pie chart for review amount
+min_stars = st.number_input('Stars for High Rating', min_value=1, max_value=5, value=3, width=150)
+
+
 year_values = get_years_summary(engine)
-chart = review_pie(year_values, year, MIN_STARS)
+chart = review_pie(year_values, year, min_stars)
 plot_altair_chart(chart)
