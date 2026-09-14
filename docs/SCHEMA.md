@@ -91,11 +91,11 @@ relation types are `biological`, `adoptive`, and `step`; the default is
 junction: a person may have multiple recorded parents and may parent multiple
 people.
 
-The current schema inspection exposes only the relation-type `CHECK`, not a
-declared composite primary/unique key or foreign keys. A focused integrity
-hardening should add uniqueness for `(child_id, parent_id)`, foreign keys to
-`persons`, and a self-parent guard. Confirm deletion behavior before selecting
-foreign-key actions.
+Both `child_id` and `parent_id` have validated foreign keys to
+`persons.person_id`, added on 2026-09-14 after checking for orphaned links.
+Both use `NO ACTION` for updates and deletes: remove relationships explicitly
+before deleting a referenced person. A self-parent guard remains a separate
+integrity consideration.
 
 Do not impose a blanket maximum of two rows per child by default. Biological,
 adoptive, and step relationships can legitimately coexist, and a hard limit
@@ -134,10 +134,11 @@ and stores `relation_type`, `gotcha_date`, and date precision. Current pet
 relation types are `adoptive` and `shared`. It already supports multiple owners
 per animal and multiple animals per person, so it needs no structural redesign.
 
-As with `parents`, the current inspection exposes only its `CHECK` constraints,
-not a declared composite primary/unique key or foreign keys. A focused
-integrity hardening should add uniqueness for `(pet_id, owner_id)` and foreign
-keys to `animals` and `persons`, after confirming deletion behavior. Whether a
+`pet_id` has a validated foreign key to `animals.animal_id`; `owner_id` has
+one to `persons.person_id`. Added on 2026-09-14 after checking for orphaned
+links, both use `NO ACTION` for updates and deletes. Remove relationships
+explicitly before deleting referenced identities. Pair uniqueness remains a
+separate integrity consideration. Whether a
 `gotcha_date` belongs to the animal itself or an owner-specific relationship is
 a semantic question for a later review, not a reason to change its cardinality.
 

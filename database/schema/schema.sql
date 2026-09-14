@@ -4367,5 +4367,20 @@ ALTER TABLE ONLY users.pre_approvals
 
 
 --
+-- Relationship foreign keys verified against the live catalog on 2026-09-14.
+--
+
+ALTER TABLE ONLY public.parents
+    ADD CONSTRAINT parents_child_id_fkey FOREIGN KEY (child_id) REFERENCES public.persons(person_id);
+
+ALTER TABLE ONLY public.parents
+    ADD CONSTRAINT parents_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.persons(person_id);
+
+ALTER TABLE ONLY public.pets
+    ADD CONSTRAINT pets_pet_id_fkey FOREIGN KEY (pet_id) REFERENCES public.animals(animal_id);
+
+ALTER TABLE ONLY public.pets
+    ADD CONSTRAINT pets_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.persons(person_id);
+
 -- PostgreSQL database dump complete
 --
