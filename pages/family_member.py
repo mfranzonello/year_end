@@ -43,8 +43,7 @@ def select_member():
 st.selectbox(
     'Select Member',
     members['member_id'], placeholder='Choose a family member to view',
-    format_func=lambda x: get_member_name_display(members, x), index=None,
-    width=350,
+    format_func=lambda x: get_member_name_display(members, x), index=None, width=350,
     key='member_select', on_change=select_member,
     )
 
