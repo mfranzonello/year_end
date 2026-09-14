@@ -421,10 +421,12 @@ identities and roles with unique `(user_id, role_id)` pairs.
 has no declared key or foreign-key link to `identities`, whose issuer remains a
 text field. `users.pre_approvals` is intended to map many email addresses to a
 role before first login, so a matching person can receive that role rather than
-the ordinary first-login tier. The current primary key prevents duplicate email
-entries, but its unique `role_id` constraint also permits only one pre-approved
-email per role. Remove or redesign that constraint before implementing the
-many-person pre-approval flow.
+the ordinary Demo tier. An email absent from this list remains Demo by default;
+pre-approved roles can include `viewer`, `member`, `admin`, and a future
+`contributor` role. The current primary key prevents duplicate email entries,
+but its unique `role_id` constraint also permits only one pre-approved email per
+role. Remove or redesign that constraint before implementing the many-person
+pre-approval flow.
 
 The `indentity_roles_user_id_fkey` constraint now uses `ON DELETE CASCADE`.
 This was applied directly to Neon for the Streamlit authentication integration;

@@ -295,8 +295,9 @@ New accounts receive the `demo` role. Runtime routing sends anonymous and
 Demo-tier sessions to the fictional demo database, while the identity lookup
 remains against the primary database. The `users.pre_approvals` table and
 issuer reference data are schema groundwork only until an explicit first-login
-workflow assigns an approved email's configured role. Define the ordinary
-first-login tier as part of that workflow rather than inheriting it implicitly.
+workflow assigns an approved email's configured role. An unapproved first login
+remains Demo; pre-approvals should support Viewer, Member, Administrator, and
+the future Contributor role without hardcoding a finite role set in Python.
 
 The immediate access-policy work is to add per-page guards to every write
 surface and test direct navigation before broader family access. The target
