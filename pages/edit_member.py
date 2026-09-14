@@ -8,7 +8,7 @@ from database.db_family import (
     update_person, update_animal, update_parents, update_pets, update_partners,
     insert_person, insert_animal, insert_parents, insert_pets, insert_partners,
     remove_person, remove_animal, remove_parents, remove_pets, remove_partners)
-from database.db_display import fetch_member_summary
+from database.db_display import fetch_member_summary, fetch_regions
 from pages.streamlit_auth import get_database_credentials, get_cloud_credentials
 from pages.general import set_sidebar, get_hash_funcs, get_member_name_display, get_value, get_index, parse_db_error
 from charting.cloudy import configure_cloud, get_image_url, upload_image, get_version
@@ -31,6 +31,12 @@ relation_types = {'person': ['biological', 'adoptive', 'step'],
 partner_types = ['marriage', 'civil']
 connect_types = ['friends']
 union_types = partner_types + connect_types
+
+@st.cache_data(hash_funcs=get_hash_funcs())
+def get_regions(engine):
+    return fetch_regions(engine).sort_values('region_name')
+
+regions = get_regions(engine)
 
 @st.cache_data(hash_funcs=get_hash_funcs())
 def get_member_data(engine):
@@ -83,6 +89,11 @@ def add_new_person():
                          format_func=lambda x: sexes.get(x, 'Unknown'),
                          index=None,
                          key='sex_new')
+
+            st.selectbox('Origin', options=regions['region_id'], width=200,
+                         format_func=lambda x: regions[regions['region_id'] == x]['region_name'].iloc[0],
+                         index=None,
+                         key='origin_region_id_new')
                     
             s_cols = st.columns([2, 1])
             with s_cols[0]:
@@ -108,7 +119,7 @@ def add_new_person():
         with st.container(horizontal_alignment='right'):
             if st.form_submit_button('Add New Person', type='primary', key='add_new_person'):
                 keys = ['first_name', 'middle_names', 'last_name', 'nick_name', 'uses_middle',
-                        'prefix', 'suffix', 'sex',
+                        'prefix', 'suffix', 'sex', 'origin_region_id',
                         'birth_date', 'birth_date_precision', 'death_date', 'death_date_precision',
                         'notes']
                 information = {k: get_value(st.session_state[f'{k}_new']) for k in keys}
@@ -134,9 +145,15 @@ def add_new_animal():
                          format_func=lambda x: sexes.get(x, 'Unknown'),
                          index=None,
                          key='sex_new')
+
             st.selectbox('Species', options=specieses, width=200,
                          index=None,
                          key='species_new')
+
+            st.selectbox('Origin', options=regions['region_id'], width=200,
+                         format_func=lambda x: regions[regions['region_id'] == x]['region_name'].iloc[0],
+                         index=None,
+                         key='origin_region_id_new')
 
             s_cols = st.columns([2, 1])
             with s_cols[0]:
@@ -416,11 +433,18 @@ if member_id is not None:
                              format_func=lambda x: sexes.get(x, 'Unknown'),
                              index=list(sexes.keys()).index(s) if s in sexes else None,
                              key='sex')
+
                 if member_type == 'animal':
                     sp = information['species'].iloc[0]
                     st.selectbox('Species', options=specieses, width=200,
                                  index=specieses.index(sp) if sp in specieses else None,
                                  key='species')
+
+                origin_region_id = information['origin_region_id'].iloc[0]
+                st.selectbox('Origin', options=regions['region_id'], width=200,
+                             format_func=lambda x: regions[regions['region_id'] == x]['region_name'].iloc[0],
+                             index=get_index(regions['region_id'].tolist(), origin_region_id),
+                             key='origin_region_id')
 
                 s_cols = st.columns([3, 2])
                 with s_cols[0]:
@@ -613,7 +637,7 @@ if member_id is not None:
                 match member_type:
                     case 'person':
                         keys = ['first_name', 'nick_name', 'middle_names', 'uses_middle', 'last_name',
-                                'prefix', 'suffix', 'sex',
+                                'prefix', 'suffix', 'sex', 'origin_region_id',
                                 'birth_date', 'birth_date_precision', 'death_date', 'death_date_precision',
                                 'notes']
                         information = {'person_id': member_id}

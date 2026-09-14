@@ -12,7 +12,7 @@ def fetch_persons(engine:Engine, person_id:UUID=None) -> DataFrame:
     sql = f'''
     SELECT person_id,
     first_name, middle_names, last_name, nick_name, uses_middle,
-    suffix, prefix, sex,
+    suffix, prefix, sex, origin_region_id,
     birth_date, birth_date_precision, death_date, death_date_precision,
     notes
     FROM persons {wheres}
@@ -25,7 +25,7 @@ def update_person(engine:Engine, person_information:dict):
     first_name = :first_name, nick_name = :nick_name,
     last_name = :last_name,
     middle_names = :middle_names, uses_middle = :uses_middle,
-    suffix = :suffix, prefix = :prefix, sex = :sex,
+    suffix = :suffix, prefix = :prefix, sex = :sex, origin_region_id = :origin_region_id,
     birth_date = :birth_date, birth_date_precision = :birth_date_precision,
     death_date = :death_date, death_date_precision = :death_date_precision,
     notes = :notes
@@ -37,12 +37,12 @@ def insert_person(engine, person_information:dict):
     sql = f'''
     INSERT INTO persons
     (first_name, middle_names, last_name, nick_name, uses_middle,
-    suffix, prefix, sex,
+    suffix, prefix, sex, origin_region_id,
     birth_date, birth_date_precision, death_date, death_date_precision,
     notes)
     VALUES
     (:first_name, :middle_names, :last_name, :nick_name, :uses_middle,
-    :suffix, :prefix, :sex,
+    :suffix, :prefix, :sex, :origin_region_id,
     :birth_date, :birth_date_precision, :death_date, :death_date_precision,
     :notes)
     RETURNING person_id;'''
@@ -57,7 +57,7 @@ def remove_person(engine:Engine, person_id:UUID):
 def fetch_animals(engine:Engine, animal_id:UUID=None) -> DataFrame:
     wheres = f'WHERE animal_id = :animal_id' if animal_id else ''
     sql = f'''SELECT animal_id,
-    first_name, middle_names, nick_name, sex, species,
+    first_name, middle_names, nick_name, sex, species, origin_region_id,
     birth_date, birth_date_precision, death_date, death_date_precision,
     notes
     FROM animals {wheres}
@@ -69,7 +69,7 @@ def update_animal(engine:Engine, animal_information:dict):
     UPDATE animals SET
     first_name = :first_name, nick_name = :nick_name,
     middle_names = :middle_names,
-    sex = :sex, species = :species,
+    sex = :sex, species = :species, origin_region_id = :origin_region_id,
     birth_date = :birth_date, birth_date_precision = :birth_date_precision,
     death_date = :death_date, death_date_precision = :death_date_precision,
     notes = :notes
@@ -86,7 +86,7 @@ def insert_animal(engine, animal_information:dict):
     notes)
     VALUES
     (:first_name, :middle_names, :nick_name,
-    :sex, :species,
+    :sex, :species, :origin_region_id,
     :birth_date, :birth_date_precision, :death_date, :death_date_precision,
     :notes)
     RETURNING animal_id;'''
