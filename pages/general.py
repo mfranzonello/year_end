@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from shutil import which
+from functools import wraps
 
 import streamlit as st
 from graphviz import Graph
@@ -9,7 +10,7 @@ from sqlalchemy import Engine
 from cloudinary import Config as CloudConfig
 from psycopg.errors import NotNullViolation, ForeignKeyViolation, UniqueViolation, CheckViolation
 
-from pages.streamlit_auth import current_identity, render_account_controls
+from pages.streamlit_auth import current_identity, render_account_controls, require_admin
 
 def graphviz_available() -> bool:
     """Check for Graphviz's system executable, separate from its Python package."""
@@ -83,6 +84,8 @@ def plot_graphviz_chart(graph:Graph, use_images=False):
         else:
             st.graphviz_chart(graph)
 
+
+# database write wrapper
 def parse_db_error(e: Exception, function: str):
     error = e.orig
     if isinstance(error, NotNullViolation):
@@ -99,3 +102,14 @@ def parse_db_error(e: Exception, function: str):
 
     else:
         st.error(f'**{function}**: The database rejected this change.')
+
+# # def write_to_db(func, function_name):
+# #     @wraps(func)
+# #     def inner(*args, **kwargs):
+# #         require_admin()
+# #         try:
+# #             result = func(*args, **kwargs)
+# #         except Exception as e:
+# #             parse_db_error(e, function_name)
+    
+# #     return inner

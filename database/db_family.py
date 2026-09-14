@@ -365,7 +365,7 @@ def fetch_person_information(engine:Engine) -> DataFrame:
 
     SELECT
     person_id AS member_id, first_name, middle_names, last_name, married_name, nick_name,
-    sex, prefix, suffix_to_text(suffix) AS suffix,
+    sex, prefix, suffix_to_text(suffix) AS suffix, region_code AS origin_region_code,
     parent_ids, spouse_ids, child_ids, expecting_ids, sibling_ids, pet_ids,
     birth_date::date, birth_date_precision, death_date::date, death_date_precision,
     union_date, union_date_precision, severance_date::date,
@@ -374,6 +374,7 @@ def fetch_person_information(engine:Engine) -> DataFrame:
     JSON_BUILD_OBJECT('files', COALESCE(total_files, 0), 'years', COALESCE(total_years, 0),
     'appearances', COALESCE(total_appearances, 0)) AS project_stats
     FROM persons
+    LEFT JOIN config.regions ON persons.origin_region_id = regions.region_id
     LEFT JOIN folks USING (person_id)
     LEFT JOIN spouse USING (person_id)
     LEFT JOIN children USING (person_id)
@@ -439,13 +440,15 @@ def fetch_animal_information(engine:Engine) -> DataFrame:
 
     SELECT
     animal_id AS member_id, first_name, middle_names, nick_name,
-    sex, species, owner_ids,
+    sex, species, region_code AS origin_region_code,
+    owner_ids,
     birth_date::date, birth_date_precision, death_date::date, death_date_precision,
     gotcha_date::date, gotcha_date_precision, 
     JSON_BUILD_OBJECT('zip_code', zip_code) AS contact_info,
     JSON_BUILD_OBJECT('files', COALESCE(total_files, 0),'years', COALESCE(total_years, 0),
     'appearances', COALESCE(total_appearances, 0)) AS project_stats
     FROM animals
+    LEFT JOIN config.regions ON animals.origin_region_id = regions.region_id
     LEFT JOIN owners USING (animal_id)
     LEFT JOIN owner_gotchas USING (animal_id)
     LEFT JOIN addy USING (animal_id)

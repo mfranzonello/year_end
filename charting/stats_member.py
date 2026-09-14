@@ -6,6 +6,7 @@ from dateutil.relativedelta import relativedelta
 import streamlit as st
 from pgeocode import Nominatim
 from pandas import DataFrame, Series
+from flag import flag as region_flag
 
 from database.db import Engine
 from pages.streamlit_auth import current_tier, require_admin
@@ -109,6 +110,10 @@ def get_plural(word:str, count:int=None, items:list=None, s:str='s', plural:str=
 
     return plural if (quantity != 1) else word
 
+def get_flag(region_code: str) -> str:
+    if region_code:
+        return region_flag(region_code)
+
 def get_location(zip_code: int):
     return nomi.query_postal_code(zip_code)
 
@@ -172,11 +177,11 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
         cut_date_precision = 'day'
 
     # name information
-    first_name = information["first_name"].iloc[0]
+    first_name = information['first_name'].iloc[0]
     if first_name:
         st.markdown(f'**First Name**: {first_name}')
-    middle_names = information["middle_names"].iloc[0]
-    nick_name = information["nick_name"].iloc[0]
+    middle_names = information['middle_names'].iloc[0]
+    nick_name = information['nick_name'].iloc[0]
     if nick_name:
         st.markdown(f'**Nickname**: "{nick_name}"')
     if middle_names:
@@ -194,6 +199,11 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
             st.markdown(f'**Last Name**: {last_name}')
 
     # birth and death information
+    origin_region_code = information['origin_region_code'].iloc[0]
+    emoji_flag = get_flag(origin_region_code)
+    if emoji_flag:
+        st.markdown(f'**Origin**: {emoji_flag}')
+
     birthday = get_date_display(birth_date, birth_date_precision)
     if birthday is not None:
         st.markdown(f'**Born**: {birthday}')
