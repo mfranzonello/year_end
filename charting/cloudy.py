@@ -128,7 +128,7 @@ def get_image_path(engine:Engine, cloud:CloudConfig, node_id:UUID, node_type:str
         default_image_path = IMAGE_CACHE / f'{UUID(int=i)}.png'
         if not default_image_path.exists():
             # download default image
-            image_url = get_image_url(engine, cloud.cloud_name, UUID(int=i), pixels=100)
+            image_url = get_image_url(engine, cloud, UUID(int=i), pixels=100)
             default_image_path.write_bytes(urlopen(image_url, timeout=10).read())
         default_image_paths[n] = default_image_path
         
@@ -143,7 +143,7 @@ def get_image_path(engine:Engine, cloud:CloudConfig, node_id:UUID, node_type:str
         version = get_version(engine, node_id)
         if version:
             # download image
-            image_url = get_image_url(engine, cloud.cloud_name, node_id, pixels=100)
+            image_url = get_image_url(engine, cloud, node_id, pixels=100)
             image_path.write_bytes(urlopen(image_url, timeout=10).read())
         else:
             # use default
