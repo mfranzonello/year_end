@@ -18,7 +18,8 @@ def get_color_rgb_hex(color_name:str) -> str:
 def get_person_label(node) -> str:
     first_name = node['first_name'] if node['first_name'] else '< tbd >'
     last_name = node['last_name'] if node['last_name'] else '< unknown >'
-    return first_name + '\\n' + last_name
+    suffix = node['suffix'] if node['suffix'] else ''
+    return first_name + '\\n' + last_name + suffix
 
 def get_animal_label(node) -> str:
     first_name = node['first_name'] if node['first_name'] else '< tbd >'
