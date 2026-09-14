@@ -104,12 +104,14 @@ constraint, so a duplicate parent relationship cannot be recorded. Semantically,
 this is already the appropriate many-to-many junction: a person may have
 multiple recorded parents and may parent multiple people.
 
-The physical table also currently has `gotcha_date`, `gotcha_date_precision`,
+The physical table also has `gotcha_date`, `gotcha_date_precision`,
 `rehome_date`, and `rehome_date_precision`, each with valid date/precision
-checks. No current Python consumer or live view definition references those
-fields. Confirm whether they represent planned parent-relationship lifecycle
-metadata or an accidental animal-column carryover before using or retaining
-them. Foreign keys to `persons` and a self-parent guard are still not declared.
+checks. These are planned stewardship boundaries: an adoptive or step parent
+can begin care after a child's birth, and a stewardship may later end through
+an explicit change or death. The names are shared with pet relationships today,
+but the domain concept is a relationship start/end rather than animal ownership.
+No current Python consumer or live view definition uses the fields yet. Foreign
+keys to `persons` and a self-parent guard are still not declared.
 
 Do not impose a blanket maximum of two rows per child by default. Biological,
 adoptive, and step relationships can legitimately coexist, and a hard limit
@@ -417,11 +419,12 @@ identities and roles with unique `(user_id, role_id)` pairs.
 
 `users.issuers` is a reference table for identity-provider names. It currently
 has no declared key or foreign-key link to `identities`, whose issuer remains a
-text field. `users.pre_approvals` maps an email address to a role before first
-login. Its current primary key prevents duplicate email entries, and its unique
-`role_id` constraint also permits only one pre-approved email per role. Confirm
-that latter cardinality before the pre-approval workflow is used for multiple
-family accounts.
+text field. `users.pre_approvals` is intended to map many email addresses to a
+role before first login, so a matching person can receive that role rather than
+the ordinary first-login tier. The current primary key prevents duplicate email
+entries, but its unique `role_id` constraint also permits only one pre-approved
+email per role. Remove or redesign that constraint before implementing the
+many-person pre-approval flow.
 
 The `indentity_roles_user_id_fkey` constraint now uses `ON DELETE CASCADE`.
 This was applied directly to Neon for the Streamlit authentication integration;

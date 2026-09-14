@@ -294,8 +294,9 @@ Google OIDC for sign-in, records the provider's stable subject in
 New accounts receive the `demo` role. Runtime routing sends anonymous and
 Demo-tier sessions to the fictional demo database, while the identity lookup
 remains against the primary database. The `users.pre_approvals` table and
-issuer reference data are schema groundwork only until an explicit approval
-workflow consumes them.
+issuer reference data are schema groundwork only until an explicit first-login
+workflow assigns an approved email's configured role. Define the ordinary
+first-login tier as part of that workflow rather than inheriting it implicitly.
 
 The immediate access-policy work is to add per-page guards to every write
 surface and test direct navigation before broader family access. The target
@@ -494,8 +495,9 @@ targets and should not be assumed to run in hosted automation.
    route guards, then verify the member, relationship, address, move, and image
    workflows against the intended administrator boundary.
 2. Synchronize the reviewed `database/schema/` installation bundle with the
-   live schema after an impact review, including the parent lifecycle fields
-   and pre-approval cardinality questions captured in `SCHEMA.md`.
+   live schema after an impact review, including the planned stewardship
+   lifecycle fields and the pre-approval cardinality change captured in
+   `SCHEMA.md`.
 3. Refine the existing admin pages into a coherent onboarding flow, including
    validation, image handling, and account-role management.
 4. Complete a durable cloud-media operation end to end, prioritizing hosted
