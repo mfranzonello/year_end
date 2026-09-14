@@ -126,10 +126,12 @@ the likely first implementation; a GitHub Pages front end is possible only with
 a separate authenticated API behind it. Family-facing write access is out of
 scope unless explicitly added later.
 
-Initial groundwork is now live: Streamlit has an administrator-guarded landing
-page, and member profile-image replacement is restricted to administrators.
-The remaining work is to turn that scaffold into a deliberate onboarding flow
-with validation, review, and provider-safe asset handling.
+Initial groundwork is now live: Streamlit has an administrator landing page,
+profile-image replacement, and CRUD pages for people, animals, relationships,
+addresses, and address moves. The remaining work is to make the route-level
+authorization explicit on every write page, then refine those pages into a
+coherent onboarding flow with validation, review, and provider-safe asset
+handling.
 
 ### 3. Streamlit and Vimeo
 
@@ -273,9 +275,12 @@ Target data-entry workflow: after initial database setup, routine additions and
 updates should run through authenticated Streamlit actions or GitHub Actions
 automation. Direct SQL edits by the owner or an agent are a transitional
 maintenance practice, not the intended everyday interface. Profile-image
-replacement already runs through Streamlit, and new-file detection uses hosted
-automation. Person creation, relationship edits, and account-role management
-still need dedicated administrative pages; they are planned, not implemented.
+replacement, people/animal/relationship edits, and address/move edits already
+run through Streamlit, while new-file detection uses hosted automation. The
+administrator navigation currently hides those pages for other tiers, but each
+write page must also enforce `require_admin()` itself: navigation visibility is
+not an authorization boundary for a direct URL. Account-role management and
+Calendar administration still need dedicated pages.
 Local Adobe/browser tools remain necessary for preparing and analyzing source
 material; plan their eventual database-write handoff through the supported
 application or automation flow. Schema migrations and exceptional repairs
@@ -286,11 +291,15 @@ remain explicit maintenance operations with validation and rollback planning.
 The first authentication and authorization layer is implemented: Streamlit uses
 Google OIDC for sign-in, records the provider's stable subject in
 `users.identities`, and reads database-backed roles on every guarded access.
-New accounts receive the `demo` role; the administrator page and profile-image
-replacement already enforce the `admin` tier.
+New accounts receive the `demo` role. Runtime routing sends anonymous and
+Demo-tier sessions to the fictional demo database, while the identity lookup
+remains against the primary database. The `users.pre_approvals` table and
+issuer reference data are schema groundwork only until an explicit approval
+workflow consumes them.
 
-The remaining access-policy work is to apply the intended page/data boundaries
-before broader family access. The target role model remains:
+The immediate access-policy work is to add per-page guards to every write
+surface and test direct navigation before broader family access. The target
+role model remains:
 
 - **Reader:** view-only access to specifically approved Streamlit pages.
 - **Administrator:** access to all approved pages and guarded editing actions.
@@ -481,12 +490,15 @@ targets and should not be assumed to run in hosted automation.
 
 ## Near-term sequence
 
-1. Stabilize the new Streamlit data/auth foundation: finish page-level access
-   boundaries, validate the member/profile-image experience, and resolve known
-   dashboard performance or incomplete-appearance cases.
-2. Define the person-onboarding write flow on top of the administrator shell,
-   including validation, image handling, and an auditable database boundary.
-3. Complete a durable cloud-media operation end to end, prioritizing hosted
-   token renewal, reconciliation, and safe recovery before broader automation.
-4. Continue family-tree layout refinement and deliberate Vimeo automation as
-   parallel product tracks once the foundation is stable.
+1. Secure and validate the new administrative surfaces: add and test direct
+   route guards, then verify the member, relationship, address, move, and image
+   workflows against the intended administrator boundary.
+2. Synchronize the reviewed `database/schema/` installation bundle with the
+   live schema after an impact review, including the parent lifecycle fields
+   and pre-approval cardinality questions captured in `SCHEMA.md`.
+3. Refine the existing admin pages into a coherent onboarding flow, including
+   validation, image handling, and account-role management.
+4. Complete a durable cloud-media operation end to end, prioritizing hosted
+   token renewal, reconciliation, and safe recovery before broader automation;
+   continue family-tree layout refinement and deliberate Vimeo automation as
+   parallel product tracks.

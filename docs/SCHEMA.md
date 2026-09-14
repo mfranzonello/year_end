@@ -6,10 +6,15 @@ This document is a curated map of the Neon Postgres database used by Year End
 and the family-tree work. It records database structure and application-facing
 relationships, not family records, credentials, tokens, or database exports.
 
-The inventory was verified against the primary `main` branch on 2026-09-07 via
+The inventory was verified against the primary `main` branch on 2026-09-14 via
 the connected Neon Postgres integration. It is intentionally not a raw DDL
 dump: migrations and database changes must update this document when they alter
 an application-facing contract.
+
+The reproducible fresh-install bundle under `database/schema/` is a separate,
+versioned schema artifact. It must be exported, reviewed, and updated after
+live structural changes; this narrative guide does not itself make a new
+installation match the primary database.
 
 ## Ownership and internal schemas
 
@@ -26,7 +31,13 @@ an application-facing contract.
 | `auth` | Application/session helper functions. | Internal; not a public data contract. |
 | `neon_auth` | Neon-managed authentication synchronization. | Platform-managed; do not modify casually. |
 | `users` | Application identities and role assignments used by Streamlit authorization. | Documented here. |
-| `_debugging` | Dependency/debugging views. | Internal tooling. |
+| `_debugging` | Dependency/debugging views for columns, constraints, foreign keys, indexes, types, triggers, and dependencies. | Internal tooling. |
+
+The primary application database is `neondb`. A separate `demo` database now
+holds fictional data for anonymous and Demo-tier Streamlit sessions. It is not
+a schema inside the primary database and must never contain copied family,
+contact, account, or cloud-location records. Its reproducible initialization
+contract is documented in `docs/DATABASE_SETUP.md`.
 
 ## Core relationship model
 
@@ -73,10 +84,11 @@ Core person identity record.
 | Identity | `person_id` (UUID primary key), `prefix`, `first_name`, `middle_names`, `uses_middle`, `last_name`, `suffix`, `nick_name` |
 | Personal data | `sex`, `birth_date`, `birth_date_precision`, `death_date`, `death_date_precision`, `notes` |
 
-Current database checks constrain birth precision to `day`, `month`, `year`,
-`past`, or `future`; death precision to `day`, `month`, `year`, or `past`; and
-the existing `sex` field to `m` or `f`. These are current physical constraints,
-not an endorsement of their suitability for future family modeling.
+Current database checks require a date when its precision is `day`, `month`, or
+`year`, and require the date to be `NULL` when the precision is `past`,
+`future`, or `NULL`. The current physical schema no longer constrains `sex` to
+a closed set of values. Neither decision is an endorsement of a permanent
+family-modeling taxonomy.
 
 When `uses_middle` is true, `dashboard.display_names` intentionally appends only
 the first semicolon-delimited value from `middle_names` to the displayed given
@@ -87,15 +99,17 @@ view, including Calendar event titles.
 
 Relationship table with `child_id`, `parent_id`, and `relation_type`. Current
 relation types are `biological`, `adoptive`, and `step`; the default is
-`biological`. Semantically, this is already the appropriate many-to-many
-junction: a person may have multiple recorded parents and may parent multiple
-people.
+`biological`. It has a `UNIQUE NULLS NOT DISTINCT (child_id, parent_id)`
+constraint, so a duplicate parent relationship cannot be recorded. Semantically,
+this is already the appropriate many-to-many junction: a person may have
+multiple recorded parents and may parent multiple people.
 
-The current schema inspection exposes only the relation-type `CHECK`, not a
-declared composite primary/unique key or foreign keys. A focused integrity
-hardening should add uniqueness for `(child_id, parent_id)`, foreign keys to
-`persons`, and a self-parent guard. Confirm deletion behavior before selecting
-foreign-key actions.
+The physical table also currently has `gotcha_date`, `gotcha_date_precision`,
+`rehome_date`, and `rehome_date_precision`, each with valid date/precision
+checks. No current Python consumer or live view definition references those
+fields. Confirm whether they represent planned parent-relationship lifecycle
+metadata or an accidental animal-column carryover before using or retaining
+them. Foreign keys to `persons` and a self-parent guard are still not declared.
 
 Do not impose a blanket maximum of two rows per child by default. Biological,
 adoptive, and step relationships can legitimately coexist, and a hard limit
@@ -108,7 +122,8 @@ deliberately chosen.
 ### `unions` and `union_members`
 
 `unions` is the provider-neutral pair-relationship record. It has `union_id`,
-`union_date`, `union_date_precision`, `union_type`, `last_name_person_id`,
+`union_date`, `union_date_precision`, `severance_date`,
+`severance_date_precision`, `union_type`, `last_name_person_id`,
 `last_name_hyphen`, and `last_name_custom`. Current union types are `marriage`,
 `civil`, and `friends`. The optional last-name fields support a selected
 member's name, a hyphenated name, or an explicit display name without assigning
@@ -130,9 +145,10 @@ roles from partner order.
 ### `animals` and `pets`
 
 `animals` holds animal identity records. `pets` connects `pet_id` to `owner_id`
-and stores `relation_type`, `gotcha_date`, and date precision. Current pet
-relation types are `adoptive` and `shared`. It already supports multiple owners
-per animal and multiple animals per person, so it needs no structural redesign.
+and stores `relation_type`, gotcha/rehome dates, and their precisions. Current
+pet relation types are `adoptive` and `shared`. It already supports multiple
+owners per animal and multiple animals per person, so it needs no structural
+redesign.
 
 As with `parents`, the current inspection exposes only its `CHECK` constraints,
 not a declared composite primary/unique key or foreign keys. A focused
@@ -176,12 +192,15 @@ changing the `nello.founder` configuration.
 
 `dashboard` is the live, read-only application contract for Streamlit. It
 contains views over authoritative records, rather than copied dashboard data.
-There is no `demo` schema on the current primary branch; any future demo mode
-must be provisioned deliberately and kept separate from private family data.
+The synthetic demo contract is now a separate `demo` database, not a schema on
+the primary branch. Runtime routing keeps anonymous and Demo-tier sessions on
+that database, while the authenticated identity lookup remains on the primary
+database.
 
-- `display_names`, `founder`, `member_information`, `member_summary`, and
-  `relations_summary` provide display-ready family information. `member_information`
-  includes current and prior clans, their effective date, member dates, and type.
+- `display_names`, `founder`, `member_information`, and `member_summary`
+  provide display-ready family information. `display_names` includes a `nee_name`;
+  `member_information` includes current and prior clans, their effective date,
+  member dates, and type.
 - `folders_summary`, `years_summary`, `resolution_order`, and
   `appearance_spans` provide chart-ready YIR counts, resolutions, and review
   appearance spans.
@@ -310,8 +329,8 @@ retain seconds unless a consuming query or display converts them.
 - `addresses`: reusable address records. The current scaffold stores an optional
   address label and required postal code; fuller address components and final
   uniqueness rules remain to be designed.
-- `address_moves`: links a person to an address with an optional start date so
-  address history can be represented relationally.
+- `address_moves`: links a person to an address with an optional `move_date`
+  and its precision so address history can be represented relationally.
 - `no_contacts`: person/year suppression records used to remove people from a
   project's otherwise folder-derived recipient set.
 - `templates`: an initial project-year message-template scaffold. Its content,
@@ -336,7 +355,8 @@ historical sender address into a current contact method.
 ## `config`: reference and workflow settings
 
 - `media`: configured media types and source-folder mapping.
-- `compilations`: review/Premiere compilation settings.
+- `compilations`: review/Premiere compilation settings, linked one-to-one to a
+  `publishing.reviews` record through `review_id` rather than a bare year.
 - `member_labels`, `adobe_labels`, and `color_palette`: label and color
   configuration used by the Adobe workflow.
 - `images`: Cloudinary-facing image metadata keyed by the project-owned public
@@ -394,6 +414,14 @@ historical sender address into a current contact method.
 last login are required; `person_id` is optional. `users.roles` defines unique
 role names (`demo`, `viewer`, `member`, `admin`). `users.identity_roles` links
 identities and roles with unique `(user_id, role_id)` pairs.
+
+`users.issuers` is a reference table for identity-provider names. It currently
+has no declared key or foreign-key link to `identities`, whose issuer remains a
+text field. `users.pre_approvals` maps an email address to a role before first
+login. Its current primary key prevents duplicate email entries, and its unique
+`role_id` constraint also permits only one pre-approved email per role. Confirm
+that latter cardinality before the pre-approval workflow is used for multiple
+family accounts.
 
 The `indentity_roles_user_id_fkey` constraint now uses `ON DELETE CASCADE`.
 This was applied directly to Neon for the Streamlit authentication integration;
