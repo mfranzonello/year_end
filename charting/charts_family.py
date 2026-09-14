@@ -16,10 +16,13 @@ def get_color_rgb_hex(color_name:str) -> str:
     return name_to_hex(color_name).replace('#', 'rgb:')
 
 def get_person_label(node) -> str:
-    return (node['first_name'] if node['first_name'] else ('< baby >')) + '\\n' + node['last_name']
+    first_name = node['first_name'] if node['first_name'] else '< tbd >'
+    last_name = node['last_name'] if node['last_name'] else '< unknown >'
+    return first_name + '\\n' + last_name
 
 def get_animal_label(node) -> str:
-    return node['first_name'] + '\\nthe ' + node['species']
+    first_name = node['first_name'] if node['first_name'] else '< tbd >'
+    return first_name + '\\nthe ' + node['species']
 
 def get_union_label(node) -> str:
     return
