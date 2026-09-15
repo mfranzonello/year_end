@@ -6,7 +6,7 @@ from pandas import DataFrame
 
 from database.db import read_sql, execute_sql, build_values
 
-# Family Tree
+# persons table operations
 def fetch_persons(engine:Engine, person_id:UUID=None) -> DataFrame:
     wheres = f'WHERE person_id = :person_id' if person_id else ''
     sql = f'''
@@ -54,6 +54,7 @@ def remove_person(engine:Engine, person_id:UUID):
     ;'''
     execute_sql(engine, sql, params={'person_id': person_id})
 
+# animals table operations
 def fetch_animals(engine:Engine, animal_id:UUID=None) -> DataFrame:
     wheres = f'WHERE animal_id = :animal_id' if animal_id else ''
     sql = f'''SELECT animal_id,
@@ -98,6 +99,7 @@ def remove_animal(engine:Engine, animal_id:UUID):
     ;'''
     execute_sql(engine, sql, params={'animal_id': animal_id})
 
+# parents table operations
 def fetch_parents(engine:Engine, person_id:UUID=None) -> DataFrame:
     wheres = 'WHERE child_id = :person_id' if person_id else ''
     sql = f'''SELECT child_id, parent_id, relation_type
@@ -105,7 +107,7 @@ def fetch_parents(engine:Engine, person_id:UUID=None) -> DataFrame:
     ;'''
     return read_sql(engine, sql, params={'person_id': person_id})
 
-def update_parents(engine, parent_information):
+def update_parent(engine, parent_information):
     sql = f'''
     UPDATE parents SET 
     relation_type = :relation_type
@@ -113,20 +115,21 @@ def update_parents(engine, parent_information):
     ;'''
     execute_sql(engine, sql, params=parent_information)
 
-def insert_parents(engine, parent_information):
+def insert_parent(engine, parent_information):
     sql = f'''
     INSERT INTO parents (child_id, parent_id, relation_type)
     VALUES (:child_id, :parent_id, :relation_type)
     ;'''
     execute_sql(engine, sql, params=parent_information)
 
-def remove_parents(engine, parent_information):
+def remove_parent(engine, parent_information):
     sql = f'''
     DELETE FROM parents
     WHERE child_id = :child_id AND parent_id = :parent_id_old
     ;'''
     execute_sql(engine, sql, params=parent_information)
 
+# pets table operations
 def fetch_pets(engine:Engine, animal_id:UUID=None) -> DataFrame:
     wheres = 'WHERE pet_id = :animal_id' if animal_id else ''
     sql = f'''SELECT pet_id, owner_id, relation_type,
@@ -135,7 +138,7 @@ def fetch_pets(engine:Engine, animal_id:UUID=None) -> DataFrame:
     ;'''
     return read_sql(engine, sql, params={'animal_id': animal_id})
 
-def update_pets(engine:Engine, pet_information:dict):
+def update_pet(engine:Engine, pet_information:dict):
     sql = f'''
     UPDATE pets SET relation_type = :relation_type,
     gotcha_date = :gotcha_date, gotcha_date_precision = gotcha_date_precision
@@ -143,20 +146,21 @@ def update_pets(engine:Engine, pet_information:dict):
     ;'''
     return execute_sql(engine, sql, params=pet_information)
 
-def insert_pets(engine:Engine, pet_information:dict):
+def insert_pet(engine:Engine, pet_information:dict):
     sql = f'''
     INSERT INTO pets (pet_id, owner_id, relation_type, gotcha_date, gotcha_date_precision)
     VALUES (:pet_id, :owner_id, :relation_type, :gotcha_date, :gotcha_date_precision)
     ;'''
     execute_sql(engine, sql, params=pet_information)
 
-def remove_pets(engine:Engine, pet_information:dict):
+def remove_pet(engine:Engine, pet_information:dict):
     sql = f'''
     DELETE FROM pets
     WHERE pet_id = :pet_id AND owner_id = :owner_id_old 
     ;'''
     execute_sql(engine, sql, params=pet_information)
 
+# partnerships table operations
 def fetch_partnerships(engine: Engine) -> DataFrame:
     sql = '''
     SELECT union_id, partner_id_1, partner_id_2,
@@ -177,7 +181,7 @@ def fetch_partners(engine:Engine, person_id:UUID=None) -> DataFrame:
     ;'''
     return read_sql(engine, sql, params={'person_id': person_id})
 
-def update_partners(engine:Engine, partner_information:dict):
+def update_partner(engine:Engine, partner_information:dict):
     sql = f'''
     UPDATE unions SET union_type = :union_type,
     union_date = :union_date, union_date_precision = :union_date_precision,
@@ -187,7 +191,7 @@ def update_partners(engine:Engine, partner_information:dict):
     ;'''
     execute_sql(engine, sql, params=partner_information)
 
-def insert_partners(engine:Engine, partner_information:dict):
+def insert_partner(engine:Engine, partner_information:dict):
     sql = f'''
     INSERT INTO unions
     (union_date, union_date_precision, union_type,
@@ -209,7 +213,7 @@ def insert_partners(engine:Engine, partner_information:dict):
     ;'''
     execute_sql(engine, sql, params=partner_information)
 
-def remove_partners(engine: Engine, partner_information:dict):
+def remove_partner(engine: Engine, partner_information:dict):
     sql = f'''
     DELETE FROM unions
     WHERE union_id = (SELECT union_id FROM union_members
@@ -218,6 +222,30 @@ def remove_partners(engine: Engine, partner_information:dict):
     ;'''
     execute_sql(engine, sql, params=partner_information)
 
+# progenitors table operations
+def fetch_progenitors(engine:Engine, animal_id:UUID=None) -> DataFrame:
+    wheres = 'WHERE young_id = :animal_id' if animal_id else ''
+    sql = f'''SELECT young_id, progenitor_id
+    FROM progenitors {wheres}
+    ;'''
+    return read_sql(engine, sql, params={'animal_id': animal_id})
+
+def insert_progenitor(engine, progenitor_information):
+    sql = f'''
+    INSERT INTO progenitors (young_id, progenitor_id)
+    VALUES (:young_id, :progenitor_id)
+    ;'''
+    execute_sql(engine, sql, params=progenitor_information)
+
+def remove_progenitor(engine, progenitor_information):
+    sql = f'''
+    DELETE FROM progenitors
+    WHERE young_id = :young_id AND progenitor_id = :progenitor_id_old
+    ;'''
+    execute_sql(engine, sql, params=progenitor_information)
+
+
+# tree schema operations
 def fetch_members(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT member_id, birth_date, birth_date_precision, death_date, death_date_precision,
@@ -233,6 +261,8 @@ def fetch_households(engine:Engine) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
+
+# family tree operations
 def fetch_founder(engine:Engine) -> UUID:
     sql = f'''
     SELECT founder_id
@@ -262,6 +292,8 @@ def fetch_family_graph(engine:Engine, founder_id:UUID,
     }
     return read_sql(engine, sql, params=params)
 
+
+# member info operations
 def fetch_person_information(engine:Engine) -> DataFrame:
     sql = f'''
     WITH

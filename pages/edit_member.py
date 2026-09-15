@@ -4,10 +4,10 @@ import streamlit as st
 
 from database.db import get_engine
 from database.db_family import (
-    fetch_persons, fetch_animals, fetch_parents, fetch_pets, fetch_partners,
-    update_person, update_animal, update_parents, update_pets, update_partners,
-    insert_person, insert_animal, insert_parents, insert_pets, insert_partners,
-    remove_person, remove_animal, remove_parents, remove_pets, remove_partners)
+    fetch_persons, fetch_animals, fetch_parents, fetch_pets, fetch_partners, fetch_progenitors,
+    update_person, update_animal, update_parent, update_pet, update_partner,
+    insert_person, insert_animal, insert_parent, insert_pet, insert_partner, insert_progenitor,
+    remove_person, remove_animal, remove_parent, remove_pet, remove_partner, remove_progenitor)
 from database.db_display import fetch_member_summary, fetch_regions
 from pages.streamlit_auth import get_database_credentials, get_cloud_credentials
 from pages.general import set_sidebar, get_hash_funcs, get_member_name_display, get_value, get_index, parse_db_error
@@ -211,10 +211,33 @@ def add_new_parent(persons, person_id):
                 information = {'child_id': person_id}
                 information.update({k: get_value(st.session_state[f'{k}_new']) for k in keys})
                 try:
-                    insert_parents(engine, information)
+                    insert_parent(engine, information)
                     st.rerun()
                 except Exception as e:
-                    parse_db_error(e, 'Insert Parents')
+                    parse_db_error(e, 'Insert Parent')
+
+@st.dialog('Add New Progenitor', width='medium')
+def add_new_progenitor(persons, animal_id):
+    possible = animals[animals['member_id'] != animal_id]
+    with st.form('add_progenitor'):
+        cols = st.columns([2, 1])
+        with cols[0]:
+            st.selectbox(f'New Progenitor for {get_member_name_display(animals, animal_id)}', options=possible['member_id'],
+                         format_func=lambda x: get_member_name_display(animals, x),
+                         index=None,
+                         key=f'progenitor_id_new')
+
+        st.divider()
+        with st.container(horizontal_alignment='right'):
+            if st.form_submit_button('Add Progenitor', type='primary'):
+                keys = ['progenitor_id']
+                information = {'young_id': animal_id}
+                information.update({k: get_value(st.session_state[f'{k}_new']) for k in keys})
+                try:
+                    insert_progenitor(engine, information)
+                    st.rerun()
+                except Exception as e:
+                    parse_db_error(e, 'Insert Progenitor')
 
 @st.dialog('Add New Owner', width='medium')
 def add_new_owner(persons, animal_id):
@@ -249,10 +272,10 @@ def add_new_owner(persons, animal_id):
                 information = {'pet_id': animal_id}
                 information.update({k: get_value(st.session_state[f'{k}_new']) for k in keys})
                 try:
-                    insert_pets(engine, information)
+                    insert_pet(engine, information)
                     st.rerun()
                 except Exception as e:
-                    parse_db_error(e, 'Insert Pets')
+                    parse_db_error(e, 'Insert Pet')
 
 @st.dialog('Add New Partner', width='medium')
 def add_new_partner(persons, person_id):
@@ -303,11 +326,11 @@ def add_new_partner(persons, person_id):
                                                        False: st.session_state['partner_id_new']}.get(st.session_state['last_name_primary_new'])}
                 information.update({k: get_value(st.session_state[f'{k}_new']) for k in keys})
                 try:
-                    insert_partners(engine, information)
+                    insert_partner(engine, information)
                     get_member_data.clear()
                     st.rerun()
                 except Exception as e:
-                    parse_db_error(e, 'Insert Partners')
+                    parse_db_error(e, 'Insert Partner')
 
 @st.dialog('Add New Friend', width='medium')
 def add_new_friend(persons, person_id):
@@ -343,10 +366,10 @@ def add_new_friend(persons, person_id):
                 information.update({k: get_value(st.session_state[f'{k}_new']) for k in keys})
                 information.update({k: None for k in keys_2})
                 try:
-                    insert_partners(engine, information)
+                    insert_partner(engine, information)
                     st.rerun()
                 except Exception as e:
-                    parse_db_error(e, 'Insert Friends')
+                    parse_db_error(e, 'Insert Friend')
 
 @st.dialog('Delete a Member', width='medium')
 def delete_member(member_id):
@@ -509,6 +532,22 @@ if member_id is not None:
                                              key=f'relation_type_{p}')
 
             case 'animal':
+                progenitors = fetch_progenitors(engine, animal_id=member_id)
+                if len(progenitors):
+                    st.divider()
+                    with st.container():
+                        for p, (progenitor_id, ) in progenitors[['progenitor_id']].iterrows():
+                            cols = st.columns([1, 8, 4, 4, 3], vertical_alignment='bottom')
+                            with cols[0]:
+                                st.checkbox(label=None, value=True, key=f'include_progenitor_{p}')
+                            with cols[1]:
+                                st.selectbox(f'Progenitor {p+1}', options=animals['member_id'],
+                                             format_func=lambda x: get_member_name_display(members, x),
+                                             index=animals['member_id'].tolist().index(progenitor_id),
+                                             disabled=True,
+                                             key=f'progenitor_id_{p}')
+
+
                 pets = fetch_pets(engine, animal_id=member_id)
                 if len(pets):
                     st.divider()
@@ -645,7 +684,7 @@ if member_id is not None:
                         update_person(engine, information)
                     case 'animal':
                         keys = ['first_name', 'nick_name', 'middle_names',
-                                'species', 'sex',
+                                'species', 'sex', 'origin_region_id',
                                 'birth_date', 'birth_date_precision', 'death_date', 'death_date_precision',
                                 'notes']
                         information = {'animal_id': member_id}
@@ -674,13 +713,13 @@ if member_id is not None:
                             if not st.session_state[f'include_parent_{i}']:
                                 information = {'child_id': member_id,
                                                 'parent_id_old': st.session_state[f'parent_id_{i}']}
-                                remove_parents(engine, information)
+                                remove_parent(engine, information)
                             else:
                                 keys = ['parent_id', 'relation_type']
                                 information = {'child_id': member_id}
                                 information.update({k: get_value(st.session_state.get(f'{k}_{i}')) for k in keys})
                                 try:
-                                    update_parents(engine, information)
+                                    update_parent(engine, information)
                                 except Exception as e:
                                     parse_db_error(e, 'Update Parents')
 
@@ -689,7 +728,7 @@ if member_id is not None:
                             if not st.session_state[f'include_partner_{i}']:
                                 information = {'person_id': member_id,
                                                'partner_id_old': st.session_state[f'partner_id_{i}']}
-                                remove_partners(engine, information)
+                                remove_partner(engine, information)
                             else:
                                 keys = ['union_id', 'union_date', 'union_date_precision', 'union_type',
                                         'last_name_hyphen', 'last_name_custom']
@@ -698,26 +737,31 @@ if member_id is not None:
                                                 False: st.session_state[f'partner_id_{i}']}\
                                                     .get(st.session_state[f'last_name_primary_{i}'])}
                                 information.update({k: get_value(st.session_state.get(f'{k}_{i}')) for k in keys})
-                                print('VEEP2')
-                                print(f'{information=}')
                                 try:
-                                    update_partners(engine, information)
+                                    update_partner(engine, information)
                                 except Exception as e:
                                     parse_db_error(e, 'Update Partners')
 
                     case 'animal':
+                        # update progenitors
+                        for i in range(len(progenitors)):
+                            if not st.session_state[f'include_progenitor_{i}']:
+                                information = {'young_id': member_id,
+                                               'progenitor_id_old': st.session_state[f'progenitor_id_{i}']}
+                                remove_progenitor(engine, information)
+
                         # update owners
                         for i in range(len(pets)):
                             if not st.session_state[f'include_owner_{i}']:
                                 information = {'pet_id': member_id,
                                                'owner_id_old': st.session_state[f'owner_id_{i}']}
-                                remove_parents(engine, information)
+                                remove_pet(engine, information)
                             else:
                                 keys = ['owner_id', 'relation_type', 'gotcha_date', 'gotcha_date_precion']
                                 information = {'pet_id': member_id}
                                 information.update({k: get_value(st.session_state.get(f'{k}_{i}')) for k in keys})
                                 try:
-                                    update_pets(engine, information)
+                                    update_pet(engine, information)
                                 except Exception as e:
                                     parse_db_error(e, 'Update Pets')
 
@@ -726,10 +770,10 @@ if member_id is not None:
                 get_member_data.clear()
 
 
-    # add a new parent
+    # add a new parent/owner/partner/friend
+    cols = st.columns(3)
     match member_type:
         case 'person':
-            cols = st.columns(3)
             with cols[0]:
                 if st.button('Add New Parent', type='primary'):
                     add_new_parent(persons, member_id)
@@ -740,7 +784,10 @@ if member_id is not None:
                 if st.button('Add New Friend', type='primary'):
                     add_new_friend(persons, member_id)
 
-
         case 'animal':
-            if st.button('Add New Owner', type='primary'):
-                add_new_owner(persons, member_id)
+            with cols[0]:
+                if st.button('Add New Progenitor', type='primary'):
+                    add_new_progenitor(animals, member_id)
+            with cols[1]:
+                if st.button('Add New Owner', type='primary'):
+                    add_new_owner(persons, member_id)
