@@ -390,7 +390,43 @@ def fetch_person_information(engine:Engine) -> DataFrame:
 
 def fetch_animal_information(engine:Engine) -> DataFrame:
     sql = f'''
-    WITH owners AS (
+    WITH 
+    puppies AS (
+    SELECT progenitor_id AS animal_id,
+    ARRAY_AGG(young_id ORDER BY birth_date) AS child_ids
+    FROM progenitors JOIN animals ON young_id = animal_id
+    GROUP BY progenitor_id
+    ),
+
+    sires AS (
+    SELECT
+    young_id AS animal_id,
+    ARRAY_AGG(progenitor_id ORDER BY birth_date) AS parent_ids
+    FROM progenitors JOIN animals ON progenitor_id = animal_id
+    GROUP BY young_id
+    ),
+
+    sibling_pairs AS (
+    SELECT DISTINCT
+    me.young_id AS animal_id,
+    sibling.young_id AS sibling_id,
+    sibling_animal.birth_date
+    FROM progenitors me
+    JOIN progenitors sibling
+    ON sibling.progenitor_id = me.progenitor_id
+    AND sibling.young_id != me.young_id
+    JOIN animals sibling_animal
+    ON sibling.young_id = sibling_animal.animal_id
+    ),
+
+    siblings AS (
+    SELECT
+    animal_id, ARRAY_AGG(sibling_id ORDER BY birth_date) AS sibling_ids
+    FROM sibling_pairs
+    GROUP BY animal_id
+    ),
+    
+    owners AS (
     SELECT pet_id AS animal_id,
     ARRAY_AGG(owner_id ORDER BY gotcha_date NULLS LAST) AS owner_ids
     FROM pets
@@ -441,18 +477,21 @@ def fetch_animal_information(engine:Engine) -> DataFrame:
     SELECT
     animal_id AS member_id, first_name, middle_names, nick_name,
     sex, species, region_code AS origin_region_code,
-    owner_ids,
+    parent_ids, child_ids, sibling_ids, owner_ids,
     birth_date::date, birth_date_precision, death_date::date, death_date_precision,
     gotcha_date::date, gotcha_date_precision, 
     JSON_BUILD_OBJECT('zip_code', zip_code) AS contact_info,
     JSON_BUILD_OBJECT('files', COALESCE(total_files, 0),'years', COALESCE(total_years, 0),
     'appearances', COALESCE(total_appearances, 0)) AS project_stats
     FROM animals
+    LEFT JOIN puppies USING (animal_id)
+    LEFT JOIN sires USING (animal_id)
+    LEFT JOIN siblings USING(animal_id)
     LEFT JOIN config.regions ON animals.origin_region_id = regions.region_id
     LEFT JOIN owners USING (animal_id)
     LEFT JOIN owner_gotchas USING (animal_id)
     LEFT JOIN addy USING (animal_id)
     LEFT JOIN stats_1 USING (animal_id)
-    LEFT JOIN stats_2 USING (animal_id);
-    ''';
+    LEFT JOIN stats_2 USING (animal_id)
+    ;'''
     return read_sql(engine, sql)

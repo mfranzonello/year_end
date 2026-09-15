@@ -159,13 +159,39 @@ def fill_image(engine:Engine, cloud:CloudConfig, members, member_type, member_id
 
 def fill_personal(information, member_type, sex, is_future, is_deceased):
     # born and living marker
-    death_date = information["death_date"].iloc[0]
-    death_date_precision = information["death_date_precision"].iloc[0]
+    (birth_date, birth_date_precision,
+     death_date, death_date_precision,
+     first_name, middle_names,
+     nick_name, 
+     origin_region_code, project_stats,
+     contact_info,
+     ) = information[[
+         'birth_date', 'birth_date_precision',
+         'death_date', 'death_date_precision',
+         'first_name', 'middle_names',
+         'nick_name',
+         'origin_region_code', 'project_stats',
+         'contact_info',
+         ]].iloc[0]
+    
+    match member_type:
+        case 'person':
+            (last_name, married_name,
+             union_date, union_date_precision, severance_date,
+             ) = information[[
+                 'last_name', 'married_name',
+                 'union_date', 'union_date_precision', 'severance_date',
+                 ]].iloc[0]
+        case 'animal':
+            (species,
+             gotcha_date, gotcha_date_precision,
+             ) = information[[
+                 'species',
+                 'gotcha_date', 'gotcha_date_precision',
+                 ]].iloc[0]
+
     if is_deceased:
         st.markdown(f'*Deceased*')
-
-    birth_date = information["birth_date"].iloc[0]
-    birth_date_precision = information["birth_date_precision"].iloc[0]
     if is_future:
         st.markdown('*Unborn*')
 
@@ -177,11 +203,8 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
         cut_date_precision = 'day'
 
     # name information
-    first_name = information['first_name'].iloc[0]
     if first_name:
         st.markdown(f'**First Name**: {first_name}')
-    middle_names = information['middle_names'].iloc[0]
-    nick_name = information['nick_name'].iloc[0]
     if nick_name:
         st.markdown(f'**Nickname**: "{nick_name}"')
     if middle_names:
@@ -189,8 +212,6 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
         m_names_all = ' '.join(m_names)
         st.markdown(f'**Middle {get_plural("Name", items=m_names)}**: {m_names_all}')
     if member_type == 'person':
-        last_name = information['last_name'].iloc[0]
-        married_name = information['married_name'].iloc[0]
         if married_name and married_name != last_name:
             nee_name = get_gendered_name('nee', sex)
             st.markdown(f'**{nee_name} Name**: {last_name}')
@@ -199,7 +220,6 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
             st.markdown(f'**Last Name**: {last_name}')
 
     # birth and death information
-    origin_region_code = information['origin_region_code'].iloc[0]
     emoji_flag = get_flag(origin_region_code)
     if emoji_flag:
         st.markdown(f'**Origin**: {emoji_flag}')
@@ -219,7 +239,6 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
 
     # species and gender information
     if member_type == 'animal':
-        species = information["species"].iloc[0]
         if species:
             species_name = get_specied_name(species)
             st.markdown(f'**Species**: {species_name}')
@@ -228,13 +247,10 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
     st.markdown(f'**Gender**: {gender}')
 
     if member_type == 'person':
-        union_date = information['union_date'].iloc[0]
         if union_date:
-            union_date_precision = information['union_date_precision'].iloc[0]
             anniversary = get_date_display(union_date, union_date_precision)
             st.markdown(f'**Anniversary**: {anniversary}')
 
-            severance_date = information['severance_date'].iloc[0]
             if severance_date is not None:
                 cut_date_2 = min(severance_date, cut_date)
             else:
@@ -243,9 +259,7 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
             st.markdown(f'**Married for**: {marriage_span}')
 
     if member_type == 'animal':
-        gotcha_date = information['gotcha_date'].iloc[0]
         if gotcha_date is not None:
-            gotcha_date_precision = information['gotcha_date_precision'].iloc[0]
             adoption = get_date_display(gotcha_date, gotcha_date_precision)
             st.markdown(f'**Adopted on**: {adoption}')
             if death_date_precision != 'past':
@@ -253,7 +267,6 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
                 st.markdown(f'**Owned for**: {owned_span}')
 
     # project information
-    project_stats = information['project_stats'].iloc[0]
     if project_stats.get('files'):
         v = project_stats['files']
         y = project_stats['years']
@@ -267,7 +280,6 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
         st.markdown(f'**Appeared in**: {r} {review_s}')
 
     # location information
-    contact_info = information['contact_info'].iloc[0]
     zip_code = contact_info.get('zip_code')
     if zip_code:
         plot_map(zip_code, markdown='Lives near')
@@ -275,36 +287,49 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
 def fill_lineage(information, members, member_type, sex, is_future):
     future = 'Future ' if is_future else ''
 
-    if member_type == 'person':
-        # ancestry information
-        parents = information['parent_ids'].iloc[0]
-        if parents:
-            child_name = get_gendered_name('child', sex)
-            get_list_display(members, parents, f'**{future}{child_name} of**:')
+    (parents, children, siblings,
+     ) = information[[
+         'parent_ids', 'child_ids', 'sibling_ids'
+         ]].iloc[0]
 
+    match member_type:
+        case 'person':
+            (spouse, expecting, pets,
+             ) = information[[
+                 'spouse_ids', 'expecting_ids', 'pet_ids'
+                 ]].iloc[0]
+
+        case 'animal':
+            (owners,
+             ) = information[[
+                 'owner_ids',
+                 ]].iloc[0]
+
+    # ancestry information
+    if parents:
+        child_name = get_gendered_name('child', sex)
+        get_list_display(members, parents, f'**{future}{child_name} of**:')
+
+    if member_type == 'person':
         # spousal information
-        spouse = information['spouse_ids'].iloc[0]
         if spouse:
             spouse_name = get_gendered_name('spouse', sex)
             get_list_display(members, spouse, f'**{spouse_name} of**:')
 
-        # descendants information
-        children = information['child_ids'].iloc[0]
-        if children:
-            parent_name = get_gendered_name('parent', sex)
-            get_list_display(members, children, f'**{parent_name} of {len(children)}**:')
+    # descendants information
+    if children:
+        parent_name = get_gendered_name('parent', sex)
+        get_list_display(members, children, f'**{parent_name} of {len(children)}**:')
 
-        expecting = information['expecting_ids'].iloc[0]
+    if member_type == 'person':
         if expecting:
             expecting_name = get_gendered_name('expecting', sex)
             get_list_display(members, expecting, f'**{expecting_name}**:')
 
-        pets = information['pet_ids'].iloc[0]
         if pets:
             get_list_display(members, pets, '**Owner of**:')
 
         # siblings information
-        siblings = information['sibling_ids'].iloc[0]
         if siblings:
             sibling_name = get_gendered_name('sibling', sex)
             get_list_display(members, siblings, f'**{future}{sibling_name} of**:')
@@ -312,6 +337,5 @@ def fill_lineage(information, members, member_type, sex, is_future):
 
     elif member_type == 'animal':
         # ownership information
-        owners = information['owner_ids'].iloc[0]
         if owners:
             get_list_display(members, owners, '**Pet of**:')
