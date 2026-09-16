@@ -6,12 +6,12 @@ from dateutil.relativedelta import relativedelta
 import streamlit as st
 from pgeocode import Nominatim
 from pandas import DataFrame, Series
-from flag import flag as region_flag
 
 from database.db import Engine
 from pages.streamlit_auth import current_tier, require_admin
 from pages.general import get_member_name_display
 from charting.cloudy import get_version, get_image_url, upload_image, CloudConfig
+from charting.general import get_flag
 
 nomi = Nominatim('us')
 

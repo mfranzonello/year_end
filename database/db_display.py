@@ -94,7 +94,7 @@ def fetch_family_tree(engine: Engine, founder_id:UUID, cut_date:date|None=None,
     COALESCE(p.nick_name, a.nick_name) AS nick_name,
     p.last_name, p.prefix, suffix_to_text(p.suffix) AS suffix,
     COALESCE(p.sex, a.sex) AS sex, a.species,
-    r region_code,
+    r.region_code,
     COALESCE(p.birth_date, a.birth_date) AS birth_date,
     COALESCE(p.birth_date_precision, a.birth_date_precision) AS birth_date_precision,
     COALESCE(p.death_date, a.death_date) AS death_date,
@@ -107,7 +107,7 @@ def fetch_family_tree(engine: Engine, founder_id:UUID, cut_date:date|None=None,
     FROM dfg
     LEFT JOIN persons p ON node_id = person_id
     LEFT JOIN animals a ON node_id = animal_id
-    LEFT JOIN config.regions r ON COALESCE(p.origin_region_id, a.origin_region_id) = regions.region_id
+    LEFT JOIN config.regions r ON COALESCE(p.origin_region_id, a.origin_region_id) = r.region_id
     LEFT JOIN unions u ON node_id = u.union_id
     LEFT JOIN tree.clans ON u.union_id = clan_id
     ;'''

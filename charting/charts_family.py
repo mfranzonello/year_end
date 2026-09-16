@@ -2,12 +2,13 @@ from math import ceil
 from uuid import UUID
 
 from graphviz import Graph
-from pandas import DataFrame, isna
+from pandas import DataFrame, Series, isna
 from pandas.api.types import is_list_like
 from webcolors import name_to_hex
 
 from database.db import Engine
 from charting.cloudy import get_image_path, CloudConfig
+from charting.general import get_flag
 
 def get_color_hexes(color_names:list[str]) -> list[str]:
     return [name_to_hex(c) for c in color_names]
@@ -15,18 +16,24 @@ def get_color_hexes(color_names:list[str]) -> list[str]:
 def get_color_rgb_hex(color_name:str) -> str:
     return name_to_hex(color_name).replace('#', 'rgb:')
 
-def get_person_label(node) -> str:
+def get_person_label(node: Series, with_flag=False) -> str:
     first_name = node['first_name'] if node['first_name'] else '< tbd >'
     last_name = node['last_name'] if node['last_name'] else '< unknown >'
     suffix = node['suffix'] if node['suffix'] else ''
-    return first_name + '\\n' + last_name + suffix
+    flag = f'\\n{get_region_flag(node)}' if with_flag else ''
+    return first_name + '\\n' + last_name + suffix + flag
 
-def get_animal_label(node) -> str:
+def get_animal_label(node: Series, with_flag=False) -> str:
     first_name = node['first_name'] if node['first_name'] else '< tbd >'
-    return first_name + '\\nthe ' + node['species']
+    species = node['species'] if node['species'] else 'animal'
+    flag = f'\\n{get_region_flag(node)}' if with_flag else ''
+    return first_name + '\\nthe ' + node['species'] + flag
 
-def get_union_label(node) -> str:
+def get_union_label(node: Series) -> str:
     return
+
+def get_region_flag(node: Series) -> str:
+    return get_flag(node['region_code'])
 
 def get_attributes(node, use_images=False) -> str:
     SHAPE_PERSON = 'rectangle'
@@ -167,7 +174,8 @@ def find_horizontal_route(start_node, end_node, parent_nodes, style:str=None):
     return edges
 
 ''' main family tree charts '''
-def tree_chart(engine:Engine, tree_data:DataFrame, cloud:CloudConfig, use_images:bool=False, generation_limit:int=None) -> Graph:
+def tree_chart(engine:Engine, tree_data:DataFrame, cloud:CloudConfig,
+               use_images:bool=False, generation_limit:int=None, with_flag:bool=False) -> Graph:
     
     tree = Graph()
     ##tree.attr(splines='ortho')
@@ -195,9 +203,9 @@ def tree_chart(engine:Engine, tree_data:DataFrame, cloud:CloudConfig, use_images
                 else:
                     image = None
                     if node_type == 'person':
-                        label = get_person_label(node)
+                        label = get_person_label(node, with_flag=with_flag)
                     else:
-                        label = get_animal_label(node)
+                        label = get_animal_label(node, with_flag=with_flag)
 
             else:
                 if use_images:
