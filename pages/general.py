@@ -52,7 +52,8 @@ def set_sidebar():
             for page in pages[grouping]:
                 if allow_page(page):
                     st.page_link(get_link(page), label=page['label'], icon=get_icon(page))
-            st.divider()
+            if any(allow_page(page) for page in pages[grouping]):
+                st.divider()
 
         render_account_controls(identity)
 
