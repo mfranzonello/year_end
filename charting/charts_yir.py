@@ -62,7 +62,7 @@ def get_percent_hq(resolutions:dict, resolution_order:list, hq_min:str) -> float
 def submission_chart(engine:Engine, folder_values:DataFrame, quantity:str, cloud:CloudConfig,
                      cap:bool=False, order:list|None=None) -> alt.Chart:
 
-    single_bars = ['video_count', 'video_duration', 'file_size']
+    single_bars = ['video_count', 'video_duration', 'file_size', 'total_score']
     multi_bars = ['rating_count', 'resolution_count']
 
     if quantity in single_bars:
@@ -76,7 +76,8 @@ def submission_chart(engine:Engine, folder_values:DataFrame, quantity:str, cloud
                      'video_duration': 'Duration',
                      'file_size': 'MB',
                      'rating_count': 'Stars',
-                     'resolution_count': 'Resolution'}[quantity]
+                     'resolution_count': 'Resolution',
+                     'total_score': 'Score'}[quantity]
     adjust_thresholds = {'video_count': 50, # cap at expected videos
                          'video_duration': 30*60, # cap at half an hour
                          'file_size': 1000, # cap at 1GB,
