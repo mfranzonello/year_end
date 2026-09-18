@@ -9,7 +9,7 @@ from database.db_family import (
     insert_person, insert_animal, insert_parent, insert_pet, insert_partner, insert_progenitor,
     remove_person, remove_animal, remove_parent, remove_pet, remove_partner, remove_progenitor)
 from database.db_display import fetch_member_summary, fetch_regions
-from pages.streamlit_auth import get_database_credentials, get_cloud_credentials
+from pages.streamlit_auth import get_database_credentials, get_cloud_credentials, require_admin
 from pages.general import set_sidebar, get_hash_funcs, get_member_name_display, get_value, get_index, parse_db_error
 from charting.cloudy import configure_cloud, get_image_url, upload_image, get_version
 
@@ -20,6 +20,7 @@ cloud = configure_cloud(*get_cloud_credentials())
 set_sidebar()
 st.set_page_config(page_title='Add and Edit Family Members',
                    layout='wide')
+require_admin()
 
 new_uuid = f'{"X"*8}-{"X"*4}-{"X"*4}-{"X"*8}-{"X"*12}'
 prefixes = ['Dr', 'Fr']

@@ -110,10 +110,6 @@ def get_plural(word:str, count:int=None, items:list=None, s:str='s', plural:str=
 
     return plural if (quantity != 1) else word
 
-def get_flag(region_code: str) -> str:
-    if region_code:
-        return region_flag(region_code)
-
 def get_location(zip_code: int):
     return nomi.query_postal_code(zip_code)
 
