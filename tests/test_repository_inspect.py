@@ -100,6 +100,8 @@ class OneDriveFolderShareInspectionTests(TestCase):
 
 
 class OneDriveCloudContentInspectionTests(TestCase):
+    @patch("repositories.cloud_inspect.update_file_locations")
+    @patch("repositories.cloud_inspect.fetch_file_location_candidates")
     @patch("repositories.cloud_inspect.purge_files")
     @patch("repositories.cloud_inspect.fetch_known_files")
     @patch("repositories.cloud_inspect.update_files")
@@ -109,20 +111,26 @@ class OneDriveCloudContentInspectionTests(TestCase):
     @patch("repositories.cloud_inspect.find_onedrive_folder_id", return_value="year-id")
     def test_applies_cloud_metadata_without_download_only_fields(
         self, find_year, list_children, list_descendants, update_folders, update_files,
-        fetch_known_files, purge_files,
+        fetch_known_files, purge_files, fetch_location_files, update_locations,
     ):
+        fetch_location_files.return_value = DataFrame([{
+            "file_id": "nested-db", "folder_name": "Participant",
+            "file_name": "clip.mov", "subfolder_name": "Trip",
+        }])
         fetch_known_files.return_value = DataFrame(columns=[
             "file_id", "folder_name", "project_year", "media_type", "file_name",
             "subfolder_name",
         ])
         list_children.return_value = [
-            {"id": "root-video", "name": "root.mp4", "size": 1048576, "file": {}},
+            {"id": "root-video", "name": "root.mp4", "size": 1048576,
+             "file": {}, "createdDateTime": "2026-01-01T00:00:00Z"},
             {"id": "person", "name": "Participant", "folder": {}},
         ]
         list_descendants.return_value = [
             {
                 "id": "nested-video", "name": "clip.mov", "size": 1572864,
                 "file": {}, "relative_parent": "Trip",
+                "createdDateTime": "2026-01-02T00:00:00Z",
                 "video": {"duration": 8053, "width": 3840, "height": 2160},
             },
             {
@@ -147,6 +155,7 @@ class OneDriveCloudContentInspectionTests(TestCase):
         self.assertEqual(files["video_resolution"].iloc[1], "4k")
         update_folders.assert_called_once()
         update_files.assert_called_once()
+        update_locations.assert_called_once()
         purge_files.assert_not_called()
 
     @patch("repositories.cloud_inspect.purge_files")
@@ -181,6 +190,8 @@ class OneDriveCloudContentInspectionTests(TestCase):
         update_files.assert_not_called()
         purge_files.assert_not_called()
 
+    @patch("repositories.cloud_inspect.update_file_locations")
+    @patch("repositories.cloud_inspect.fetch_file_location_candidates", return_value=DataFrame())
     @patch("repositories.cloud_inspect.purge_files")
     @patch("repositories.cloud_inspect.fetch_known_files")
     @patch("repositories.cloud_inspect.update_files")
@@ -190,10 +201,12 @@ class OneDriveCloudContentInspectionTests(TestCase):
     @patch("repositories.cloud_inspect.find_onedrive_folder_id", return_value="year-id")
     def test_apply_purges_database_files_absent_from_onedrive(
         self, _find_year, list_children, _list_descendants, _update_folders,
-        _update_files, fetch_known_files, purge_files,
+        _update_files, fetch_known_files, purge_files, _fetch_locations,
+        _update_locations,
     ):
         list_children.return_value = [
-            {"id": "current", "name": "current.mp4", "size": 1048576, "file": {}},
+            {"id": "current", "name": "current.mp4", "size": 1048576,
+             "file": {}, "createdDateTime": "2026-01-01T00:00:00Z"},
         ]
         fetch_known_files.return_value = DataFrame([
             {

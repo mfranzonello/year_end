@@ -18,6 +18,8 @@ def candidate_plan() -> DataFrame:
         "project_year": 2026,
         "media_type": "smartphone",
         "source_file_id": "source-file",
+        "source_created_timestamp": "2026-01-01 00:00:00",
+        "file_id": "database-file",
         "destination_folder_id": "destination-folder",
         "file_name": "clip.mp4",
         "file_size": 5,
@@ -41,11 +43,15 @@ class GoogleDriveCloudMigrationTests(TestCase):
         self.assertEqual(result.iloc[0]["status"], "would_copy")
         transfer.assert_not_called()
 
+    @patch("repositories.cloud_migrate.update_file_locations")
     @patch("repositories.cloud_migrate.transfer_google_file_to_onedrive")
     @patch("repositories.cloud_migrate.discover_google_drive_migration")
-    def test_apply_streams_a_candidate(self, discover, transfer):
+    def test_apply_streams_a_candidate(self, discover, transfer, update_locations):
         discover.return_value = candidate_plan()
-        transfer.return_value = {"id": "destination-file"}
+        transfer.return_value = {
+            "id": "destination-file",
+            "createdDateTime": "2026-01-02T00:00:00Z",
+        }
 
         result = migrate_google_drive_cloud(
             Mock(), "smartphone", 2026, Mock(), dry_run=False,
@@ -56,6 +62,7 @@ class GoogleDriveCloudMigrationTests(TestCase):
         transfer.assert_called_once_with(
             "source-file", "clip.mp4", 5, "destination-folder",
         )
+        self.assertEqual(len(update_locations.call_args.args[1]), 2)
 
 
 class CloudFileTransferTests(TestCase):

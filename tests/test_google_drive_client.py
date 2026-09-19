@@ -11,9 +11,18 @@ from integrations.google.google_drive.client import (
     find_folder_id,
     get_or_create_share_link,
     get_share_link,
-    list_child_folders,
+    list_child_folders, list_children,
     list_descendant_files,
 )
+
+
+class ListChildrenTests(TestCase):
+    @patch("integrations.google.google_drive.client.get_access_token", return_value="token")
+    @patch("integrations.google.google_drive.client._get", return_value={"files": []})
+    def test_requests_created_timestamp(self, drive_get, _get_token):
+        list_children("folder-id")
+
+        self.assertIn("createdTime", drive_get.call_args.args[1]["fields"])
 
 
 class JsonResponse:

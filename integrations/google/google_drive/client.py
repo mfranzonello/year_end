@@ -221,7 +221,7 @@ def _list_children(folder_id: str, access_token: str) -> list[dict[str, Any]]:
         "pageSize": "1000",
         "orderBy": "folder,name",
         "fields": (
-            "files(id,name,mimeType,size,webViewLink,modifiedTime,"
+            "files(id,name,mimeType,size,webViewLink,createdTime,modifiedTime,"
             "capabilities(canDownload),shortcutDetails(targetId,targetMimeType)),"
             "nextPageToken"
         ),
@@ -253,7 +253,7 @@ def _get_file(file_id: str, access_token: str) -> dict[str, Any]:
         f"/files/{quote(file_id, safe='')}",
         {
             "fields": (
-                "id,name,mimeType,size,webViewLink,modifiedTime,"
+                "id,name,mimeType,size,webViewLink,createdTime,modifiedTime,"
                 "capabilities(canDownload),shortcutDetails(targetId,targetMimeType)"
             ),
         },

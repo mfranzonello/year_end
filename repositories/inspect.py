@@ -20,8 +20,6 @@ from database.db_project import (
     fetch_known_folders, update_folders, purge_folders,
     fetch_known_files, update_files, purge_files, fetch_files, fetch_files_scanned, update_files_used,
     )
-from database.db_display import fetch_display_names
-from family_tree.cloudinary_heavy import configure_cloud, fill_in_temp_pictures
 from integrations.microsoft.onedrive.client import (
     GraphRequestError,
     find_folder_id as find_onedrive_folder_id,
@@ -519,10 +517,3 @@ def summarize_folders(
             files_used_df = concat(files_used)
             files_df['media_type'] = media_type
             update_files_used(engine, files_used_df)
-        
-def update_database_images(engine:Engine, cloud_name:str, api_key:str, api_secret:str, dry_run=False):
-    configure_cloud(cloud_name, api_key, api_secret)
-    display_names = fetch_display_names(engine, schema_name='dashboard')
-
-    if not dry_run:
-        fill_in_temp_pictures(display_names)

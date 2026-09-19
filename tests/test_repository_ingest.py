@@ -7,6 +7,7 @@ from pandas import DataFrame
 
 from repositories.ingest import (
     discover_google_drive_migration, ingest_google_drive_folder_shares,
+    match_discovered_file_locations,
 )
 
 
@@ -43,12 +44,18 @@ class GoogleDriveFolderShareIngestionTests(TestCase):
 
 
 class GoogleDriveMigrationDiscoveryTests(TestCase):
+    @patch("repositories.ingest.fetch_file_location_candidates")
     @patch("repositories.ingest.list_onedrive_descendant_files")
     @patch("repositories.ingest.list_google_drive_descendant_files")
     @patch("repositories.ingest.fetch_folder_transfer_locations")
     def test_uses_mapped_ids_and_identifies_candidate_files(
-        self, fetch_locations, list_google_files, list_onedrive_files
+        self, fetch_locations, list_google_files, list_onedrive_files, fetch_files
     ):
+        fetch_files.return_value = DataFrame([{
+            "file_id": "existing-db", "folder_id": "database-id",
+            "folder_name": "Participant", "file_name": "existing.mov",
+            "subfolder_name": None,
+        }])
         fetch_locations.return_value = DataFrame([{
             "folder_id": "database-id",
             "folder_name": "Participant",
@@ -60,16 +67,19 @@ class GoogleDriveMigrationDiscoveryTests(TestCase):
         list_google_files.return_value = [
             {
                 "id": "new", "name": "new.mp4", "size": "10",
+                "createdTime": "2026-01-01T00:00:00Z",
                 "capabilities": {"canDownload": True},
             },
             {
                 "id": "existing", "name": "existing.mov", "size": "20",
+                "createdTime": "2026-01-01T00:00:00Z",
                 "capabilities": {"canDownload": True},
             },
             {"id": "text", "name": "notes.txt", "size": "2"},
         ]
         list_onedrive_files.return_value = [
-            {"id": "destination", "name": "existing.mov", "size": 20},
+            {"id": "destination", "name": "existing.mov", "size": 20,
+             "createdDateTime": "2026-01-02T00:00:00Z"},
         ]
 
         result = discover_google_drive_migration(Mock(), "smartphone", 2026)
@@ -80,14 +90,16 @@ class GoogleDriveMigrationDiscoveryTests(TestCase):
         )
         self.assertEqual(result.attrs["folder_count"], 1)
         self.assertEqual(result.attrs["mapped_folder_count"], 1)
+        self.assertEqual(result.loc[result["file_name"] == "existing.mov", "file_id"].iloc[0], "existing-db")
         list_google_files.assert_called_once_with("google-folder")
         list_onedrive_files.assert_called_once_with("onedrive-folder")
 
+    @patch("repositories.ingest.fetch_file_location_candidates", return_value=DataFrame())
     @patch("repositories.ingest.list_onedrive_descendant_files")
     @patch("repositories.ingest.list_google_drive_descendant_files")
     @patch("repositories.ingest.fetch_folder_transfer_locations")
     def test_filename_match_wins_even_when_provider_sizes_differ(
-        self, fetch_locations, list_google_files, list_onedrive_files
+        self, fetch_locations, list_google_files, list_onedrive_files, _fetch_files
     ):
         fetch_locations.return_value = DataFrame([{
             "folder_id": "database-id", "folder_name": "Participant",
@@ -97,12 +109,34 @@ class GoogleDriveMigrationDiscoveryTests(TestCase):
         }])
         list_google_files.return_value = [{
             "id": "source", "name": "clip.mp4", "size": "10",
+            "createdTime": "2026-01-01T00:00:00Z",
             "capabilities": {"canDownload": True},
         }]
         list_onedrive_files.return_value = [
-            {"id": "destination", "name": "clip.mp4", "size": 11},
+            {"id": "destination", "name": "clip.mp4", "size": 11,
+             "createdDateTime": "2026-01-02T00:00:00Z"},
         ]
 
         result = discover_google_drive_migration(Mock(), "smartphone", 2026)
 
         self.assertEqual(result.iloc[0]["status"], "already_present")
+
+
+class FileLocationMatchingTests(TestCase):
+    def test_matches_discovery_rows_without_a_separate_provider_scan(self):
+        logical = DataFrame([{
+            "file_id": "file-id", "folder_name": "Participant",
+            "file_name": "clip.mp4", "subfolder_name": "Trip",
+        }])
+        discovered = DataFrame([{
+            "folder_name": "Participant", "file_name": "clip.mp4",
+            "subfolder_name": "Trip", "repository_item_id": "provider-file",
+            "created_timestamp": "2025-03-04 05:06:07",
+        }])
+
+        result = match_discovered_file_locations(
+            logical, discovered, "OneDrive", is_canonical=True,
+        )
+
+        self.assertEqual(result.iloc[0]["file_id"], "file-id")
+        self.assertEqual(result.iloc[0]["repository_item_id"], "provider-file")

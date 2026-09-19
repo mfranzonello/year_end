@@ -209,6 +209,7 @@ class ListChildFoldersTests(TestCase):
         result = list_children("parent")
 
         self.assertEqual([item["id"] for item in result], ["folder", "file"])
+        self.assertIn("createdDateTime", graph_get.call_args.args[0])
 
 
 class ListDescendantFilesTests(TestCase):

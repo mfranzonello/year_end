@@ -1,5 +1,6 @@
 """Ingest media and repository metadata from source providers."""
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 from pandas import DataFrame
@@ -7,7 +8,8 @@ from sqlalchemy import Engine
 
 from common.video import VIDEO_EXTS
 from database.db_project import (
-    fetch_folder_transfer_locations, fetch_project_folders,
+    fetch_file_location_candidates, fetch_folder_transfer_locations,
+    fetch_project_folders,
     update_folder_locations_and_shares,
 )
 from integrations.google.google_drive.client import (
@@ -105,6 +107,65 @@ def _file_size(item: dict, provider: str) -> int:
     return size
 
 
+def _location_key(file_name: str, relative_parent: str | None) -> tuple[str, str]:
+    """Return a provider-neutral, case-insensitive relative file key."""
+    parent = (relative_parent or "").replace("\\", "/").strip("/")
+    return parent.casefold(), file_name.casefold()
+
+
+def parse_created_timestamp(value: object, provider: str) -> datetime:
+    """Parse a provider UTC timestamp for the database's naive UTC column."""
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{provider} returned no created timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError(f"{provider} returned an invalid created timestamp") from error
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def match_discovered_file_locations(
+    logical_files: DataFrame,
+    discovered_files: DataFrame,
+    repository_name: str,
+    is_canonical: bool,
+) -> DataFrame:
+    """Match one discovery inventory to logical database files."""
+    if logical_files.empty or discovered_files.empty:
+        return DataFrame()
+    discovered_by_key: dict[tuple[str, str, str], list[dict]] = {}
+    for item in discovered_files.to_dict(orient="records"):
+        folder_name = item.get("folder_name") or ""
+        key = (
+            folder_name.casefold(),
+            *_location_key(item["file_name"], item.get("subfolder_name")),
+        )
+        discovered_by_key.setdefault(key, []).append(item)
+    rows = []
+    for logical_file in logical_files.to_dict(orient="records"):
+        folder_name = logical_file.get("folder_name") or ""
+        key = (
+            folder_name.casefold(),
+            *_location_key(
+                logical_file["file_name"], logical_file.get("subfolder_name")
+            ),
+        )
+        matches = discovered_by_key.get(key, [])
+        if len(matches) != 1:
+            continue
+        match = matches[0]
+        rows.append({
+            "file_id": logical_file["file_id"],
+            "repository_name": repository_name,
+            "repository_item_id": match["repository_item_id"],
+            "is_canonical": is_canonical,
+            "created_timestamp": match["created_timestamp"],
+        })
+    return DataFrame(rows)
+
+
 def discover_google_drive_migration(
     engine: Engine,
     media_type: str,
@@ -118,6 +179,14 @@ def discover_google_drive_migration(
         SOURCE_REPOSITORY,
         DESTINATION_REPOSITORY,
     )
+    logical_files = fetch_file_location_candidates(engine, project_year, media_type)
+    logical_by_folder = {} if logical_files.empty else {
+        folder_id: {
+            _location_key(row["file_name"], row.get("subfolder_name")): row
+            for row in rows.to_dict(orient="records")
+        }
+        for folder_id, rows in logical_files.groupby("folder_id", dropna=False)
+    }
     if locations["folder_id"].duplicated().any():
         raise ValueError(
             "A project folder has multiple locations in a transfer repository"
@@ -158,11 +227,12 @@ def discover_google_drive_migration(
             key=lambda item: (item["name"].casefold(), item["id"]),
         )
         destination_files = list_onedrive_descendant_files(destination_folder_id)
-        destination_by_name: dict[str, list[dict]] = {}
+        destination_by_name: dict[tuple[str, str], list[dict]] = {}
         for item in destination_files:
             name = item.get("name")
             if isinstance(name, str) and name:
-                destination_by_name.setdefault(name.casefold(), []).append(item)
+                key = _location_key(name, item.get("relative_parent"))
+                destination_by_name.setdefault(key, []).append(item)
 
         source_name_counts: dict[str, int] = {}
         for item in source_files:
@@ -171,6 +241,8 @@ def discover_google_drive_migration(
 
         for source_file in source_files:
             file_name = source_file["name"]
+            file_key = _location_key(file_name, source_file.get("relative_parent"))
+            logical_file = logical_by_folder.get(folder["folder_id"], {}).get(file_key)
             try:
                 size = _file_size(source_file, SOURCE_REPOSITORY)
             except ValueError:
@@ -181,7 +253,11 @@ def discover_google_drive_migration(
                 continue
             file_row = {
                 **base,
+                "file_id": logical_file.get("file_id") if logical_file else None,
                 "source_file_id": source_file["id"],
+                "source_created_timestamp": parse_created_timestamp(
+                    source_file.get("createdTime"), SOURCE_REPOSITORY,
+                ),
                 "destination_folder_id": destination_folder_id,
                 "file_name": file_name,
                 "file_size": size,
@@ -193,9 +269,17 @@ def discover_google_drive_migration(
                 rows.append({**file_row, "status": "duplicate_source_name"})
                 continue
 
-            destination_matches = destination_by_name.get(file_name.casefold(), [])
+            destination_matches = destination_by_name.get(file_key, [])
             if destination_matches:
-                rows.append({**file_row, "status": "already_present"})
+                destination = destination_matches[0]
+                rows.append({
+                    **file_row,
+                    "destination_file_id": destination.get("id"),
+                    "destination_created_timestamp": parse_created_timestamp(
+                        destination.get("createdDateTime"), DESTINATION_REPOSITORY,
+                    ),
+                    "status": "already_present",
+                })
                 continue
 
             rows.append({**file_row, "status": "candidate"})

@@ -133,6 +133,10 @@ def purge_files(engine:Engine, df:DataFrame):
     # remove stale file_ids
     values, params = build_values(df, ['file_id'])
     sql = f'''
+    DELETE FROM project.file_locations WHERE file_id IN (VALUES {values})
+    ;'''
+    execute_sql(engine, sql, params=params)
+    sql = f'''
     DELETE FROM project.files WHERE file_id IN (VALUES {values})
     ;'''
     execute_sql(engine, sql, params=params)
@@ -260,6 +264,110 @@ def fetch_folder_transfer_locations(
                 "destination_repository": destination_repository,
             },
         )
+
+
+def fetch_file_location_candidates(
+    engine: Engine,
+    project_year: int,
+    media_type: str,
+) -> DataFrame:
+    """Return logical files that can be matched to provider inventory items."""
+    sql = '''
+    SELECT
+        files.file_id,
+        files.folder_id,
+        folders.folder_name,
+        files.file_name,
+        files.subfolder_name
+    FROM project.files AS files
+    JOIN project.folders AS folders USING (folder_id)
+    WHERE folders.project_year = :project_year
+      AND folders.media_type = :media_type
+    ORDER BY files.folder_id, files.subfolder_name, files.file_name
+    ;'''
+    with engine.begin() as conn:
+        return read_sql_query(
+            text(sql),
+            conn,
+            params={"project_year": project_year, "media_type": media_type},
+        )
+
+
+def update_file_locations(
+    engine: Engine,
+    locations: DataFrame,
+) -> None:
+    """Insert or update one provider location per logical file and repository."""
+    if locations.empty:
+        return
+
+    with engine.begin() as conn:
+        repository_ids = dict(conn.execute(text('''
+            SELECT repository_name, repository_id
+            FROM ingestion.repositories
+            ;''')).all())
+        existing_rows = conn.execute(text('''
+            SELECT file_location_id, file_id, repository_id, repository_item_id
+            FROM project.file_locations
+            ;''')).mappings().all()
+        by_file_repository: dict[tuple, list] = {}
+        by_repository_item: dict[tuple, list] = {}
+        for existing in existing_rows:
+            by_file_repository.setdefault(
+                (existing["file_id"], existing["repository_id"]), []
+            ).append(existing["file_location_id"])
+            by_repository_item.setdefault(
+                (existing["repository_id"], existing["repository_item_id"]), []
+            ).append(existing["file_id"])
+
+        inserts = []
+        updates = []
+        for row in locations.to_dict(orient="records"):
+            repository_id = repository_ids[row["repository_name"]]
+            owners = by_repository_item.get(
+                (repository_id, row["repository_item_id"]), []
+            )
+            if any(file_id != row["file_id"] for file_id in owners):
+                raise ValueError(
+                    "A repository item is already assigned to another project file"
+                )
+            existing = by_file_repository.get(
+                (row["file_id"], repository_id), []
+            )
+            if len(existing) > 1:
+                raise ValueError(
+                    "A project file has multiple locations in the same repository"
+                )
+            params = {
+                "file_id": row["file_id"],
+                "repository_id": repository_id,
+                "repository_item_id": row["repository_item_id"],
+                "is_canonical": row["is_canonical"],
+                "created_timestamp": row["created_timestamp"],
+            }
+            if existing:
+                updates.append({**params, "file_location_id": existing[0]})
+            else:
+                inserts.append(params)
+
+        if updates:
+            conn.execute(text('''
+                UPDATE project.file_locations
+                SET repository_item_id = :repository_item_id,
+                    is_canonical = :is_canonical,
+                    created_timestamp = :created_timestamp
+                WHERE file_location_id = :file_location_id
+                ;'''), updates)
+        if inserts:
+            conn.execute(text('''
+                INSERT INTO project.file_locations (
+                    file_id, repository_id, repository_item_id,
+                    is_canonical, created_timestamp
+                ) VALUES (
+                    :file_id, :repository_id, :repository_item_id,
+                    :is_canonical, :created_timestamp
+                )
+                ;'''), inserts)
 
 def update_folder_locations_and_shares(
     engine: Engine,
