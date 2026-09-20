@@ -2,10 +2,12 @@
 
 from unittest import TestCase
 from unittest.mock import patch
+from io import BytesIO
 import json
+from urllib.error import HTTPError
 
 from integrations.microsoft.onedrive.client import (
-    GraphRequestError, UPLOAD_FRAGMENT_GRANULARITY, create_upload_session,
+    GraphRequestError, UPLOAD_FRAGMENT_GRANULARITY, _patch, create_upload_session,
     find_folder_id, get_or_create_share_link, get_share_link, list_child_folders,
     list_children, list_descendant_files, upload_chunk,
 )
@@ -29,6 +31,60 @@ class JsonResponse:
 
     def getcode(self):
         return self.status
+
+
+def redirect_error(location: str) -> HTTPError:
+    """Return the method-preserving redirect shape emitted by Graph."""
+    return HTTPError(
+        "https://graph.microsoft.com/v1.0/subscriptions/id",
+        308,
+        "Permanent Redirect",
+        {"Location": location},
+        BytesIO(),
+    )
+
+
+class PatchRedirectTests(TestCase):
+    @patch("integrations.microsoft.onedrive.client._graph_url", return_value="https://graph.microsoft.com/v1.0")
+    @patch("integrations.microsoft.onedrive.client.urlopen")
+    def test_follows_one_same_origin_redirect_and_preserves_patch(self, urlopen, _graph_url):
+        urlopen.side_effect = [
+            redirect_error("https://graph.microsoft.com/v1.0/subscriptions/new-id"),
+            JsonResponse({"id": "new-id"}, 200),
+        ]
+
+        result = _patch(
+            "/subscriptions/old-id",
+            {"expirationDateTime": "2026-10-01T00:00:00Z"},
+            access_token="token",
+        )
+
+        self.assertEqual(result, {"id": "new-id"})
+        redirected_request = urlopen.call_args_list[1].args[0]
+        self.assertEqual(redirected_request.full_url, "https://graph.microsoft.com/v1.0/subscriptions/new-id")
+        self.assertEqual(redirected_request.get_method(), "PATCH")
+        self.assertEqual(redirected_request.get_header("Authorization"), "Bearer token")
+
+    @patch("integrations.microsoft.onedrive.client._graph_url", return_value="https://graph.microsoft.com/v1.0")
+    @patch("integrations.microsoft.onedrive.client.urlopen")
+    def test_rejects_redirect_to_another_host(self, urlopen, _graph_url):
+        urlopen.side_effect = redirect_error("https://example.com/steal-token")
+
+        with self.assertRaisesRegex(GraphRequestError, "unexpected PATCH redirect"):
+            _patch("/subscriptions/id", {}, access_token="token")
+
+        self.assertEqual(urlopen.call_count, 1)
+
+    @patch("integrations.microsoft.onedrive.client._graph_url", return_value="https://graph.microsoft.com/v1.0")
+    @patch("integrations.microsoft.onedrive.client.urlopen")
+    def test_rejects_a_second_redirect(self, urlopen, _graph_url):
+        urlopen.side_effect = [
+            redirect_error("/v1.0/subscriptions/second"),
+            redirect_error("/v1.0/subscriptions/third"),
+        ]
+
+        with self.assertRaisesRegex(GraphRequestError, "redirected more than once"):
+            _patch("/subscriptions/first", {}, access_token="token")
 
 
 class FindFolderIdTests(TestCase):

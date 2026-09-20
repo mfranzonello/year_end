@@ -2,7 +2,7 @@
 
 from typing import Any
 from urllib.error import HTTPError
-from urllib.parse import quote
+from urllib.parse import quote, urljoin, urlparse
 from urllib.request import Request, urlopen
 import base64
 import json
@@ -68,10 +68,35 @@ def _post(path: str, payload: dict[str, Any], *, access_token: str) -> dict[str,
         raise GraphRequestError(f"Microsoft Graph request failed: {error}") from error
 
 
-def _patch(path: str, payload: dict[str, Any], *, access_token: str) -> dict[str, Any]:
-    """PATCH a JSON payload to Microsoft Graph and return its JSON response."""
+def _validated_graph_redirect(request_url: str, location: str | None) -> str:
+    """Return a same-origin Graph redirect URL or reject it before forwarding auth."""
+    if not location:
+        raise GraphRequestError("Microsoft Graph redirected without a Location header")
+    redirect_url = urljoin(request_url, location)
+    graph = urlparse(_graph_url())
+    redirect = urlparse(redirect_url)
+    graph_path = graph.path.rstrip("/")
+    if (
+        redirect.scheme.lower() != "https"
+        or redirect.netloc.casefold() != graph.netloc.casefold()
+        or not redirect.path.startswith(f"{graph_path}/")
+    ):
+        raise GraphRequestError(
+            "Microsoft Graph returned an unexpected PATCH redirect URL"
+        )
+    return redirect_url
+
+
+def _patch_url(
+    url: str,
+    payload: dict[str, Any],
+    *,
+    access_token: str,
+    allow_redirect: bool,
+) -> dict[str, Any]:
+    """PATCH one Graph URL, following at most one validated 307/308 redirect."""
     request = Request(
-        f"{_graph_url()}{path}",
+        url,
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {access_token}",
@@ -84,10 +109,34 @@ def _patch(path: str, payload: dict[str, Any], *, access_token: str) -> dict[str
         with urlopen(request, timeout=30) as response:
             return json.load(response)
     except HTTPError as error:
+        if error.code in {307, 308}:
+            location = error.headers.get("Location") if error.headers else None
+            error.close()
+            if not allow_redirect:
+                raise GraphRequestError(
+                    "Microsoft Graph PATCH redirected more than once"
+                ) from error
+            redirect_url = _validated_graph_redirect(url, location)
+            return _patch_url(
+                redirect_url,
+                payload,
+                access_token=access_token,
+                allow_redirect=False,
+            )
         body = error.read().decode("utf-8", errors="replace")
         raise GraphRequestError(f"Microsoft Graph returned HTTP {error.code}: {body}") from error
     except Exception as error:
         raise GraphRequestError(f"Microsoft Graph request failed: {error}") from error
+
+
+def _patch(path: str, payload: dict[str, Any], *, access_token: str) -> dict[str, Any]:
+    """PATCH a Graph resource, safely following one method-preserving redirect."""
+    return _patch_url(
+        f"{_graph_url()}{path}",
+        payload,
+        access_token=access_token,
+        allow_redirect=True,
+    )
 
 
 def _delete(path: str, *, access_token: str) -> None:
