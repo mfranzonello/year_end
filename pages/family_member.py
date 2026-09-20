@@ -50,15 +50,19 @@ st.selectbox(
 member_id = st.session_state.member_id
 
 def get_basics(members, member_id):
-    sex = information['sex'].iloc[0]
+    (sex,
+     birth_date, birth_date_precision,
+     death_date, death_date_precision) = information[information['member_id'] == member_id]\
+         [['sex', 'birth_date', 'birth_date_precision',
+           'death_date', 'death_date_precision']].iloc[0]
 
+<<<<<<< HEAD
     birth_date = information['birth_date'].iloc[0]
     birth_date_precision = information['birth_date_precision'].iloc[0]
 <<<<<<< HEAD
+=======
+>>>>>>> b9d9afe95c59e58a60b9922a55e022e9e5cbad16
     is_future = (birth_date is not None and birth_date > date.today()) or (birth_date_precision == 'future')
-
-    death_date = information['death_date'].iloc[0]
-    death_date_precision = information['death_date_precision'].iloc[0]
     is_deceased = (death_date is not None and death_date <= date.today()) or (death_date_precision == 'past')
 =======
     is_future = (birth_date_precision == 'future' or

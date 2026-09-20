@@ -8,3 +8,4 @@ httpx==0.28.1
 graphviz==0.21
 cloudinary==1.44.1
 pgeocode==0.5.0
+emoji-country-flag==2.1.0

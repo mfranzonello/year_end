@@ -6,13 +6,13 @@ from pandas import DataFrame
 
 from database.db import read_sql, execute_sql, build_values
 
-# Family Tree
+# persons table operations
 def fetch_persons(engine:Engine, person_id:UUID=None) -> DataFrame:
     wheres = f'WHERE person_id = :person_id' if person_id else ''
     sql = f'''
     SELECT person_id,
     first_name, middle_names, last_name, nick_name, uses_middle,
-    suffix, prefix, sex,
+    suffix, prefix, sex, origin_region_id,
     birth_date, birth_date_precision, death_date, death_date_precision,
     notes
     FROM persons {wheres}
@@ -25,7 +25,7 @@ def update_person(engine:Engine, person_information:dict):
     first_name = :first_name, nick_name = :nick_name,
     last_name = :last_name,
     middle_names = :middle_names, uses_middle = :uses_middle,
-    suffix = :suffix, prefix = :prefix, sex = :sex,
+    suffix = :suffix, prefix = :prefix, sex = :sex, origin_region_id = :origin_region_id,
     birth_date = :birth_date, birth_date_precision = :birth_date_precision,
     death_date = :death_date, death_date_precision = :death_date_precision,
     notes = :notes
@@ -37,12 +37,12 @@ def insert_person(engine, person_information:dict):
     sql = f'''
     INSERT INTO persons
     (first_name, middle_names, last_name, nick_name, uses_middle,
-    suffix, prefix, sex,
+    suffix, prefix, sex, origin_region_id,
     birth_date, birth_date_precision, death_date, death_date_precision,
     notes)
     VALUES
     (:first_name, :middle_names, :last_name, :nick_name, :uses_middle,
-    :suffix, :prefix, :sex,
+    :suffix, :prefix, :sex, :origin_region_id,
     :birth_date, :birth_date_precision, :death_date, :death_date_precision,
     :notes)
     RETURNING person_id;'''
@@ -54,10 +54,11 @@ def remove_person(engine:Engine, person_id:UUID):
     ;'''
     execute_sql(engine, sql, params={'person_id': person_id})
 
+# animals table operations
 def fetch_animals(engine:Engine, animal_id:UUID=None) -> DataFrame:
     wheres = f'WHERE animal_id = :animal_id' if animal_id else ''
     sql = f'''SELECT animal_id,
-    first_name, middle_names, nick_name, sex, species,
+    first_name, middle_names, nick_name, sex, species, origin_region_id,
     birth_date, birth_date_precision, death_date, death_date_precision,
     notes
     FROM animals {wheres}
@@ -69,7 +70,7 @@ def update_animal(engine:Engine, animal_information:dict):
     UPDATE animals SET
     first_name = :first_name, nick_name = :nick_name,
     middle_names = :middle_names,
-    sex = :sex, species = :species,
+    sex = :sex, species = :species, origin_region_id = :origin_region_id,
     birth_date = :birth_date, birth_date_precision = :birth_date_precision,
     death_date = :death_date, death_date_precision = :death_date_precision,
     notes = :notes
@@ -86,7 +87,7 @@ def insert_animal(engine, animal_information:dict):
     notes)
     VALUES
     (:first_name, :middle_names, :nick_name,
-    :sex, :species,
+    :sex, :species, :origin_region_id,
     :birth_date, :birth_date_precision, :death_date, :death_date_precision,
     :notes)
     RETURNING animal_id;'''
@@ -98,6 +99,7 @@ def remove_animal(engine:Engine, animal_id:UUID):
     ;'''
     execute_sql(engine, sql, params={'animal_id': animal_id})
 
+# parents table operations
 def fetch_parents(engine:Engine, person_id:UUID=None) -> DataFrame:
     wheres = 'WHERE child_id = :person_id' if person_id else ''
     sql = f'''SELECT child_id, parent_id, relation_type
@@ -105,7 +107,7 @@ def fetch_parents(engine:Engine, person_id:UUID=None) -> DataFrame:
     ;'''
     return read_sql(engine, sql, params={'person_id': person_id})
 
-def update_parents(engine, parent_information):
+def update_parent(engine, parent_information):
     sql = f'''
     UPDATE parents SET 
     relation_type = :relation_type
@@ -113,20 +115,21 @@ def update_parents(engine, parent_information):
     ;'''
     execute_sql(engine, sql, params=parent_information)
 
-def insert_parents(engine, parent_information):
+def insert_parent(engine, parent_information):
     sql = f'''
     INSERT INTO parents (child_id, parent_id, relation_type)
     VALUES (:child_id, :parent_id, :relation_type)
     ;'''
     execute_sql(engine, sql, params=parent_information)
 
-def remove_parents(engine, parent_information):
+def remove_parent(engine, parent_information):
     sql = f'''
     DELETE FROM parents
     WHERE child_id = :child_id AND parent_id = :parent_id_old
     ;'''
     execute_sql(engine, sql, params=parent_information)
 
+# pets table operations
 def fetch_pets(engine:Engine, animal_id:UUID=None) -> DataFrame:
     wheres = 'WHERE pet_id = :animal_id' if animal_id else ''
     sql = f'''SELECT pet_id, owner_id, relation_type,
@@ -135,7 +138,7 @@ def fetch_pets(engine:Engine, animal_id:UUID=None) -> DataFrame:
     ;'''
     return read_sql(engine, sql, params={'animal_id': animal_id})
 
-def update_pets(engine:Engine, pet_information:dict):
+def update_pet(engine:Engine, pet_information:dict):
     sql = f'''
     UPDATE pets SET relation_type = :relation_type,
     gotcha_date = :gotcha_date, gotcha_date_precision = gotcha_date_precision
@@ -143,20 +146,21 @@ def update_pets(engine:Engine, pet_information:dict):
     ;'''
     return execute_sql(engine, sql, params=pet_information)
 
-def insert_pets(engine:Engine, pet_information:dict):
+def insert_pet(engine:Engine, pet_information:dict):
     sql = f'''
     INSERT INTO pets (pet_id, owner_id, relation_type, gotcha_date, gotcha_date_precision)
     VALUES (:pet_id, :owner_id, :relation_type, :gotcha_date, :gotcha_date_precision)
     ;'''
     execute_sql(engine, sql, params=pet_information)
 
-def remove_pets(engine:Engine, pet_information:dict):
+def remove_pet(engine:Engine, pet_information:dict):
     sql = f'''
     DELETE FROM pets
     WHERE pet_id = :pet_id AND owner_id = :owner_id_old 
     ;'''
     execute_sql(engine, sql, params=pet_information)
 
+# partnerships table operations
 def fetch_partnerships(engine: Engine) -> DataFrame:
     sql = '''
     SELECT union_id, partner_id_1, partner_id_2,
@@ -177,7 +181,7 @@ def fetch_partners(engine:Engine, person_id:UUID=None) -> DataFrame:
     ;'''
     return read_sql(engine, sql, params={'person_id': person_id})
 
-def update_partners(engine:Engine, partner_information:dict):
+def update_partner(engine:Engine, partner_information:dict):
     sql = f'''
     UPDATE unions SET union_type = :union_type,
     union_date = :union_date, union_date_precision = :union_date_precision,
@@ -187,7 +191,7 @@ def update_partners(engine:Engine, partner_information:dict):
     ;'''
     execute_sql(engine, sql, params=partner_information)
 
-def insert_partners(engine:Engine, partner_information:dict):
+def insert_partner(engine:Engine, partner_information:dict):
     sql = f'''
     INSERT INTO unions
     (union_date, union_date_precision, union_type,
@@ -209,7 +213,7 @@ def insert_partners(engine:Engine, partner_information:dict):
     ;'''
     execute_sql(engine, sql, params=partner_information)
 
-def remove_partners(engine: Engine, partner_information:dict):
+def remove_partner(engine: Engine, partner_information:dict):
     sql = f'''
     DELETE FROM unions
     WHERE union_id = (SELECT union_id FROM union_members
@@ -218,6 +222,30 @@ def remove_partners(engine: Engine, partner_information:dict):
     ;'''
     execute_sql(engine, sql, params=partner_information)
 
+# progenitors table operations
+def fetch_progenitors(engine:Engine, animal_id:UUID=None) -> DataFrame:
+    wheres = 'WHERE young_id = :animal_id' if animal_id else ''
+    sql = f'''SELECT young_id, progenitor_id
+    FROM progenitors {wheres}
+    ;'''
+    return read_sql(engine, sql, params={'animal_id': animal_id})
+
+def insert_progenitor(engine, progenitor_information):
+    sql = f'''
+    INSERT INTO progenitors (young_id, progenitor_id)
+    VALUES (:young_id, :progenitor_id)
+    ;'''
+    execute_sql(engine, sql, params=progenitor_information)
+
+def remove_progenitor(engine, progenitor_information):
+    sql = f'''
+    DELETE FROM progenitors
+    WHERE young_id = :young_id AND progenitor_id = :progenitor_id_old
+    ;'''
+    execute_sql(engine, sql, params=progenitor_information)
+
+
+# tree schema operations
 def fetch_members(engine:Engine) -> DataFrame:
     sql = f'''
     SELECT member_id, birth_date, birth_date_precision, death_date, death_date_precision,
@@ -233,6 +261,8 @@ def fetch_households(engine:Engine) -> DataFrame:
     ;'''
     return read_sql(engine, sql)
 
+
+# family tree operations
 def fetch_founder(engine:Engine) -> UUID:
     sql = f'''
     SELECT founder_id
@@ -262,6 +292,8 @@ def fetch_family_graph(engine:Engine, founder_id:UUID,
     }
     return read_sql(engine, sql, params=params)
 
+
+# member info operations
 def fetch_person_information(engine:Engine) -> DataFrame:
     sql = f'''
     WITH
@@ -365,7 +397,7 @@ def fetch_person_information(engine:Engine) -> DataFrame:
 
     SELECT
     person_id AS member_id, first_name, middle_names, last_name, married_name, nick_name,
-    sex, prefix, suffix_to_text(suffix) AS suffix,
+    sex, prefix, suffix_to_text(suffix) AS suffix, region_code AS origin_region_code,
     parent_ids, spouse_ids, child_ids, expecting_ids, sibling_ids, pet_ids,
     birth_date::date, birth_date_precision, death_date::date, death_date_precision,
     union_date, union_date_precision, severance_date::date,
@@ -374,6 +406,7 @@ def fetch_person_information(engine:Engine) -> DataFrame:
     JSON_BUILD_OBJECT('files', COALESCE(total_files, 0), 'years', COALESCE(total_years, 0),
     'appearances', COALESCE(total_appearances, 0)) AS project_stats
     FROM persons
+    LEFT JOIN config.regions ON persons.origin_region_id = regions.region_id
     LEFT JOIN folks USING (person_id)
     LEFT JOIN spouse USING (person_id)
     LEFT JOIN children USING (person_id)
@@ -389,7 +422,43 @@ def fetch_person_information(engine:Engine) -> DataFrame:
 
 def fetch_animal_information(engine:Engine) -> DataFrame:
     sql = f'''
-    WITH owners AS (
+    WITH 
+    puppies AS (
+    SELECT progenitor_id AS animal_id,
+    ARRAY_AGG(young_id ORDER BY birth_date) AS child_ids
+    FROM progenitors JOIN animals ON young_id = animal_id
+    GROUP BY progenitor_id
+    ),
+
+    sires AS (
+    SELECT
+    young_id AS animal_id,
+    ARRAY_AGG(progenitor_id ORDER BY birth_date) AS parent_ids
+    FROM progenitors JOIN animals ON progenitor_id = animal_id
+    GROUP BY young_id
+    ),
+
+    sibling_pairs AS (
+    SELECT DISTINCT
+    me.young_id AS animal_id,
+    sibling.young_id AS sibling_id,
+    sibling_animal.birth_date
+    FROM progenitors me
+    JOIN progenitors sibling
+    ON sibling.progenitor_id = me.progenitor_id
+    AND sibling.young_id != me.young_id
+    JOIN animals sibling_animal
+    ON sibling.young_id = sibling_animal.animal_id
+    ),
+
+    siblings AS (
+    SELECT
+    animal_id, ARRAY_AGG(sibling_id ORDER BY birth_date) AS sibling_ids
+    FROM sibling_pairs
+    GROUP BY animal_id
+    ),
+    
+    owners AS (
     SELECT pet_id AS animal_id,
     ARRAY_AGG(owner_id ORDER BY gotcha_date NULLS LAST) AS owner_ids
     FROM pets
@@ -439,17 +508,22 @@ def fetch_animal_information(engine:Engine) -> DataFrame:
 
     SELECT
     animal_id AS member_id, first_name, middle_names, nick_name,
-    sex, species, owner_ids,
+    sex, species, region_code AS origin_region_code,
+    parent_ids, child_ids, sibling_ids, owner_ids,
     birth_date::date, birth_date_precision, death_date::date, death_date_precision,
     gotcha_date::date, gotcha_date_precision, 
     JSON_BUILD_OBJECT('zip_code', zip_code) AS contact_info,
     JSON_BUILD_OBJECT('files', COALESCE(total_files, 0),'years', COALESCE(total_years, 0),
     'appearances', COALESCE(total_appearances, 0)) AS project_stats
     FROM animals
+    LEFT JOIN puppies USING (animal_id)
+    LEFT JOIN sires USING (animal_id)
+    LEFT JOIN siblings USING(animal_id)
+    LEFT JOIN config.regions ON animals.origin_region_id = regions.region_id
     LEFT JOIN owners USING (animal_id)
     LEFT JOIN owner_gotchas USING (animal_id)
     LEFT JOIN addy USING (animal_id)
     LEFT JOIN stats_1 USING (animal_id)
-    LEFT JOIN stats_2 USING (animal_id);
-    ''';
+    LEFT JOIN stats_2 USING (animal_id)
+    ;'''
     return read_sql(engine, sql)

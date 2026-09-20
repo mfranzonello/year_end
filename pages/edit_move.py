@@ -9,7 +9,7 @@ from database.db_messaging import (
     fetch_member_moves, fetch_homeless, fetch_addresses,
     insert_address_move, update_address_move, remove_address_move
     )
-from pages.streamlit_auth import get_database_credentials
+from pages.streamlit_auth import get_database_credentials, require_admin
 from pages.general import set_sidebar, get_hash_funcs, get_member_name_display, get_value, get_index
 ##from charting.stats_member import plot_map
 
@@ -19,6 +19,7 @@ engine = get_engine(*get_database_credentials())
 set_sidebar()
 st.set_page_config(page_title='Add and Edit Family Members',
                    layout='wide')
+require_admin()
 
 members = fetch_member_summary(engine)
 persons = members[members['member_type'] == 'person']

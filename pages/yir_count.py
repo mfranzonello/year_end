@@ -41,7 +41,8 @@ options = {'video_count': 'count',
            'video_duration': 'duration',
            'file_size': 'filesize',
            'rating_count': 'rating',
-           'resolution_count': 'resolution'}
+           'resolution_count': 'resolution',
+           'total_score': 'score'}
 
 quantity = st.radio(label='Display Quantity', options=options.keys(), format_func=lambda x: options[x],
                             horizontal=True)
@@ -78,6 +79,8 @@ match quantity:
         quality_pct = normed[normed['res'].isin(['4k', '8k'])]['count'].sum() / normed['count'].sum()
         submission_string = f'**{round(quality_pct*100, 1)}% HQ videos**'
         order = fetch_resolution_order(engine)
+    case 'total_score':
+        submission_string = None
     case _:
         submission_string = None
 

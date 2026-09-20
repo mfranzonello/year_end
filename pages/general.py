@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from shutil import which
+from functools import wraps
 
 import streamlit as st
 from graphviz import Graph
@@ -9,7 +10,7 @@ from sqlalchemy import Engine
 from cloudinary import Config as CloudConfig
 from psycopg.errors import NotNullViolation, ForeignKeyViolation, UniqueViolation, CheckViolation
 
-from pages.streamlit_auth import current_identity, render_account_controls
+from pages.streamlit_auth import current_identity, render_account_controls, require_admin
 
 def graphviz_available() -> bool:
     """Check for Graphviz's system executable, separate from its Python package."""
@@ -51,7 +52,8 @@ def set_sidebar():
             for page in pages[grouping]:
                 if allow_page(page):
                     st.page_link(get_link(page), label=page['label'], icon=get_icon(page))
-            st.divider()
+            if any(allow_page(page) for page in pages[grouping]):
+                st.divider()
 
         render_account_controls(identity)
 
@@ -84,6 +86,8 @@ def plot_graphviz_chart(graph:Graph, use_images=False):
             st.graphviz_chart(graph)
 <<<<<<< HEAD
 
+
+# database write wrapper
 def parse_db_error(e: Exception, function: str):
     error = e.orig
     if isinstance(error, NotNullViolation):
@@ -100,5 +104,19 @@ def parse_db_error(e: Exception, function: str):
 
     else:
         st.error(f'**{function}**: The database rejected this change.')
+<<<<<<< HEAD
 =======
 >>>>>>> dev
+=======
+
+# # def write_to_db(func, function_name):
+# #     @wraps(func)
+# #     def inner(*args, **kwargs):
+# #         require_admin()
+# #         try:
+# #             result = func(*args, **kwargs)
+# #         except Exception as e:
+# #             parse_db_error(e, function_name)
+    
+# #     return inner
+>>>>>>> b9d9afe95c59e58a60b9922a55e022e9e5cbad16
