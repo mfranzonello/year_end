@@ -6,6 +6,8 @@ from typing import Protocol
 from pandas import DataFrame
 from sqlalchemy import Engine
 
+from database.db_project import update_file_locations
+
 from integrations.google.google_drive.client import (
     GoogleDriveRequestError,
     download_file_range as download_google_drive_file_range,
@@ -18,7 +20,10 @@ from integrations.microsoft.onedrive.client import (
     get_upload_session_status as get_onedrive_upload_session_status,
     upload_chunk as upload_onedrive_chunk,
 )
-from repositories.ingest import discover_google_drive_migration
+from repositories.ingest import (
+    DESTINATION_REPOSITORY, SOURCE_REPOSITORY, discover_google_drive_migration,
+    parse_created_timestamp,
+)
 
 
 TRANSFER_CHUNK_SIZE = 32 * UPLOAD_FRAGMENT_GRANULARITY
@@ -155,6 +160,34 @@ def migrate_google_drive_cloud(
                 )
                 results.loc[index, "status"] = "copied"
                 results.loc[index, "destination_item_id"] = uploaded["id"]
+                results.loc[index, "destination_file_id"] = uploaded["id"]
+                results.loc[index, "destination_created_timestamp"] = (
+                    parse_created_timestamp(
+                        uploaded.get("createdDateTime"), DESTINATION_REPOSITORY,
+                    )
+                )
+
+            location_rows = []
+            for row in results.to_dict(orient="records"):
+                if not row.get("file_id"):
+                    continue
+                if row.get("source_file_id") and row.get("source_created_timestamp"):
+                    location_rows.append({
+                        "file_id": row["file_id"],
+                        "repository_name": SOURCE_REPOSITORY,
+                        "repository_item_id": row["source_file_id"],
+                        "is_canonical": False,
+                        "created_timestamp": row["source_created_timestamp"],
+                    })
+                if row.get("destination_file_id") and row.get("destination_created_timestamp"):
+                    location_rows.append({
+                        "file_id": row["file_id"],
+                        "repository_name": DESTINATION_REPOSITORY,
+                        "repository_item_id": row["destination_file_id"],
+                        "is_canonical": True,
+                        "created_timestamp": row["destination_created_timestamp"],
+                    })
+            update_file_locations(engine, DataFrame(location_rows))
 
     counts = results["status"].value_counts().to_dict() if not results.empty else {}
     action_summary = (

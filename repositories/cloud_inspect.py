@@ -8,7 +8,8 @@ from sqlalchemy import Engine
 
 from common.video import VIDEO_EXTS, get_resolution
 from database.db_project import (
-    fetch_known_files, fetch_project_folders, purge_files, update_files,
+    fetch_file_location_candidates, fetch_known_files, fetch_project_folders,
+    purge_files, update_file_locations, update_files,
     update_folder_locations_and_shares, update_folders,
 )
 from integrations.microsoft.onedrive.client import (
@@ -19,6 +20,10 @@ from integrations.microsoft.onedrive.client import (
     list_child_folders as list_onedrive_child_folders,
     list_children as list_onedrive_children,
     list_descendant_files as list_onedrive_descendant_files,
+)
+from repositories.ingest import (
+    DESTINATION_REPOSITORY, match_discovered_file_locations,
+    parse_created_timestamp,
 )
 
 
@@ -136,6 +141,10 @@ def _cloud_file_row(
         "video_duration": duration,
         "video_resolution": resolution,
         "stored": "cloud",
+        "repository_item_id": item["id"],
+        "created_timestamp": parse_created_timestamp(
+            item.get("createdDateTime"), DESTINATION_REPOSITORY,
+        ),
     }
 
 
@@ -279,6 +288,7 @@ def inspect_onedrive_cloud_contents(
         columns=[
             "folder_name", "project_year", "file_name", "subfolder_name",
             "file_size", "video_duration", "video_resolution", "stored",
+            "repository_item_id", "created_timestamp",
         ],
     )
     ui.add_update(
@@ -305,4 +315,21 @@ def inspect_onedrive_cloud_contents(
             update_files(engine, files)
         if not stale_files.empty:
             purge_files(engine, stale_files)
+        if not files.empty:
+            logical_files = fetch_file_location_candidates(
+                engine, inventoried_years[0], media_type,
+            ) if len(inventoried_years) == 1 else concat(
+                [
+                    fetch_file_location_candidates(engine, year, media_type)
+                    for year in inventoried_years
+                ],
+                ignore_index=True,
+            )
+            locations = match_discovered_file_locations(
+                logical_files,
+                files,
+                DESTINATION_REPOSITORY,
+                is_canonical=True,
+            )
+            update_file_locations(engine, locations)
     return folders, files

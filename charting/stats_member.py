@@ -260,7 +260,15 @@ def fill_personal(information, member_type, sex, is_future, is_deceased):
     contact_info = information['contact_info'].iloc[0]
     zip_code = contact_info.get('zip_code')
     if zip_code:
+<<<<<<< HEAD
         plot_map(zip_code, markdown='Lives near')
+=======
+        location = nomi.query_postal_code(zip_code)
+        s = 'd' if is_deceased else 's'
+        st.markdown(f'**Live{s} near**: {location.place_name}, {location.state_code}')
+        location_data = plot_map(location)
+        st.map(location_data, height=300, width=350, zoom=10)
+>>>>>>> dev
 
 def fill_lineage(information, members, member_type, sex, is_future):
     future = 'Future ' if is_future else ''

@@ -82,6 +82,7 @@ def plot_graphviz_chart(graph:Graph, use_images=False):
             st.image(graph.pipe(format='png'))
         else:
             st.graphviz_chart(graph)
+<<<<<<< HEAD
 
 def parse_db_error(e: Exception, function: str):
     error = e.orig
@@ -99,3 +100,5 @@ def parse_db_error(e: Exception, function: str):
 
     else:
         st.error(f'**{function}**: The database rejected this change.')
+=======
+>>>>>>> dev

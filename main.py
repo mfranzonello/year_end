@@ -21,7 +21,6 @@ from repositories.ingest import (
 from repositories.cloud_inspect import (
     inspect_onedrive_cloud_contents, inspect_onedrive_folder_shares,
 )
-from repositories.inspect import purge_stale_content, summarize_folders, update_database_images
 
 PGSECRETS = secrets['postgresql']['host']
 PGHOST = secrets['postgresql']['host']
@@ -29,10 +28,6 @@ PGPORT = secrets['postgresql']['port']
 PGDBNAME = secrets['postgresql']['database']
 PGUSER = secrets['postgresql']['user']
 PGPASSWORD = secrets['postgresql']['password']
-
-CLOUDINARY_CLOUD = secrets['cloudinary']['cloud_name']
-CLOUDINARY_API_KEY = secrets['cloudinary']['api_key']
-CLOUDINARY_API_SECRET = secrets['cloudinary']['api_secret']
 
 MIN_STARS = 3
 
@@ -86,6 +81,8 @@ def harvest_albums(
     engine.dispose()
 
 def purge_database(media_locations:list[tuple], dry_run:bool=True):
+    from repositories.inspect import purge_stale_content
+
     engine = set_up_engine()
     for media_type, supfolder_name in media_locations:
         purge_stale_content(engine, ONE_DRIVE_FOLDER / supfolder_name, media_type, dry_run)
@@ -114,6 +111,8 @@ def update_database(
                 folders_only=folders_only,
             )
         else:
+            from repositories.inspect import summarize_folders
+
             summarize_folders(
                 engine,
                 ONE_DRIVE_FOLDER / supfolder_name,
@@ -195,10 +194,6 @@ def sync_cloud_folder_shares(
     finally:
         engine.dispose()
 
-def update_images(dry_run:bool=True):
-    engine = set_up_engine()
-    update_database_images(engine, CLOUDINARY_CLOUD, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, dry_run=dry_run)
-    engine.dispose()
 
 def main():
     ap = argparse.ArgumentParser(description=f"Scan for new files and import into current year's Premiere review project.")
@@ -216,7 +211,6 @@ def main():
     ap.add_argument('--gphotos', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Photos to OneDrive.')
     ap.add_argument('--iphotos', nargs='?', type=bool, const=True, default=False, help='Copy new files from iCloud Photos to OneDrive.')
     ap.add_argument('--gdrive', nargs='?', type=bool, const=True, default=False, help='Copy new files from Google Drive to OneDrive.')
-    ap.add_argument('--pictures', nargs='?', type=bool, const=True, default=False, help='Update Premiere project with bins and imports.')
     ap.add_argument('--inspect-only', action='store_true', help='Only discover top-level participant folders and update their database records.')
     ap.add_argument(
         '--cloud-only', action='store_true',
@@ -300,9 +294,6 @@ def main():
             args.google_drive_shares,
             dry_run=dry_run,
         )
-
-    if args.pictures:
-        update_images(dry_run=dry_run)
 
     ui.set_status("Done.")
 
