@@ -104,19 +104,3 @@ def parse_db_error(e: Exception, function: str):
 
     else:
         st.error(f'**{function}**: The database rejected this change.')
-<<<<<<< HEAD
-=======
->>>>>>> dev
-=======
-
-# # def write_to_db(func, function_name):
-# #     @wraps(func)
-# #     def inner(*args, **kwargs):
-# #         require_admin()
-# #         try:
-# #             result = func(*args, **kwargs)
-# #         except Exception as e:
-# #             parse_db_error(e, function_name)
-    
-# #     return inner
->>>>>>> b9d9afe95c59e58a60b9922a55e022e9e5cbad16
