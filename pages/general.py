@@ -84,7 +84,6 @@ def plot_graphviz_chart(graph:Graph, use_images=False):
             st.image(graph.pipe(format='png'))
         else:
             st.graphviz_chart(graph)
-<<<<<<< HEAD
 
 
 # database write wrapper
