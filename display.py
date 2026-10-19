@@ -1,4 +1,3 @@
-from math import e
 import streamlit as st
 
 from pages.general import set_sidebar, pages, allow_page, get_link
