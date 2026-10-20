@@ -31,6 +31,25 @@ def candidate_plan() -> DataFrame:
 
 
 class GoogleDriveCloudMigrationTests(TestCase):
+    @patch("repositories.cloud_migrate.update_file_locations")
+    @patch("repositories.cloud_migrate.discover_google_drive_migration")
+    def test_missing_database_identity_does_not_write_nan(self, discover, update_locations):
+        """Unmatched plan rows must not send pandas missing values to UUID columns."""
+        plan = candidate_plan()
+        plan.loc[0, "status"] = "already_present"
+        missing = plan.iloc[0].to_dict()
+        missing["file_id"] = float("nan")
+        plan.loc[1] = missing
+        discover.return_value = plan
+
+        migrate_google_drive_cloud(
+            Mock(), "smartphone", 2026, Mock(), dry_run=False,
+        )
+
+        locations = update_locations.call_args.args[1]
+        self.assertEqual(len(locations), 1)
+        self.assertEqual(locations.iloc[0]["file_id"], "database-file")
+
     @patch("repositories.cloud_migrate.transfer_google_file_to_onedrive")
     @patch("repositories.cloud_migrate.discover_google_drive_migration")
     def test_dry_run_reports_without_transferring(self, discover, transfer):

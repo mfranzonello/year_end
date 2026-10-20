@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from integrations.microsoft.onedrive.client import GraphRequestError
 from repositories.webhook_subscriptions import (
@@ -11,7 +11,7 @@ from repositories.webhook_subscriptions import (
     reconcile_google_drive_channel,
     reconcile_onedrive_subscription,
 )
-from run_webhook_subscriptions import _onedrive_subscription_folder_id
+from run_webhook_subscriptions import _onedrive_subscription_folder_id, reconcile
 
 
 NOW = datetime(2026, 8, 27, 12, tzinfo=timezone.utc)
@@ -220,6 +220,27 @@ class GoogleDriveLifecycleTests(TestCase):
 
 
 class OneDriveSubscriptionScopeTests(TestCase):
+    @patch("run_webhook_subscriptions.reconcile_google_drive_channel")
+    @patch("run_webhook_subscriptions._secret_text", return_value="test-secret")
+    @patch("run_webhook_subscriptions._onedrive_subscription_folder_id")
+    @patch("run_webhook_subscriptions.AzureSubscriptionStore")
+    def test_google_renewal_survives_onedrive_failure(
+        self, store_class, folder_id, _secret, google
+    ):
+        """A provider failure must still allow the other provider to renew."""
+        folder_id.side_effect = GraphRequestError("OneDrive unavailable")
+        store = store_class.from_account_name.return_value
+        store.get.return_value = None
+        state = google_state()
+        google.return_value = (state, Mock(action="created", expires_at=state.expires_at))
+
+        with self.assertRaisesRegex(RuntimeError, "OneDrive subscription reconciliation failed"):
+            reconcile("test-account", "https://example.test/onedrive",
+                      state.notification_url, Mock(), Mock(), apply=True)
+
+        google.assert_called_once()
+        store.save.assert_called_once_with(state)
+
     @patch("run_webhook_subscriptions.find_folder_id")
     @patch("run_webhook_subscriptions.read_toml")
     def test_uses_explicit_root_fallback(self, read_config, find_folder):

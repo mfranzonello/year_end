@@ -72,7 +72,6 @@ def reconcile(
     store = AzureSubscriptionStore.from_account_name(storage_account)
     if apply:
         store.ensure_table()
-    folder_id = _onedrive_subscription_folder_id()
     client_state = _secret_text(
         onedrive_client_state_file, "OneDrive client state"
     )
@@ -80,31 +79,37 @@ def reconcile(
         google_channel_token_file, "Google Drive channel token"
     )
 
-    previous_onedrive = store.get("onedrive")
-    onedrive_state, onedrive_action = reconcile_onedrive_subscription(
-        previous_onedrive,
-        onedrive_url,
-        client_state,
-        folder_id=folder_id,
-        apply=apply,
-    )
-    if apply and onedrive_state:
-        store.save(onedrive_state)
-        if (
-            previous_onedrive
-            and previous_onedrive.external_id != onedrive_state.external_id
-        ):
-            try:
-                delete_subscription(previous_onedrive.external_id)
-            except Exception:
-                print(
-                    "Warning: the superseded OneDrive subscription could not "
-                    "be removed; notification deduplication remains active."
-                )
-    print(
-        f"OneDrive subscription: {onedrive_action.action}; "
-        f"expiration={onedrive_action.expires_at or 'pending provider response'}"
-    )
+    onedrive_error = None
+    try:
+        folder_id = _onedrive_subscription_folder_id()
+        previous_onedrive = store.get("onedrive")
+        onedrive_state, onedrive_action = reconcile_onedrive_subscription(
+            previous_onedrive,
+            onedrive_url,
+            client_state,
+            folder_id=folder_id,
+            apply=apply,
+        )
+        if apply and onedrive_state:
+            store.save(onedrive_state)
+            if (
+                previous_onedrive
+                and previous_onedrive.external_id != onedrive_state.external_id
+            ):
+                try:
+                    delete_subscription(previous_onedrive.external_id)
+                except Exception:
+                    print(
+                        "Warning: the superseded OneDrive subscription could not "
+                        "be removed; notification deduplication remains active."
+                    )
+        print(
+            f"OneDrive subscription: {onedrive_action.action}; "
+            f"expiration={onedrive_action.expires_at or 'pending provider response'}"
+        )
+    except Exception as error:
+        onedrive_error = error
+        print("OneDrive subscription failed; continuing Google Drive renewal.")
 
     previous_google = store.get("google_drive")
     google_state, google_action = reconcile_google_drive_channel(
@@ -135,6 +140,9 @@ def reconcile(
         f"Google Drive channel: {google_action.action}; "
         f"expiration={google_action.expires_at or 'pending provider response'}"
     )
+
+    if onedrive_error is not None:
+        raise RuntimeError("OneDrive subscription reconciliation failed") from onedrive_error
 
 
 def main() -> None:

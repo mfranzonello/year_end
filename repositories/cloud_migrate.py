@@ -3,7 +3,7 @@
 from time import sleep
 from typing import Protocol
 
-from pandas import DataFrame
+from pandas import DataFrame, isna
 from sqlalchemy import Engine
 
 from database.db_project import update_file_locations
@@ -169,9 +169,14 @@ def migrate_google_drive_cloud(
 
             location_rows = []
             for row in results.to_dict(orient="records"):
-                if not row.get("file_id"):
+                if isna(row.get("file_id")) or not row.get("file_id"):
                     continue
-                if row.get("source_file_id") and row.get("source_created_timestamp"):
+                if (
+                    not isna(row.get("source_file_id"))
+                    and row.get("source_file_id")
+                    and not isna(row.get("source_created_timestamp"))
+                    and row.get("source_created_timestamp")
+                ):
                     location_rows.append({
                         "file_id": row["file_id"],
                         "repository_name": SOURCE_REPOSITORY,
@@ -179,7 +184,12 @@ def migrate_google_drive_cloud(
                         "is_canonical": False,
                         "created_timestamp": row["source_created_timestamp"],
                     })
-                if row.get("destination_file_id") and row.get("destination_created_timestamp"):
+                if (
+                    not isna(row.get("destination_file_id"))
+                    and row.get("destination_file_id")
+                    and not isna(row.get("destination_created_timestamp"))
+                    and row.get("destination_created_timestamp")
+                ):
                     location_rows.append({
                         "file_id": row["file_id"],
                         "repository_name": DESTINATION_REPOSITORY,
