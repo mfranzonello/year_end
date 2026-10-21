@@ -16,6 +16,10 @@ class GraphRequestError(RuntimeError):
     """Raised when Microsoft Graph rejects a request."""
 
 
+class GraphMissingRedirectError(GraphRequestError):
+    """Graph cannot route a PATCH because its redirect has no destination."""
+
+
 UPLOAD_FRAGMENT_GRANULARITY = 320 * 1024
 
 
@@ -71,7 +75,7 @@ def _post(path: str, payload: dict[str, Any], *, access_token: str) -> dict[str,
 def _validated_graph_redirect(request_url: str, location: str | None) -> str:
     """Return a same-origin Graph redirect URL or reject it before forwarding auth."""
     if not location:
-        raise GraphRequestError("Microsoft Graph redirected without a Location header")
+        raise GraphMissingRedirectError("Microsoft Graph redirected without a Location header")
     redirect_url = urljoin(request_url, location)
     graph = urlparse(_graph_url())
     redirect = urlparse(redirect_url)

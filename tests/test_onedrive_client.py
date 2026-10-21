@@ -7,7 +7,7 @@ import json
 from urllib.error import HTTPError
 
 from integrations.microsoft.onedrive.client import (
-    GraphRequestError, UPLOAD_FRAGMENT_GRANULARITY, _patch, create_upload_session,
+    GraphMissingRedirectError, GraphRequestError, UPLOAD_FRAGMENT_GRANULARITY, _patch, create_upload_session,
     find_folder_id, get_or_create_share_link, get_share_link, list_child_folders,
     list_children, list_descendant_files, upload_chunk,
 )
@@ -45,6 +45,17 @@ def redirect_error(location: str) -> HTTPError:
 
 
 class PatchRedirectTests(TestCase):
+    @patch("integrations.microsoft.onedrive.client._graph_url", return_value="https://graph.microsoft.com/v1.0")
+    @patch("integrations.microsoft.onedrive.client.urlopen")
+    def test_missing_redirect_location_has_a_recoverable_error(self, urlopen, _graph_url):
+        urlopen.side_effect = HTTPError(
+            "https://graph.microsoft.com/v1.0/subscriptions/id", 308,
+            "Permanent Redirect", {}, BytesIO(),
+        )
+        with self.assertRaises(GraphMissingRedirectError):
+            _patch("/subscriptions/id", {}, access_token="token")
+        self.assertEqual(urlopen.call_count, 1)
+
     @patch("integrations.microsoft.onedrive.client._graph_url", return_value="https://graph.microsoft.com/v1.0")
     @patch("integrations.microsoft.onedrive.client.urlopen")
     def test_follows_one_same_origin_redirect_and_preserves_patch(self, urlopen, _graph_url):

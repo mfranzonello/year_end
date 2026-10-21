@@ -9,7 +9,7 @@ from common.config import read_toml
 from integrations.google.google_drive.subscriptions import (
     create_changes_channel,
 )
-from integrations.microsoft.onedrive.client import GraphRequestError
+from integrations.microsoft.onedrive.client import GraphMissingRedirectError, GraphRequestError
 from integrations.microsoft.onedrive.subscriptions import (
     create_subscription,
     folder_subscription_resource,
@@ -230,7 +230,7 @@ def reconcile_onedrive_subscription(
             renew_subscription(matching.external_id), notification_url
         )
     except GraphRequestError as error:
-        if "HTTP 404" not in str(error):
+        if not isinstance(error, GraphMissingRedirectError) and "HTTP 404" not in str(error):
             raise
         renewed = _onedrive_state(
             create_subscription(

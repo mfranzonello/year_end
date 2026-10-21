@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from integrations.microsoft.onedrive.client import GraphRequestError
+from integrations.microsoft.onedrive.client import GraphMissingRedirectError, GraphRequestError
 from repositories.webhook_subscriptions import (
     ProviderSubscriptionState,
     SubscriptionPolicy,
@@ -40,6 +40,41 @@ def google_state(*, days: int = 5) -> ProviderSubscriptionState:
 
 
 class OneDriveLifecycleTests(TestCase):
+    @patch("repositories.webhook_subscriptions.create_subscription")
+    @patch("repositories.webhook_subscriptions.renew_subscription")
+    @patch("repositories.webhook_subscriptions.list_subscriptions")
+    def test_replaces_an_unroutable_renewal_but_preserves_other_errors(self, listing, renew, create):
+        """Only a missing redirect or missing subscription permits replacement."""
+        current = onedrive_state(days=2)
+        listing.return_value = [{
+            "id": current.external_id, "notificationUrl": current.notification_url,
+            "resource": current.target_resource,
+            "expirationDateTime": current.expires_at.isoformat(),
+        }]
+        create.return_value = {
+            "id": "replacement-id", "resource": current.target_resource,
+            "expirationDateTime": (NOW + timedelta(days=29)).isoformat(),
+        }
+        renew.side_effect = GraphMissingRedirectError("Missing Location")
+        result, action = reconcile_onedrive_subscription(
+            current, current.notification_url, "client-state", folder_id="folder-id",
+            now=NOW, apply=True, policy=POLICY,
+        )
+        self.assertEqual(action.action, "replaced")
+        self.assertEqual(result.external_id, "replacement-id")
+        create.assert_called_once()
+
+        for error in (GraphRequestError("HTTP 403"), GraphRequestError("unexpected PATCH redirect URL")):
+            with self.subTest(error=str(error)):
+                create.reset_mock()
+                renew.side_effect = error
+                with self.assertRaises(GraphRequestError):
+                    reconcile_onedrive_subscription(
+                        current, current.notification_url, "client-state", folder_id="folder-id",
+                        now=NOW, apply=True, policy=POLICY,
+                    )
+                create.assert_not_called()
+
     @patch("repositories.webhook_subscriptions.list_subscriptions")
     def test_keeps_healthy_subscription_after_provider_validation(self, listing):
         current = onedrive_state()
