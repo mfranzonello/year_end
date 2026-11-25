@@ -227,12 +227,11 @@ def discover_google_drive_migration(
             key=lambda item: (item["name"].casefold(), item["id"]),
         )
         destination_files = list_onedrive_descendant_files(destination_folder_id)
-        destination_by_name: dict[tuple[str, str], list[dict]] = {}
+        destination_by_name: dict[str, list[dict]] = {}
         for item in destination_files:
             name = item.get("name")
             if isinstance(name, str) and name:
-                key = _location_key(name, item.get("relative_parent"))
-                destination_by_name.setdefault(key, []).append(item)
+                destination_by_name.setdefault(name.casefold(), []).append(item)
 
         source_name_counts: dict[str, int] = {}
         for item in source_files:
@@ -269,7 +268,11 @@ def discover_google_drive_migration(
                 rows.append({**file_row, "status": "duplicate_source_name"})
                 continue
 
-            destination_matches = destination_by_name.get(file_key, [])
+            # Uploads flatten source subfolders, so existence uses the leaf name.
+            destination_matches = destination_by_name.get(file_name.casefold(), [])
+            if len(destination_matches) > 1:
+                rows.append({**file_row, "status": "duplicate_destination_name"})
+                continue
             if destination_matches:
                 destination = destination_matches[0]
                 rows.append({

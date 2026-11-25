@@ -44,6 +44,38 @@ class GoogleDriveFolderShareIngestionTests(TestCase):
 
 
 class GoogleDriveMigrationDiscoveryTests(TestCase):
+    @patch("repositories.ingest.fetch_file_location_candidates", return_value=DataFrame())
+    @patch("repositories.ingest.list_onedrive_descendant_files")
+    @patch("repositories.ingest.list_google_drive_descendant_files")
+    @patch("repositories.ingest.fetch_folder_transfer_locations")
+    def test_flattened_filename_match_ignores_source_and_destination_subfolders(
+        self, fetch_locations, google, onedrive, _logical
+    ):
+        """A previously flattened copy must not be uploaded again on the next run."""
+        fetch_locations.return_value = DataFrame([{
+            "folder_id": "database-id", "folder_name": "Participant",
+            "source_item_id": "source-folder", "destination_item_id": "destination-folder",
+        }])
+        for source_parent, destination_parent in (("Trip", None), (None, "Archive"), ("Trip", "Archive")):
+            with self.subTest(source_parent=source_parent, destination_parent=destination_parent):
+                google.return_value = [{
+                    "id": "source", "name": "clip.mp4", "size": "10",
+                    "relative_parent": source_parent, "createdTime": "2026-01-01T00:00:00Z",
+                }]
+                onedrive.return_value = [{
+                    "id": "destination", "name": "CLIP.MP4", "size": 11,
+                    "relative_parent": destination_parent,
+                    "createdDateTime": "2026-01-02T00:00:00Z",
+                }]
+                result = discover_google_drive_migration(Mock(), "smartphone", 2026)
+                self.assertEqual(result.iloc[0]["status"], "already_present")
+                self.assertEqual(result.iloc[0]["destination_file_id"], "destination")
+
+        onedrive.return_value.append({**onedrive.return_value[0], "id": "other-destination"})
+        result = discover_google_drive_migration(Mock(), "smartphone", 2026)
+        self.assertEqual(result.iloc[0]["status"], "duplicate_destination_name")
+        self.assertNotIn("destination_file_id", result.columns)
+
     @patch("repositories.ingest.fetch_file_location_candidates")
     @patch("repositories.ingest.list_onedrive_descendant_files")
     @patch("repositories.ingest.list_google_drive_descendant_files")

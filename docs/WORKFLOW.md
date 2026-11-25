@@ -166,7 +166,9 @@ The cloud migration step is copy-only: it never deletes, moves, deduplicates,
 or quarantines source files. Any case-insensitive destination filename match is
 treated as already migrated; size is retained for transfer mechanics but does
 not decide whether a file is new. Duplicate source names are reported for
-review and are not copied arbitrarily.
+review and are not copied arbitrarily. Multiple destination files with the same
+case-insensitive name are likewise reported for review without selecting an
+arbitrary file ID or copying another file.
 
 The `Google Drive cloud migration` workflow runs the complete cloud intake
 sequence for the selected year: discover Google Drive candidates, copy eligible
